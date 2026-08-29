@@ -1481,16 +1481,16 @@
               </div>
             </div>
 
-            <!-- Customer & Route Grid -->
-            <div class="row g-3 mb-4 p-3 bg-light rounded-3 border">
-              <div class="col-md-6">
-                <h6 class="fw-bold text-primary-custom mb-2">Billed To (Customer):</h6>
+            <!-- Customer & Route Grid (Strict 2-Column Side-by-Side) -->
+            <div class="row g-2 mb-3 p-2 bg-light rounded-3 border invoice-customer-box">
+              <div class="col-6">
+                <h6 class="fw-bold text-primary-custom mb-1 fs-6">Billed To (Customer):</h6>
                 <div class="fw-semibold" id="invCustName">Rajesh Sharma</div>
                 <div class="small text-muted">Phone: +91 <span id="invCustPhone">9876543210</span></div>
                 <div class="small text-muted">Email: <span id="invCustEmail">customer@mail.com</span></div>
               </div>
-              <div class="col-md-6">
-                <h6 class="fw-bold text-primary-custom mb-2">Relocation Details:</h6>
+              <div class="col-6">
+                <h6 class="fw-bold text-primary-custom mb-1 fs-6">Relocation Details:</h6>
                 <div class="small"><strong>Pickup:</strong> <span id="invPickup">-</span></div>
                 <div class="small"><strong>Drop:</strong> <span id="invDrop">-</span></div>
                 <div class="small"><strong>Moving Date:</strong> <span id="invShiftingDate">-</span></div>
@@ -1499,13 +1499,13 @@
             </div>
 
             <!-- Invoice Itemized Table -->
-            <div class="table-responsive mb-3">
-              <table class="table table-bordered invoice-table align-middle">
+            <div class="table-responsive mb-2">
+              <table class="table table-bordered invoice-table align-middle mb-0">
                 <thead class="table-light">
                   <tr>
                     <th>Description of Services & Goods</th>
-                    <th class="text-center" style="width: 100px;">Qty / Unit</th>
-                    <th class="text-end" style="width: 140px;">Amount (₹)</th>
+                    <th class="text-center" style="width: 90px;">Qty / Unit</th>
+                    <th class="text-end" style="width: 130px;">Amount (₹)</th>
                   </tr>
                 </thead>
                 <tbody id="invoiceTableBody">
@@ -1544,7 +1544,7 @@
                     <td colspan="2" class="text-end">Coupon Discount (<span id="invCouponCode">-</span>):</td>
                     <td class="text-end" id="invDiscountAmount">- ₹0.00</td>
                   </tr>
-                  <tr class="table-dark fs-5 fw-extrabold">
+                  <tr class="table-dark fs-6 fw-extrabold">
                     <td colspan="2" class="text-end">Grand Total:</td>
                     <td class="text-end text-warning" id="invGrandTotal">₹5,700.00</td>
                   </tr>
@@ -1552,23 +1552,23 @@
               </table>
             </div>
 
-            <!-- UPI Payment QR & Signature Area -->
-            <div class="row align-items-center g-3 pt-3 border-top">
-              <div class="col-md-8">
-                <div class="d-flex align-items-center gap-3">
+            <!-- UPI Payment QR & Signature Area (Strict 2-Column Side-by-Side) -->
+            <div class="row align-items-center g-2 pt-2 border-top invoice-footer-box">
+              <div class="col-7">
+                <div class="d-flex align-items-center gap-2">
                   <div class="invoice-qr-box">
                     <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=upi://pay?pa=7296831460@okbizaxis&pn=RudrakshPackers&cu=INR" alt="UPI QR" style="width: 100%; height: 100%;">
                   </div>
                   <div>
                     <div class="fw-bold small text-secondary-custom"><i class="fa-solid fa-qrcode me-1 text-primary-custom"></i> Scan to Pay via Any UPI App</div>
-                    <div class="small text-muted">GPay, PhonePe, Paytm, BHIM (+91 72968 31460)</div>
-                    <div class="small text-muted">Terms: 100% Goods transit covered under policy.</div>
+                    <div class="small text-muted" style="font-size: 0.78rem;">GPay, PhonePe, Paytm, BHIM (+91 72968 31460)</div>
+                    <div class="small text-muted" style="font-size: 0.75rem;">100% Goods Transit Insurance covered.</div>
                   </div>
                 </div>
               </div>
-              <div class="col-md-4 text-end">
-                <div class="small text-muted mb-2">Authorized Signatory</div>
-                <div class="fw-bold text-secondary-custom">Rudraksha Logistics Ltd.</div>
+              <div class="col-5 text-end">
+                <div class="small text-muted mb-1" style="font-size: 0.8rem;">Authorized Signatory</div>
+                <div class="fw-bold text-secondary-custom fs-6">Rudraksha Logistics Ltd.</div>
               </div>
             </div>
 
