@@ -276,13 +276,86 @@
       </div>
     </section>
 
-    <!-- TAB 3: FLEET & DRIVERS MANAGEMENT -->
+    <!-- TAB 3: FLEET & VEHICLES MANAGEMENT -->
     <section class="admin-tab-content" id="tab-fleet" style="display: none;">
+      <!-- Section A: Dedicated Vehicle Types in Calculator -->
+      <div class="custom-card mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h5 class="fw-bold mb-0"><i class="fa-solid fa-truck-moving text-primary-custom me-2"></i>Website Transport Fleet (Calculator Vehicles)</h5>
+            <span class="small text-muted">Add or modify dedicated vehicle models that appear in Step 2 of the customer Cost Calculator.</span>
+          </div>
+          <button class="btn btn-sm btn-outline-primary" onclick="loadFleetVehicles()"><i class="fa-solid fa-rotate me-1"></i> Refresh Vehicles</button>
+        </div>
+
+        <div class="row g-4">
+          <!-- Add Vehicle Form -->
+          <div class="col-lg-4">
+            <div class="p-3 bg-light rounded-3 border">
+              <h6 class="fw-bold mb-3 text-secondary-custom"><i class="fa-solid fa-plus-circle text-primary-custom me-1"></i> Add / Edit Vehicle</h6>
+              <form id="vehicleConfigForm" onsubmit="event.preventDefault(); handleSaveVehicle();">
+                <div class="mb-2">
+                  <label class="form-label small fw-semibold">Vehicle Key (Unique ID, lowercase)</label>
+                  <input type="text" class="form-control form-control-sm" id="vehKey" placeholder="e.g. bolero_maxi" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label small fw-semibold">Vehicle Display Name</label>
+                  <input type="text" class="form-control form-control-sm" id="vehName" placeholder="e.g. Bolero Maxi Truck (2 Ton)" required>
+                </div>
+                <div class="row g-2 mb-2">
+                  <div class="col-6">
+                    <label class="form-label small fw-semibold">Base Price (₹)</label>
+                    <input type="number" class="form-control form-control-sm" id="vehBasePrice" placeholder="3000" required>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label small fw-semibold">Per KM Rate (₹)</label>
+                    <input type="number" class="form-control form-control-sm" id="vehPerKm" placeholder="40" required>
+                  </div>
+                </div>
+                <div class="row g-2 mb-3">
+                  <div class="col-6">
+                    <label class="form-label small fw-semibold">Capacity Tag</label>
+                    <input type="text" class="form-control form-control-sm" id="vehCap" placeholder="1-2 BHK" required>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label small fw-semibold">FontAwesome Icon</label>
+                    <input type="text" class="form-control form-control-sm" id="vehIcon" placeholder="fa-truck-pickup" value="fa-truck">
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary-custom btn-sm w-100"><i class="fa-solid fa-circle-plus me-1"></i> Save Vehicle to Calculator</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Vehicle List Table -->
+          <div class="col-lg-8">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Icon</th>
+                    <th>Vehicle Name</th>
+                    <th>Base (₹)</th>
+                    <th>Per KM (₹)</th>
+                    <th>Capacity</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="vehiclesTableBody">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section B: Registered Drivers & Real-time Roster -->
       <div class="row g-4">
         <!-- Add Driver Form -->
         <div class="col-lg-4">
           <div class="custom-card">
-            <h5 class="fw-bold mb-3"><i class="fa-solid fa-user-plus text-primary-custom me-2"></i>Register New Driver</h5>
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-user-plus text-primary-custom me-2"></i>Register Driver</h5>
             <form id="driverForm" onsubmit="event.preventDefault(); handleAddDriver();">
               <div class="mb-3">
                 <label class="form-label fw-semibold">Driver Full Name</label>
@@ -296,19 +369,16 @@
                 </div>
               </div>
               <div class="mb-3">
-                <label class="form-label fw-semibold">Vehicle Number</label>
+                <label class="form-label fw-semibold">Vehicle Registration No.</label>
                 <input type="text" class="form-control text-uppercase" id="drvVehicleNo" placeholder="RJ-14-GA-1024" required>
               </div>
               <div class="mb-3">
-                <label class="form-label fw-semibold">Vehicle Type</label>
+                <label class="form-label fw-semibold">Assigned Vehicle Model</label>
                 <select class="form-select" id="drvVehicleType">
-                  <option value="Tata Ace (1.5 Ton)">Tata Ace (1.5 Ton) - Local Shifting</option>
-                  <option value="Eicher 14ft (3.5 Ton)">Eicher 14ft (3.5 Ton) - 2 BHK / Suburban</option>
-                  <option value="19ft Container (7 Ton)">19ft Container (7 Ton) - 3 BHK / Intercity</option>
-                  <option value="Specialized Two-Wheeler Carrier">Specialized Two-Wheeler Carrier</option>
+                  <!-- Populated from fleet vehicles -->
                 </select>
               </div>
-              <button type="submit" class="btn btn-primary-custom w-100"><i class="fa-solid fa-circle-plus me-1"></i> Register Driver & Vehicle</button>
+              <button type="submit" class="btn btn-primary-custom w-100"><i class="fa-solid fa-circle-plus me-1"></i> Register Driver Roster</button>
             </form>
           </div>
         </div>
@@ -317,8 +387,8 @@
         <div class="col-lg-8">
           <div class="custom-card">
             <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5 class="fw-bold mb-0"><i class="fa-solid fa-truck-front text-primary-custom me-2"></i>Active Fleet Roster</h5>
-              <button class="btn btn-sm btn-outline-primary" onclick="loadDriversFromBackend()"><i class="fa-solid fa-rotate me-1"></i> Refresh Fleet</button>
+              <h5 class="fw-bold mb-0"><i class="fa-solid fa-id-badge text-primary-custom me-2"></i>Active Driver Roster</h5>
+              <button class="btn btn-sm btn-outline-primary" onclick="loadDriversFromBackend()"><i class="fa-solid fa-rotate me-1"></i> Refresh Drivers</button>
             </div>
             <div class="table-responsive">
               <table class="table table-hover align-middle">
@@ -341,53 +411,106 @@
       </div>
     </section>
 
-    <!-- TAB 4: RATE MANAGER -->
+    <!-- TAB 4: RATE MANAGER (Full Control) -->
     <section class="admin-tab-content" id="tab-rates" style="display: none;">
       <div class="custom-card">
-        <h5 class="fw-bold mb-3"><i class="fa-solid fa-sliders text-primary-custom me-2"></i>Relocation Rate & Tariff Manager</h5>
-        <p class="text-muted small mb-4">Adjust pricing configurations. Changes immediately reflect on the customer calculator.</p>
+        <h5 class="fw-bold mb-3"><i class="fa-solid fa-sliders text-primary-custom me-2"></i>Relocation Rate & Tariff Controller</h5>
+        <p class="text-muted small mb-4">Live pricing parameters. Changing these numbers instantly updates cost calculations for all users on the website.</p>
 
         <form id="ratesForm" onsubmit="event.preventDefault(); saveAdminRates();">
-          <div class="row g-3">
+          <!-- General Rates -->
+          <div class="row g-3 mb-4">
             <div class="col-md-4">
-              <label class="form-label fw-semibold">Base Relocation Charge (₹)</label>
-              <input type="number" class="form-control form-control-lg" id="rateBase" value="3500" required>
+              <label class="form-label fw-semibold">Default Base Relocation Fee (₹)</label>
+              <input type="number" class="form-control form-control-lg" id="rateBase" value="2500" required>
             </div>
             <div class="col-md-4">
-              <label class="form-label fw-semibold">Per KM Road Transit Charge (₹)</label>
+              <label class="form-label fw-semibold">Default Per KM Road Rate (₹)</label>
               <input type="number" class="form-control form-control-lg" id="ratePerKm" value="40" required>
             </div>
             <div class="col-md-4">
-              <label class="form-label fw-semibold">Floor Surcharge (No Lift) per floor (₹)</label>
+              <label class="form-label fw-semibold">Floor Labor Surcharge (No Lift) / Floor (₹)</label>
               <input type="number" class="form-control form-control-lg" id="rateFloorNoLift" value="300" required>
             </div>
+          </div>
 
-            <!-- House Size Fees -->
-            <div class="col-12"><h6 class="fw-bold text-secondary-custom border-bottom pb-2 mt-3">House Type Surcharges</h6></div>
+          <!-- House Size Fees -->
+          <h6 class="fw-bold text-secondary-custom border-bottom pb-2 mb-3"><i class="fa-solid fa-house-chimney text-primary-custom me-1"></i> House / Cargo Size Surcharges (₹)</h6>
+          <div class="row g-3 mb-4">
             <div class="col-md-2.4">
-              <label class="form-label small">1 RK Fee (₹)</label>
+              <label class="form-label small fw-semibold">1 RK Studio (₹)</label>
               <input type="number" class="form-control" id="rateHouse1rk" value="0">
             </div>
             <div class="col-md-2.4">
-              <label class="form-label small">1 BHK Fee (₹)</label>
+              <label class="form-label small fw-semibold">1 BHK Apartment (₹)</label>
               <input type="number" class="form-control" id="rateHouse1bhk" value="1000">
             </div>
             <div class="col-md-2.4">
-              <label class="form-label small">2 BHK Fee (₹)</label>
+              <label class="form-label small fw-semibold">2 BHK Apartment (₹)</label>
               <input type="number" class="form-control" id="rateHouse2bhk" value="2500">
             </div>
             <div class="col-md-2.4">
-              <label class="form-label small">3 BHK Fee (₹)</label>
+              <label class="form-label small fw-semibold">3 BHK Apartment (₹)</label>
               <input type="number" class="form-control" id="rateHouse3bhk" value="4500">
             </div>
             <div class="col-md-2.4">
-              <label class="form-label small">Villa / 4+ BHK Fee (₹)</label>
+              <label class="form-label small fw-semibold">4+ BHK / Villa (₹)</label>
               <input type="number" class="form-control" id="rateHouseVilla" value="7500">
             </div>
           </div>
 
-          <div class="mt-4">
-            <button type="submit" class="btn btn-primary-custom px-4"><i class="fa-solid fa-floppy-disk me-1"></i> Update & Save Rates</button>
+          <!-- Item Breakdown Rates -->
+          <h6 class="fw-bold text-secondary-custom border-bottom pb-2 mb-3"><i class="fa-solid fa-boxes-packing text-primary-custom me-1"></i> Item Breakdown Unit Rates (₹ / Item)</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">Sofa Set (₹)</label>
+              <input type="number" class="form-control" id="rateItemSofa" value="500">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">Double Bed / Cot (₹)</label>
+              <input type="number" class="form-control" id="rateItemBed" value="600">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">Dining Table (₹)</label>
+              <input type="number" class="form-control" id="rateItemDining" value="400">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">Refrigerator (₹)</label>
+              <input type="number" class="form-control" id="rateItemFridge" value="400">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">Washing Machine (₹)</label>
+              <input type="number" class="form-control" id="rateItemWashing" value="350">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">Carton Box (₹)</label>
+              <input type="number" class="form-control" id="rateItemBoxes" value="80">
+            </div>
+          </div>
+
+          <!-- Add-on Services Rates -->
+          <h6 class="fw-bold text-secondary-custom border-bottom pb-2 mb-3"><i class="fa-solid fa-cart-flatbed-suitcases text-primary-custom me-1"></i> Add-on Services Pricing (₹)</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Bubble Packing (₹)</label>
+              <input type="number" class="form-control" id="rateAddonBubble" value="1500">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Unpacking & Assembly (₹)</label>
+              <input type="number" class="form-control" id="rateAddonUnpacking" value="1200">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Transit Insurance (₹)</label>
+              <input type="number" class="form-control" id="rateAddonInsurance" value="999">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Vehicle Transport (₹)</label>
+              <input type="number" class="form-control" id="rateAddonVehicleTransport" value="2500">
+            </div>
+          </div>
+
+          <div class="mt-4 pt-2 border-top">
+            <button type="submit" class="btn btn-primary-custom btn-lg px-5 shadow-sm"><i class="fa-solid fa-floppy-disk me-2"></i> Save & Apply All Rates</button>
           </div>
         </form>
       </div>
@@ -398,31 +521,38 @@
       <div class="row g-4">
         <div class="col-md-5">
           <div class="custom-card">
-            <h5 class="fw-bold mb-3"><i class="fa-solid fa-plus-circle text-primary-custom me-2"></i>Create New Coupon</h5>
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-plus-circle text-primary-custom me-2"></i>Create New Promo Coupon</h5>
             <form id="couponForm" onsubmit="event.preventDefault(); createAdminCoupon();">
               <div class="mb-3">
                 <label class="form-label fw-semibold">Coupon Code</label>
-                <input type="text" class="form-control text-uppercase" id="newCouponCode" placeholder="e.g. FESTIVE15" required>
+                <input type="text" class="form-control text-uppercase" id="newCouponCode" placeholder="e.g. FESTIVE20" required>
               </div>
               <div class="mb-3">
                 <label class="form-label fw-semibold">Discount Type</label>
                 <select class="form-select" id="newCouponType">
                   <option value="percent">Percentage (%) Discount</option>
-                  <option value="fixed">Fixed Amount (₹) Discount</option>
+                  <option value="fixed">Flat Fixed Amount (₹) Discount</option>
                 </select>
               </div>
               <div class="mb-3">
                 <label class="form-label fw-semibold">Discount Value</label>
-                <input type="number" class="form-control" id="newCouponValue" placeholder="10 (for 10%) or 500 (for ₹500)" required>
+                <input type="number" class="form-control" id="newCouponValue" placeholder="e.g. 15 (for 15%) or 750 (for ₹750)" required>
               </div>
-              <button type="submit" class="btn btn-primary-custom w-100"><i class="fa-solid fa-circle-check me-1"></i> Save Coupon Code</button>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Description / Tagline</label>
+                <input type="text" class="form-control" id="newCouponDesc" placeholder="e.g. Special Holiday Moving Offer">
+              </div>
+              <button type="submit" class="btn btn-primary-custom w-100"><i class="fa-solid fa-circle-check me-1"></i> Save Promo Code</button>
             </form>
           </div>
         </div>
 
         <div class="col-md-7">
           <div class="custom-card">
-            <h5 class="fw-bold mb-3"><i class="fa-solid fa-ticket me-2"></i>Active Discount Coupons</h5>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="fw-bold mb-0"><i class="fa-solid fa-ticket me-2"></i>Active Discount Coupons</h5>
+              <button class="btn btn-sm btn-outline-primary" onclick="loadCouponsFromBackend()"><i class="fa-solid fa-rotate me-1"></i> Refresh</button>
+            </div>
             <div class="table-responsive">
               <table class="table table-hover align-middle">
                 <thead class="table-light">
@@ -430,6 +560,7 @@
                     <th>Code</th>
                     <th>Type</th>
                     <th>Value</th>
+                    <th>Description</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -443,10 +574,47 @@
       </div>
     </section>
 
-    <!-- TAB 6: THEME CONTROLLER -->
+    <!-- TAB 6: THEME & BRANDING CONTROLLER -->
     <section class="admin-tab-content" id="tab-theme" style="display: none;">
+      <div class="custom-card mb-4">
+        <h5 class="fw-bold mb-3"><i class="fa-solid fa-building text-primary-custom me-2"></i>Company & Contact Details</h5>
+        <p class="text-muted small mb-4">Update your business contact information that appears on the website, header, and invoices.</p>
+
+        <form id="companyForm" onsubmit="event.preventDefault(); saveCompanyBranding();">
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Company Brand Name</label>
+              <input type="text" class="form-control" id="compName" value="Rudraksha Packers & Movers" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Calling Phone Number</label>
+              <input type="tel" class="form-control" id="compPhone" value="7296831460" required>
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Support WhatsApp Number</label>
+              <input type="tel" class="form-control" id="compWhatsapp" value="7296831460" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Support Email Address</label>
+              <input type="email" class="form-control" id="compEmail" value="support@rudrakshapackers.com">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Business GSTIN</label>
+              <input type="text" class="form-control text-uppercase" id="compGstin" value="08AAACR1234F1Z5">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Office Address (Shown on Invoice)</label>
+            <input type="text" class="form-control" id="compAddress" value="Near SNM Hospital, Gandhipath (West), Jaipur, RJ">
+          </div>
+          <button type="submit" class="btn btn-primary-custom px-4"><i class="fa-solid fa-floppy-disk me-1"></i> Save Company Info</button>
+        </form>
+      </div>
+
       <div class="custom-card">
-        <h5 class="fw-bold mb-3"><i class="fa-solid fa-palette text-primary-custom me-2"></i>Dynamic Website Theme Controller</h5>
+        <h5 class="fw-bold mb-3"><i class="fa-solid fa-palette text-primary-custom me-2"></i>Website Color Palette</h5>
         <div class="row g-4">
           <div class="col-md-4">
             <label class="form-label fw-semibold">Primary Brand Color</label>

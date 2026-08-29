@@ -207,8 +207,10 @@ function logoutAdmin() {
 
 async function refreshAdminAll() {
   await checkBackendHealth();
+  await loadFleetVehicles();
   await loadAdminRates();
   await loadAdminCoupons();
+  await loadCompanyBranding();
   await loadDriversFromBackend();
   await loadBookingsFromBackend();
   loadAdminThemeSettings();
@@ -378,7 +380,171 @@ async function handleStatusChange(bookingId, newStatus) {
 }
 
 /* ==========================================================================
-   2. FLEET & DRIVERS MANAGEMENT
+   2. FLEET & DEDICATED VEHICLES MANAGEMENT
+   ========================================================================== */
+
+let adminVehicles = {};
+
+async function loadFleetVehicles() {
+  try {
+    const res = await fetch(`${API_BASE}/config`);
+    if (res.ok) {
+      const config = await res.json();
+      adminVehicles = config.vehicles || {};
+    } else {
+      throw new Error('Config API unreachable');
+    }
+  } catch (err) {
+    const saved = localStorage.getItem('rudraksha_fleet_config');
+    if (saved) adminVehicles = JSON.parse(saved);
+    else {
+      adminVehicles = {
+        'mini_truck': { name: 'Tata Ace / Mini (1.5 Ton)', basePrice: 2500, perKmRate: 35, icon: 'fa-truck-pickup', cap: 'Up to 1 BHK / Studio' },
+        'tempo_14ft': { name: '14ft Tempo / Eicher (3.5 Ton)', basePrice: 3500, perKmRate: 45, icon: 'fa-truck', cap: 'Ideal for 1-2 BHK' },
+        'truck_19ft': { name: '19ft Container Truck (7 Ton)', basePrice: 5500, perKmRate: 65, icon: 'fa-truck-moving', cap: '3+ BHK / Large Moving' },
+        'bike': { name: 'Bike Transport Carrier', basePrice: 1500, perKmRate: 15, icon: 'fa-motorcycle', cap: 'Two-Wheeler Carrier' },
+        'car': { name: 'Closed Car Carrier', basePrice: 4500, perKmRate: 35, icon: 'fa-car-side', cap: 'Hydraulic Car Carrier' }
+      };
+    }
+  }
+
+  localStorage.setItem('rudraksha_fleet_config', JSON.stringify(adminVehicles));
+  renderVehiclesTable();
+  populateDriverVehicleSelect();
+}
+
+function renderVehiclesTable() {
+  const tbody = document.getElementById('vehiclesTableBody');
+  if (!tbody) return;
+
+  const keys = Object.keys(adminVehicles);
+  if (keys.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3 text-muted">No vehicles configured. Add a vehicle using the form.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = keys.map((key) => {
+    const v = adminVehicles[key];
+    return `
+      <tr>
+        <td><i class="fa-solid ${v.icon || 'fa-truck'} fa-xl text-primary-custom"></i></td>
+        <td>
+          <div class="fw-bold">${v.name}</div>
+          <div class="small text-muted"><code>${key}</code></div>
+        </td>
+        <td><strong>₹${Number(v.basePrice || 0).toLocaleString('en-IN')}</strong></td>
+        <td><strong>₹${v.perKmRate || 0} / KM</strong></td>
+        <td><span class="badge bg-secondary-subtle text-dark">${v.cap || 'Standard'}</span></td>
+        <td>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary" title="Edit Vehicle" onclick="editVehicle('${key}')">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button class="btn btn-outline-danger" title="Delete Vehicle" onclick="deleteVehicle('${key}')">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function editVehicle(key) {
+  const v = adminVehicles[key];
+  if (!v) return;
+  document.getElementById('vehKey').value = key;
+  document.getElementById('vehName').value = v.name;
+  document.getElementById('vehBasePrice').value = v.basePrice;
+  document.getElementById('vehPerKm').value = v.perKmRate;
+  document.getElementById('vehCap').value = v.cap || '';
+  document.getElementById('vehIcon').value = v.icon || 'fa-truck';
+  document.getElementById('vehName').focus();
+}
+
+async function handleSaveVehicle() {
+  const key = document.getElementById('vehKey').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  const name = document.getElementById('vehName').value.trim();
+  const basePrice = parseFloat(document.getElementById('vehBasePrice').value) || 2500;
+  const perKmRate = parseFloat(document.getElementById('vehPerKm').value) || 35;
+  const cap = document.getElementById('vehCap').value.trim() || 'Custom';
+  const icon = document.getElementById('vehIcon').value.trim() || 'fa-truck';
+
+  if (!key || !name) {
+    alert('Please provide a vehicle key and display name.');
+    return;
+  }
+
+  const payload = { vehicle_key: key, name, basePrice, perKmRate, cap, icon };
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/vehicles`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.config && data.config.vehicles) adminVehicles = data.config.vehicles;
+      else adminVehicles[key] = { name, basePrice, perKmRate, cap, icon };
+    } else {
+      adminVehicles[key] = { name, basePrice, perKmRate, cap, icon };
+    }
+  } catch (err) {
+    adminVehicles[key] = { name, basePrice, perKmRate, cap, icon };
+  }
+
+  localStorage.setItem('rudraksha_fleet_config', JSON.stringify(adminVehicles));
+  showAdminToast(`Vehicle "${name}" saved to Calculator!`);
+  document.getElementById('vehicleConfigForm').reset();
+  renderVehiclesTable();
+  populateDriverVehicleSelect();
+}
+
+async function deleteVehicle(key) {
+  if (!confirm(`Are you sure you want to delete vehicle "${adminVehicles[key]?.name || key}"?`)) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/vehicles/${key}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.config && data.config.vehicles) adminVehicles = data.config.vehicles;
+      else delete adminVehicles[key];
+    } else {
+      delete adminVehicles[key];
+    }
+  } catch (err) {
+    delete adminVehicles[key];
+  }
+
+  localStorage.setItem('rudraksha_fleet_config', JSON.stringify(adminVehicles));
+  showAdminToast(`Vehicle deleted successfully!`);
+  renderVehiclesTable();
+  populateDriverVehicleSelect();
+}
+
+function populateDriverVehicleSelect() {
+  const select = document.getElementById('drvVehicleType');
+  if (!select) return;
+
+  const keys = Object.keys(adminVehicles);
+  if (keys.length === 0) {
+    select.innerHTML = `<option value="Tata Ace">Tata Ace (1.5 Ton)</option>`;
+    return;
+  }
+
+  select.innerHTML = keys.map(k => `
+    <option value="${adminVehicles[k].name}">${adminVehicles[k].name}</option>
+  `).join('');
+}
+
+/* ==========================================================================
+   DRIVERS ROSTER
    ========================================================================== */
 async function loadDriversFromBackend() {
   try {
@@ -491,7 +657,7 @@ async function submitDriverAssignment() {
 
     if (!res.ok) throw new Error('Assignment failed');
 
-    statusMsg.innerHTML = '<span class="text-success"><i class="fa-solid fa-circle-check me-1"></i> Driver assigned and Telegram notification sent!</span>';
+    statusMsg.innerHTML = '<span class="text-success"><i class="fa-solid fa-circle-check me-1"></i> Driver assigned and notification dispatched!</span>';
     setTimeout(() => {
       bootstrap.Modal.getInstance(document.getElementById('assignDriverModal'))?.hide();
       loadBookingsFromBackend();
@@ -502,82 +668,259 @@ async function submitDriverAssignment() {
 }
 
 /* ==========================================================================
-   3. RATES & TARIFF MANAGER
+   3. RATES & TARIFF MANAGER (Full Control)
    ========================================================================== */
-function loadAdminRates() {
-  const saved = localStorage.getItem('rudraksha_rates_config');
-  if (saved) adminRates = JSON.parse(saved);
-  else adminRates = { baseRate: 3500, perKmRate: 40, floorNoLiftRate: 300 };
+async function loadAdminRates() {
+  try {
+    const res = await fetch(`${API_BASE}/config`);
+    if (res.ok) {
+      const config = await res.json();
+      if (config.rates) adminRates = config.rates;
+    }
+  } catch {
+    const saved = localStorage.getItem('rudraksha_rates_config');
+    if (saved) adminRates = JSON.parse(saved);
+  }
 
-  if (document.getElementById('rateBase')) document.getElementById('rateBase').value = adminRates.baseRate || 3500;
+  // Fallbacks
+  if (!adminRates.houseSizeRates) {
+    adminRates.houseSizeRates = { '1rk': 0, '1bhk': 1000, '2bhk': 2500, '3bhk': 4500, 'villa': 7500 };
+  }
+  if (!adminRates.itemRates) {
+    adminRates.itemRates = { sofa: 500, bed: 600, dining: 400, fridge: 400, washing: 350, boxes: 80 };
+  }
+  if (!adminRates.addonRates) {
+    adminRates.addonRates = { bubblePacking: 1500, unpacking: 1200, insurance: 999, vehicleTransport: 2500 };
+  }
+
+  // Populate Inputs
+  if (document.getElementById('rateBase')) document.getElementById('rateBase').value = adminRates.baseRate || 2500;
   if (document.getElementById('ratePerKm')) document.getElementById('ratePerKm').value = adminRates.perKmRate || 40;
   if (document.getElementById('rateFloorNoLift')) document.getElementById('rateFloorNoLift').value = adminRates.floorNoLiftRate || 300;
+
+  // House Sizes
+  if (document.getElementById('rateHouse1rk')) document.getElementById('rateHouse1rk').value = adminRates.houseSizeRates['1rk'] ?? 0;
+  if (document.getElementById('rateHouse1bhk')) document.getElementById('rateHouse1bhk').value = adminRates.houseSizeRates['1bhk'] ?? 1000;
+  if (document.getElementById('rateHouse2bhk')) document.getElementById('rateHouse2bhk').value = adminRates.houseSizeRates['2bhk'] ?? 2500;
+  if (document.getElementById('rateHouse3bhk')) document.getElementById('rateHouse3bhk').value = adminRates.houseSizeRates['3bhk'] ?? 4500;
+  if (document.getElementById('rateHouseVilla')) document.getElementById('rateHouseVilla').value = adminRates.houseSizeRates['villa'] ?? 7500;
+
+  // Items
+  if (document.getElementById('rateItemSofa')) document.getElementById('rateItemSofa').value = adminRates.itemRates.sofa ?? 500;
+  if (document.getElementById('rateItemBed')) document.getElementById('rateItemBed').value = adminRates.itemRates.bed ?? 600;
+  if (document.getElementById('rateItemDining')) document.getElementById('rateItemDining').value = adminRates.itemRates.dining ?? 400;
+  if (document.getElementById('rateItemFridge')) document.getElementById('rateItemFridge').value = adminRates.itemRates.fridge ?? 400;
+  if (document.getElementById('rateItemWashing')) document.getElementById('rateItemWashing').value = adminRates.itemRates.washing ?? 350;
+  if (document.getElementById('rateItemBoxes')) document.getElementById('rateItemBoxes').value = adminRates.itemRates.boxes ?? 80;
+
+  // Addons
+  if (document.getElementById('rateAddonBubble')) document.getElementById('rateAddonBubble').value = adminRates.addonRates.bubblePacking ?? 1500;
+  if (document.getElementById('rateAddonUnpacking')) document.getElementById('rateAddonUnpacking').value = adminRates.addonRates.unpacking ?? 1200;
+  if (document.getElementById('rateAddonInsurance')) document.getElementById('rateAddonInsurance').value = adminRates.addonRates.insurance ?? 999;
+  if (document.getElementById('rateAddonVehicleTransport')) document.getElementById('rateAddonVehicleTransport').value = adminRates.addonRates.vehicleTransport ?? 2500;
 }
 
-function saveAdminRates() {
-  const baseRate = parseInt(document.getElementById('rateBase').value) || 3500;
-  const perKmRate = parseInt(document.getElementById('ratePerKm').value) || 40;
-  const floorNoLiftRate = parseInt(document.getElementById('rateFloorNoLift').value) || 300;
+async function saveAdminRates() {
+  const baseRate = parseInt(document.getElementById('rateBase')?.value) || 2500;
+  const perKmRate = parseInt(document.getElementById('ratePerKm')?.value) || 40;
+  const floorNoLiftRate = parseInt(document.getElementById('rateFloorNoLift')?.value) || 300;
 
-  const newRates = { ...adminRates, baseRate, perKmRate, floorNoLiftRate };
-  localStorage.setItem('rudraksha_rates_config', JSON.stringify(newRates));
+  const houseSizeRates = {
+    '1rk': parseInt(document.getElementById('rateHouse1rk')?.value) || 0,
+    '1bhk': parseInt(document.getElementById('rateHouse1bhk')?.value) || 1000,
+    '2bhk': parseInt(document.getElementById('rateHouse2bhk')?.value) || 2500,
+    '3bhk': parseInt(document.getElementById('rateHouse3bhk')?.value) || 4500,
+    'villa': parseInt(document.getElementById('rateHouseVilla')?.value) || 7500
+  };
+
+  const itemRates = {
+    sofa: parseInt(document.getElementById('rateItemSofa')?.value) || 500,
+    bed: parseInt(document.getElementById('rateItemBed')?.value) || 600,
+    dining: parseInt(document.getElementById('rateItemDining')?.value) || 400,
+    fridge: parseInt(document.getElementById('rateItemFridge')?.value) || 400,
+    washing: parseInt(document.getElementById('rateItemWashing')?.value) || 350,
+    boxes: parseInt(document.getElementById('rateItemBoxes')?.value) || 80
+  };
+
+  const addonRates = {
+    bubblePacking: parseInt(document.getElementById('rateAddonBubble')?.value) || 1500,
+    unpacking: parseInt(document.getElementById('rateAddonUnpacking')?.value) || 1200,
+    insurance: parseInt(document.getElementById('rateAddonInsurance')?.value) || 999,
+    vehicleTransport: parseInt(document.getElementById('rateAddonVehicleTransport')?.value) || 2500
+  };
+
+  const newRates = { baseRate, perKmRate, floorNoLiftRate, houseSizeRates, itemRates, addonRates };
   adminRates = newRates;
+  localStorage.setItem('rudraksha_rates_config', JSON.stringify(newRates));
 
-  showAdminToast('Relocation base rates updated successfully!');
+  try {
+    await fetch(`${API_BASE}/config`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ rates: newRates })
+    });
+  } catch (err) {
+    console.warn('Sync to backend skipped:', err);
+  }
+
+  showAdminToast('All live rates & tariffs updated successfully across the website!');
   updateDashboardMetrics();
 }
 
 /* ==========================================================================
    4. COUPON MANAGER
    ========================================================================== */
-function loadAdminCoupons() {
-  const saved = localStorage.getItem('rudraksha_coupons');
-  if (saved) adminCoupons = JSON.parse(saved);
-  else adminCoupons = [
-    { code: 'RUDRAKSHA10', type: 'percent', value: 10 },
-    { code: 'WELCOME500', type: 'fixed', value: 500 },
-    { code: 'FESTIVE15', type: 'percent', value: 15 }
-  ];
+async function loadAdminCoupons() {
+  try {
+    const res = await fetch(`${API_BASE}/config`);
+    if (res.ok) {
+      const config = await res.json();
+      if (config.coupons) adminCoupons = config.coupons;
+    }
+  } catch {
+    const saved = localStorage.getItem('rudraksha_coupons');
+    if (saved) adminCoupons = JSON.parse(saved);
+    else adminCoupons = [
+      { code: 'FIRST500', type: 'fixed', value: 500, description: '₹500 flat off on first relocation' },
+      { code: 'RELOCATE10', type: 'percent', value: 10, description: '10% discount on house shifting' },
+      { code: 'FESTIVE15', type: 'percent', value: 15, description: '15% festive seasonal off' }
+    ];
+  }
+
+  localStorage.setItem('rudraksha_coupons', JSON.stringify(adminCoupons));
   renderCouponsTable();
+  updateDashboardMetrics();
 }
 
 function renderCouponsTable() {
   const tbody = document.getElementById('couponsTableBody');
   if (!tbody) return;
 
-  tbody.innerHTML = adminCoupons.map((c, i) => `
+  if (adminCoupons.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-muted">No active promo coupons.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = adminCoupons.map((c) => `
     <tr>
       <td><span class="badge bg-secondary font-monospace fs-6">${c.code}</span></td>
       <td>${c.type === 'percent' ? 'Percentage' : 'Flat ₹'}</td>
       <td><strong>${c.type === 'percent' ? `${c.value}%` : `₹${c.value}`}</strong></td>
-      <td><button class="btn btn-sm btn-outline-danger" onclick="deleteCoupon(${i})"><i class="fa-solid fa-trash"></i></button></td>
+      <td class="small text-muted">${c.description || '-'}</td>
+      <td><button class="btn btn-sm btn-outline-danger" onclick="deleteAdminCoupon('${c.code}')"><i class="fa-solid fa-trash"></i></button></td>
     </tr>
   `).join('');
 }
 
-function createAdminCoupon() {
+async function createAdminCoupon() {
   const code = document.getElementById('newCouponCode').value.trim().toUpperCase();
   const type = document.getElementById('newCouponType').value;
   const value = parseInt(document.getElementById('newCouponValue').value);
+  const description = document.getElementById('newCouponDesc')?.value.trim() || '';
 
   if (!code || isNaN(value)) return;
 
-  adminCoupons.push({ code, type, value });
+  try {
+    const res = await fetch(`${API_BASE}/admin/coupons`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ code, type, value, description })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.config && data.config.coupons) adminCoupons = data.config.coupons;
+      else adminCoupons.push({ code, type, value, description });
+    } else {
+      adminCoupons.push({ code, type, value, description });
+    }
+  } catch {
+    adminCoupons.push({ code, type, value, description });
+  }
+
   localStorage.setItem('rudraksha_coupons', JSON.stringify(adminCoupons));
   document.getElementById('couponForm').reset();
+  showAdminToast(`Promo coupon "${code}" active on website!`);
   renderCouponsTable();
-  showAdminToast(`Coupon ${code} created!`);
+  updateDashboardMetrics();
 }
 
-function deleteCoupon(idx) {
-  adminCoupons.splice(idx, 1);
+async function deleteAdminCoupon(code) {
+  if (!confirm(`Are you sure you want to delete promo code "${code}"?`)) return;
+
+  try {
+    await fetch(`${API_BASE}/admin/coupons/${code}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+  } catch (err) {
+    console.warn('Offline coupon delete:', err);
+  }
+
+  adminCoupons = adminCoupons.filter(c => c.code !== code);
   localStorage.setItem('rudraksha_coupons', JSON.stringify(adminCoupons));
+  showAdminToast(`Coupon "${code}" deleted.`);
   renderCouponsTable();
+  updateDashboardMetrics();
 }
 
 /* ==========================================================================
-   5. THEME CONTROLLER & METRICS
+   5. COMPANY BRANDING & THEME CONTROLLER
    ========================================================================== */
+async function loadCompanyBranding() {
+  let comp = {
+    name: 'Rudraksha Packers & Movers',
+    phone: '7296831460',
+    whatsapp: '7296831460',
+    email: 'support@rudrakshapackers.com',
+    address: 'Near SNM Hospital, Gandhipath (West), Jaipur, RJ',
+    gstin: '08AAACR1234F1Z5'
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/config`);
+    if (res.ok) {
+      const config = await res.json();
+      if (config.company) comp = { ...comp, ...config.company };
+    }
+  } catch {
+    const saved = localStorage.getItem('rudraksha_company_config');
+    if (saved) comp = { ...comp, ...JSON.parse(saved) };
+  }
+
+  if (document.getElementById('compName')) document.getElementById('compName').value = comp.name;
+  if (document.getElementById('compPhone')) document.getElementById('compPhone').value = comp.phone;
+  if (document.getElementById('compWhatsapp')) document.getElementById('compWhatsapp').value = comp.whatsapp;
+  if (document.getElementById('compEmail')) document.getElementById('compEmail').value = comp.email;
+  if (document.getElementById('compGstin')) document.getElementById('compGstin').value = comp.gstin;
+  if (document.getElementById('compAddress')) document.getElementById('compAddress').value = comp.address;
+}
+
+async function saveCompanyBranding() {
+  const company = {
+    name: document.getElementById('compName')?.value.trim() || 'Rudraksha Packers & Movers',
+    phone: document.getElementById('compPhone')?.value.trim() || '7296831460',
+    whatsapp: document.getElementById('compWhatsapp')?.value.trim() || '7296831460',
+    email: document.getElementById('compEmail')?.value.trim() || '',
+    gstin: document.getElementById('compGstin')?.value.trim().toUpperCase() || '',
+    address: document.getElementById('compAddress')?.value.trim() || ''
+  };
+
+  localStorage.setItem('rudraksha_company_config', JSON.stringify(company));
+
+  try {
+    await fetch(`${API_BASE}/config`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ company })
+    });
+  } catch (err) {
+    console.warn('Sync to backend skipped:', err);
+  }
+
+  showAdminToast('Company contact details & invoice header updated!');
+}
+
 function loadAdminThemeSettings() {
   const saved = localStorage.getItem('rudraksha_theme_settings');
   if (saved) {
@@ -585,6 +928,14 @@ function loadAdminThemeSettings() {
     if (theme.primaryColor) {
       document.getElementById('primaryColorInput').value = theme.primaryColor;
       document.getElementById('primaryColorText').value = theme.primaryColor;
+    }
+    if (theme.secondaryColor) {
+      document.getElementById('secondaryColorInput').value = theme.secondaryColor;
+      document.getElementById('secondaryColorText').value = theme.secondaryColor;
+    }
+    if (theme.accentColor) {
+      document.getElementById('accentColorInput').value = theme.accentColor;
+      document.getElementById('accentColorText').value = theme.accentColor;
     }
   }
 }
@@ -595,13 +946,25 @@ function previewThemeColors() {
   document.documentElement.style.setProperty('--primary-color', primary);
 }
 
-function saveAdminTheme() {
+async function saveAdminTheme() {
   const primaryColor = document.getElementById('primaryColorInput').value;
   const secondaryColor = document.getElementById('secondaryColorInput').value;
   const accentColor = document.getElementById('accentColorInput').value;
 
-  localStorage.setItem('rudraksha_theme_settings', JSON.stringify({ primaryColor, secondaryColor, accentColor }));
-  showAdminToast('Theme palette updated!');
+  const theme = { primaryColor, secondaryColor, accentColor };
+  localStorage.setItem('rudraksha_theme_settings', JSON.stringify(theme));
+
+  try {
+    await fetch(`${API_BASE}/config`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ theme })
+    });
+  } catch (err) {
+    console.warn('Sync to backend skipped:', err);
+  }
+
+  showAdminToast('Theme palette updated across customer portal!');
 }
 
 function updateDashboardMetrics() {

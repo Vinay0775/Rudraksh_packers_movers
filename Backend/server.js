@@ -333,6 +333,115 @@ app.post('/api/feedback', async (req, res, next) => {
 });
 
 /* ==========================================================================
+   CONFIG & FULL CONTROL ENDPOINTS (Rates, Fleet, Coupons, Branding, Theme)
+   ========================================================================== */
+
+// 1. Get entire live website configuration
+app.get('/api/config', async (req, res, next) => {
+  try {
+    const config = await db.getConfig();
+    res.json(config);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 2. Save / Update entire live website configuration
+app.post('/api/config', async (req, res, next) => {
+  try {
+    const updated = await db.saveConfig(req.body);
+    res.json({ success: true, config: updated, message: 'Configuration saved and synced successfully.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 3. Add or Update Vehicle in Fleet
+app.post('/api/admin/vehicles', async (req, res, next) => {
+  try {
+    const { vehicle_key, name, basePrice, perKmRate, icon, cap } = req.body;
+    if (!vehicle_key || !name || !basePrice || !perKmRate) {
+      return res.status(400).json({ error: 'Vehicle key, name, basePrice, and perKmRate are required.' });
+    }
+
+    const currentConfig = await db.getConfig();
+    const cleanKey = vehicle_key.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    
+    currentConfig.vehicles[cleanKey] = {
+      name,
+      basePrice: Number(basePrice),
+      perKmRate: Number(perKmRate),
+      icon: icon || 'fa-truck',
+      cap: cap || 'Custom Vehicle'
+    };
+
+    const saved = await db.saveConfig(currentConfig);
+    res.status(201).json({ success: true, vehicle: currentConfig.vehicles[cleanKey], config: saved });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 4. Delete Vehicle from Fleet
+app.delete('/api/admin/vehicles/:key', async (req, res, next) => {
+  try {
+    const key = req.params.key;
+    const currentConfig = await db.getConfig();
+
+    if (!currentConfig.vehicles[key]) {
+      return res.status(404).json({ error: 'Vehicle not found.' });
+    }
+
+    delete currentConfig.vehicles[key];
+    const saved = await db.saveConfig(currentConfig);
+    res.json({ success: true, message: `Vehicle ${key} deleted successfully.`, config: saved });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 5. Add Coupon
+app.post('/api/admin/coupons', async (req, res, next) => {
+  try {
+    const { code, type, value, description } = req.body;
+    if (!code || !type || value === undefined) {
+      return res.status(400).json({ error: 'Coupon code, type (percent/fixed), and value are required.' });
+    }
+
+    const cleanCode = code.toUpperCase().trim();
+    const currentConfig = await db.getConfig();
+    
+    // Remove if existing
+    currentConfig.coupons = (currentConfig.coupons || []).filter(c => c.code !== cleanCode);
+    
+    currentConfig.coupons.push({
+      code: cleanCode,
+      type: type === 'percent' ? 'percent' : 'fixed',
+      value: Number(value),
+      description: description || `${type === 'percent' ? value + '%' : '₹' + value} Discount`
+    });
+
+    const saved = await db.saveConfig(currentConfig);
+    res.status(201).json({ success: true, coupon: currentConfig.coupons[currentConfig.coupons.length - 1], config: saved });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 6. Delete Coupon
+app.delete('/api/admin/coupons/:code', async (req, res, next) => {
+  try {
+    const code = req.params.code.toUpperCase().trim();
+    const currentConfig = await db.getConfig();
+    currentConfig.coupons = (currentConfig.coupons || []).filter(c => c.code !== code);
+    const saved = await db.saveConfig(currentConfig);
+    res.json({ success: true, message: `Coupon ${code} removed.`, config: saved });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* ==========================================================================
    ERROR HANDLER & SERVER LISTEN
    ========================================================================== */
 app.use((err, req, res, next) => {

@@ -29,8 +29,8 @@ let verifiedPhoneNumber = '';
 let otpCountdownInterval = null;
 let currentTrackedBooking = null;
 
-// Dedicated Vehicle Fleet Config
-const vehicleConfig = {
+// Dedicated Vehicle Fleet Config (Dynamic)
+let vehicleConfig = {
   'mini_truck': { name: 'Tata Ace / Mini (1.5 Ton)', basePrice: 2500, perKmRate: 35, icon: 'fa-truck-pickup', cap: 'Up to 1 BHK / Studio' },
   'tempo_14ft': { name: '14ft Tempo / Eicher (3.5 Ton)', basePrice: 3500, perKmRate: 45, icon: 'fa-truck', cap: 'Ideal for 1-2 BHK' },
   'truck_19ft': { name: '19ft Container Truck (7 Ton)', basePrice: 5500, perKmRate: 65, icon: 'fa-truck-moving', cap: '3+ BHK / Large Moving' },
@@ -48,7 +48,7 @@ let dropCoords = null;   // [lat, lng]
 
 const BOOKING_API_URL = 'http://localhost:3000/api';
 
-// Default Rate Configuration
+// Default Rate Configuration (Dynamic)
 let ratesConfig = {
   baseRate: 2500,
   perKmRate: 40,
@@ -61,12 +61,12 @@ let ratesConfig = {
     'villa': 7500
   },
   itemRates: {
-    sofa: 400,
-    bed: 500,
+    sofa: 500,
+    bed: 600,
     dining: 400,
-    fridge: 300,
-    washing: 300,
-    boxes: 50
+    fridge: 400,
+    washing: 350,
+    boxes: 80
   },
   addonRates: {
     bubblePacking: 1500,
@@ -76,12 +76,113 @@ let ratesConfig = {
   }
 };
 
-// Available Coupons Database
+// Available Coupons Database (Dynamic)
 let availableCoupons = [
-  { code: 'RUDRAKSHA10', type: 'percent', value: 10, minAmount: 3000 },
-  { code: 'WELCOME500', type: 'fixed', value: 500, minAmount: 2000 },
-  { code: 'FESTIVE15', type: 'percent', value: 15, minAmount: 5000 }
+  { code: 'FIRST500', type: 'fixed', value: 500, description: '₹500 flat off on first relocation' },
+  { code: 'RELOCATE10', type: 'percent', value: 10, description: '10% discount on house shifting' },
+  { code: 'FESTIVE15', type: 'percent', value: 15, description: '15% festive seasonal off' }
 ];
+
+async function loadBackendData() {
+  try {
+    const res = await fetch(`${BOOKING_API_URL}/config`);
+    if (res.ok) {
+      const config = await res.json();
+      if (config.vehicles && Object.keys(config.vehicles).length > 0) {
+        vehicleConfig = config.vehicles;
+      }
+      if (config.rates) {
+        ratesConfig = { ...ratesConfig, ...config.rates };
+      }
+      if (config.coupons && config.coupons.length > 0) {
+        availableCoupons = config.coupons;
+      }
+      if (config.company) {
+        applyCompanyConfig(config.company);
+      }
+      if (config.theme) {
+        applyThemeConfig(config.theme);
+      }
+      renderVehicleCards();
+      return;
+    }
+  } catch (e) {
+    console.warn('API config fetch skipped, using localStorage fallback:', e.message);
+  }
+
+  // LocalStorage Fallback
+  const cachedVehicles = localStorage.getItem('rudraksha_fleet_config');
+  if (cachedVehicles) {
+    try { vehicleConfig = JSON.parse(cachedVehicles); } catch {}
+  }
+  const cachedRates = localStorage.getItem('rudraksha_rates_config');
+  if (cachedRates) {
+    try { ratesConfig = { ...ratesConfig, ...JSON.parse(cachedRates) }; } catch {}
+  }
+  const cachedCoupons = localStorage.getItem('rudraksha_coupons');
+  if (cachedCoupons) {
+    try { availableCoupons = JSON.parse(cachedCoupons); } catch {}
+  }
+  const cachedCompany = localStorage.getItem('rudraksha_company_config');
+  if (cachedCompany) {
+    try { applyCompanyConfig(JSON.parse(cachedCompany)); } catch {}
+  }
+  const cachedTheme = localStorage.getItem('rudraksha_theme_settings');
+  if (cachedTheme) {
+    try { applyThemeConfig(JSON.parse(cachedTheme)); } catch {}
+  }
+
+  renderVehicleCards();
+}
+
+function renderVehicleCards() {
+  const container = document.getElementById('vehicleCardsContainer');
+  if (!container) return;
+
+  const keys = Object.keys(vehicleConfig);
+  if (keys.length === 0) return;
+
+  container.innerHTML = keys.map((key) => {
+    const v = vehicleConfig[key];
+    const isSelected = selectedVehicleType === key;
+    return `
+      <div class="col-6 col-md-4 col-lg-2.4">
+        <div class="vehicle-select-card ${isSelected ? 'selected' : ''}" data-vehicle="${key}" onclick="selectVehicleType('${key}')">
+          <div class="vehicle-icon-wrap"><i class="fa-solid ${v.icon || 'fa-truck'}"></i></div>
+          <h6 class="vehicle-name">${v.name}</h6>
+          <span class="vehicle-cap">${v.cap || 'Standard Moving'}</span>
+          <div class="vehicle-price-tag">Base ₹${Number(v.basePrice || 0).toLocaleString('en-IN')}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function applyCompanyConfig(comp) {
+  if (!comp) return;
+  if (comp.phone) {
+    document.querySelectorAll('a[href^="tel:"]').forEach(el => el.href = `tel:+91${comp.phone.replace(/\D/g, '')}`);
+    document.querySelectorAll('.company-phone-text').forEach(el => el.innerText = `+91 ${comp.phone}`);
+  }
+  if (comp.whatsapp) {
+    document.querySelectorAll('a[href*="wa.me"]').forEach(el => {
+      el.href = `https://wa.me/91${comp.whatsapp.replace(/\D/g, '')}?text=Hello%20Rudraksha%20Packers,%20I%20want%20to%20inquire%20about%20shifting%20service`;
+    });
+  }
+  if (comp.name) {
+    document.querySelectorAll('.brand-title-text').forEach(el => el.innerText = comp.name);
+  }
+}
+
+function applyThemeConfig(theme) {
+  if (!theme) return;
+  if (theme.primaryColor) {
+    document.documentElement.style.setProperty('--primary-color', theme.primaryColor);
+  }
+  if (theme.secondaryColor) {
+    document.documentElement.style.setProperty('--secondary-color', theme.secondaryColor);
+  }
+}
 
 // Initialize on DOM Ready
 document.addEventListener('DOMContentLoaded', async () => {
