@@ -82,67 +82,30 @@
   </div>
 
   <!-- ==========================================================================
-       2. CYBERPUNK MAIN LAYOUT
+       2. FULL-WIDTH CYBERPUNK MAIN LAYOUT (With Floating Bottom Dock)
        ========================================================================== -->
   <div class="cyber-admin-layout" id="cyberAdminLayout">
-
-    <!-- DESKTOP LEFT SIDEBAR NAVIGATION -->
-    <aside class="cyber-sidebar" id="cyberSidebar">
-      <!-- Glowing Origami Logo -->
-      <div class="cyber-brand-logo" onclick="switchAdminTab('dashboard')" title="Rudraksha Hub">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <path d="M4 6L14 3L11 9L20 6L17 12L20 18L10 21L13 15L4 18L7 12L4 6Z" fill="#D0FD38"/>
-        </svg>
-      </div>
-
-      <!-- Icon Navigation -->
-      <ul class="cyber-nav-menu">
-        <li class="cyber-nav-item">
-          <button class="cyber-nav-btn active" id="nav-dashboard" onclick="switchAdminTab('dashboard')" title="Overview Dashboard">
-            <i class="fa-solid fa-shapes"></i>
-          </button>
-        </li>
-        <li class="cyber-nav-item">
-          <button class="cyber-nav-btn" id="nav-bookings" onclick="switchAdminTab('bookings')" title="Customer Bookings">
-            <i class="fa-solid fa-list-check"></i>
-          </button>
-        </li>
-        <li class="cyber-nav-item">
-          <button class="cyber-nav-btn" id="nav-fleet" onclick="switchAdminTab('fleet')" title="Transport Fleet & Drivers">
-            <i class="fa-solid fa-truck-fast"></i>
-          </button>
-        </li>
-        <li class="cyber-nav-item">
-          <button class="cyber-nav-btn" id="nav-rates" onclick="switchAdminTab('rates')" title="Tariff & Pricing Manager">
-            <i class="fa-solid fa-sliders"></i>
-          </button>
-        </li>
-        <li class="cyber-nav-item">
-          <button class="cyber-nav-btn" id="nav-coupons" onclick="switchAdminTab('coupons')" title="Discount Promo Codes">
-            <i class="fa-solid fa-ticket"></i>
-          </button>
-        </li>
-        <li class="cyber-nav-item">
-          <button class="cyber-nav-btn" id="nav-theme" onclick="switchAdminTab('theme')" title="Branding & Theme Controller">
-            <i class="fa-solid fa-palette"></i>
-          </button>
-        </li>
-      </ul>
-
-      <!-- Footer Action -->
-      <div class="cyber-sidebar-footer">
-        <button class="cyber-nav-btn" onclick="logoutAdmin()" title="Lock & Sign Out">
-          <i class="fa-solid fa-power-off text-danger"></i>
-        </button>
-      </div>
-    </aside>
 
     <!-- MAIN CONTENT WRAPPER -->
     <main class="cyber-main-content" id="cyberMainContent">
 
-      <!-- TOP BAR HEADER -->
+      <!-- TOP BAR HEADER WITH BRAND LOGO -->
       <header class="cyber-top-header">
-        <div class="cyber-search-box">
+        <div class="d-flex align-items-center gap-3">
+          <div class="cyber-header-brand" onclick="switchAdminTab('dashboard')" title="Rudraksha Hub" style="cursor: pointer;">
+            <div class="cyber-brand-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M4 6L14 3L11 9L20 6L17 12L20 18L10 21L13 15L4 18L7 12L4 6Z" fill="#D0FD38"/>
+              </svg>
+            </div>
+            <div class="d-none d-sm-block">
+              <div class="fw-extrabold text-white lh-1" style="font-family: 'Outfit', sans-serif; font-size: 1.05rem;">RUDRAKSHA <span style="color: #D0FD38;">HUB</span></div>
+              <div class="text-muted" style="font-size: 0.68rem; letter-spacing: 0.5px;">COMMAND CENTER</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cyber-search-box d-none d-md-flex">
           <i class="fa-solid fa-magnifying-glass"></i>
           <input type="text" id="globalSearchInput" placeholder="Search bookings, drivers, routes..." oninput="handleGlobalSearch(this.value)">
         </div>
@@ -154,20 +117,19 @@
           </div>
 
           <button class="btn-cyber-outline" onclick="refreshAdminAll()" title="Refresh Data">
-            <i class="fa-solid fa-rotate"></i> <span class="d-none d-md-inline">Sync Data</span>
+            <i class="fa-solid fa-rotate"></i> <span class="d-none d-lg-inline">Sync</span>
           </button>
 
           <a href="index.html" class="btn-cyber-outline d-none d-sm-inline-flex" title="View Customer Website">
-            <i class="fa-solid fa-arrow-up-right-from-square"></i> <span class="d-none d-md-inline">Portal</span>
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> <span class="d-none d-lg-inline">Website</span>
           </a>
 
           <div class="cyber-profile-card">
             <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" alt="Admin" class="cyber-profile-avatar">
-            <div class="cyber-profile-info d-none d-sm-flex">
+            <div class="cyber-profile-info d-none d-lg-flex">
               <span class="cyber-profile-name" id="adminDisplayName">Arnold Aldridge</span>
               <span class="cyber-profile-rating"><i class="fa-solid fa-star"></i> 4.9 rating</span>
             </div>
-            <i class="fa-solid fa-chevron-down text-muted small ms-1"></i>
           </div>
         </div>
       </header>
@@ -176,7 +138,7 @@
       <div id="adminToastContainer" class="mb-3"></div>
 
       <!-- ======================================================================
-           TAB 1: FUTURISTIC OVERVIEW DASHBOARD (Identical to reference screenshot)
+           TAB 1: FUTURISTIC OVERVIEW DASHBOARD (8 Cyber Widgets)
            ====================================================================== -->
       <section class="cyber-tab-panel active" id="tab-dashboard">
         <div class="cyber-dashboard-grid">
@@ -352,29 +314,7 @@
             </div>
 
             <div class="cyber-history-list" id="dashRecentHistoryList">
-              <div class="cyber-history-item" onclick="switchAdminTab('bookings')">
-                <div class="cyber-history-user">
-                  <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop&q=80" alt="Customer" class="cyber-history-avatar">
-                  <div>
-                    <div class="fw-bold text-white small">Jaipur ➔ Gurgaon</div>
-                    <div class="text-muted" style="font-size: 0.7rem;">4 June, 2026 • 07:40 PM</div>
-                    <div style="color: var(--accent-neon); font-size: 0.72rem;">Tata Ace - ₹4,800</div>
-                  </div>
-                </div>
-                <i class="fa-solid fa-chevron-right text-muted small"></i>
-              </div>
-
-              <div class="cyber-history-item" onclick="switchAdminTab('bookings')">
-                <div class="cyber-history-user">
-                  <img src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&auto=format&fit=crop&q=80" alt="Customer" class="cyber-history-avatar">
-                  <div>
-                    <div class="fw-bold text-white small">Jaipur ➔ Delhi</div>
-                    <div class="text-muted" style="font-size: 0.7rem;">3 June, 2026 • 02:15 PM</div>
-                    <div style="color: var(--accent-neon); font-size: 0.72rem;">14ft Tempo - ₹8,500</div>
-                  </div>
-                </div>
-                <i class="fa-solid fa-chevron-right text-muted small"></i>
-              </div>
+              <!-- Rendered Dynamically -->
             </div>
           </div>
 
@@ -494,7 +434,7 @@
                 <h6 class="fw-bold text-white mb-3"><i class="fa-solid fa-plus-circle me-1" style="color: #D0FD38;"></i> Add / Edit Vehicle Model</h6>
                 <form id="vehicleConfigForm" onsubmit="event.preventDefault(); handleSaveVehicle();">
                   <div class="cyber-input-group">
-                    <label class="cyber-label">Unique Vehicle Key (lowercase, e.g. bolero_maxi)</label>
+                    <label class="cyber-label">Unique Vehicle Key (e.g. bolero_maxi)</label>
                     <input type="text" class="cyber-input" id="vehKey" placeholder="e.g. bolero_maxi" required>
                   </div>
                   <div class="cyber-input-group">
@@ -841,32 +781,37 @@
     </main>
 
     <!-- ======================================================================
-         3. MOBILE BOTTOM FLOATING NAVIGATION BAR
+         3. UNIVERSAL FLOATING CYBER DOCK (Desktop & Mobile Unified Navigation)
          ====================================================================== -->
-    <nav class="cyber-mobile-bottom-nav">
-      <button class="cyber-mobile-nav-btn active" id="mob-nav-dashboard" onclick="switchAdminTab('dashboard')">
+    <nav class="cyber-floating-dock">
+      <button class="cyber-dock-btn active" id="dock-dashboard" onclick="switchAdminTab('dashboard')" title="Overview Dashboard">
         <i class="fa-solid fa-shapes"></i>
         <span>Overview</span>
       </button>
-      <button class="cyber-mobile-nav-btn" id="mob-nav-bookings" onclick="switchAdminTab('bookings')">
+      <button class="cyber-dock-btn" id="dock-bookings" onclick="switchAdminTab('bookings')" title="Customer Bookings">
         <i class="fa-solid fa-list-check"></i>
         <span>Bookings</span>
       </button>
-      <button class="cyber-mobile-nav-btn" id="mob-nav-fleet" onclick="switchAdminTab('fleet')">
+      <button class="cyber-dock-btn" id="dock-fleet" onclick="switchAdminTab('fleet')" title="Transport Fleet & Drivers">
         <i class="fa-solid fa-truck-fast"></i>
         <span>Fleet</span>
       </button>
-      <button class="cyber-mobile-nav-btn" id="mob-nav-rates" onclick="switchAdminTab('rates')">
+      <button class="cyber-dock-btn" id="dock-rates" onclick="switchAdminTab('rates')" title="Tariff & Pricing Manager">
         <i class="fa-solid fa-sliders"></i>
         <span>Tariff</span>
       </button>
-      <button class="cyber-mobile-nav-btn" id="mob-nav-coupons" onclick="switchAdminTab('coupons')">
+      <button class="cyber-dock-btn" id="dock-coupons" onclick="switchAdminTab('coupons')" title="Discount Promo Codes">
         <i class="fa-solid fa-ticket"></i>
         <span>Coupons</span>
       </button>
-      <button class="cyber-mobile-nav-btn" id="mob-nav-theme" onclick="switchAdminTab('theme')">
+      <button class="cyber-dock-btn" id="dock-theme" onclick="switchAdminTab('theme')" title="Branding & Theme Controller">
         <i class="fa-solid fa-palette"></i>
-        <span>Brand</span>
+        <span>Theme</span>
+      </button>
+      <div class="cyber-dock-divider"></div>
+      <button class="cyber-dock-btn text-danger" onclick="logoutAdmin()" title="Lock & Sign Out">
+        <i class="fa-solid fa-power-off"></i>
+        <span>Lock</span>
       </button>
     </nav>
 

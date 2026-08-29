@@ -176,13 +176,11 @@ function switchAdminTab(tabName) {
   const tabs = ['dashboard', 'bookings', 'fleet', 'rates', 'coupons', 'theme'];
 
   tabs.forEach((t) => {
-    const desktopBtn = document.getElementById(`nav-${t}`);
-    const mobileBtn = document.getElementById(`mob-nav-${t}`);
+    const dockBtn = document.getElementById(`dock-${t}`);
     const panel = document.getElementById(`tab-${t}`);
 
     if (t === tabName) {
-      if (desktopBtn) desktopBtn.classList.add('active');
-      if (mobileBtn) mobileBtn.classList.add('active');
+      if (dockBtn) dockBtn.classList.add('active');
       if (panel) {
         panel.classList.add('active');
         // Trigger re-animation
@@ -191,8 +189,7 @@ function switchAdminTab(tabName) {
         panel.style.animation = null;
       }
     } else {
-      if (desktopBtn) desktopBtn.classList.remove('active');
-      if (mobileBtn) mobileBtn.classList.remove('active');
+      if (dockBtn) dockBtn.classList.remove('active');
       if (panel) panel.classList.remove('active');
     }
   });
@@ -481,6 +478,113 @@ function renderVehiclesTable(list = adminVehicles) {
       </tr>
     `;
   }).join('');
+}
+
+function editVehicle(key) {
+  const v = adminVehicles[key];
+  if (!v) return;
+  document.getElementById('vehKey').value = key;
+  document.getElementById('vehName').value = v.name;
+  document.getElementById('vehBasePrice').value = v.basePrice;
+  document.getElementById('vehPerKm').value = v.perKmRate;
+  document.getElementById('vehCap').value = v.cap || '';
+  document.getElementById('vehIcon').value = v.icon || 'fa-truck';
+  document.getElementById('vehName').focus();
+}
+
+async function handleSaveVehicle() {
+  const key = document.getElementById('vehKey').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  const name = document.getElementById('vehName').value.trim();
+  const basePrice = parseFloat(document.getElementById('vehBasePrice').value) || 2500;
+  const perKmRate = parseFloat(document.getElementById('vehPerKm').value) || 35;
+  const cap = document.getElementById('vehCap').value.trim() || 'Custom';
+  const icon = document.getElementById('vehIcon').value.trim() || 'fa-truck';
+
+  if (!key || !name) {
+    alert('Please enter vehicle key and name.');
+    return;
+  }
+
+  const payload = { vehicle_key: key, name, basePrice, perKmRate, cap, icon };
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/vehicles`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.config && data.config.vehicles) adminVehicles = data.config.vehicles;
+      else adminVehicles[key] = { name, basePrice, perKmRate, cap, icon };
+    } else {
+      adminVehicles[key] = { name, basePrice, perKmRate, cap, icon };
+    }
+  } catch {
+    adminVehicles[key] = { name, basePrice, perKmRate, cap, icon };
+  }
+
+  localStorage.setItem('rudraksha_fleet_config', JSON.stringify(adminVehicles));
+  showAdminToast(`Vehicle model "${name}" added to Client Calculator!`);
+  document.getElementById('vehicleConfigForm').reset();
+  renderVehiclesTable();
+  populateDriverVehicleSelect();
+}
+
+async function deleteVehicle(key) {
+  if (!confirm(`Delete vehicle "${adminVehicles[key]?.name || key}" from calculator?`)) return;
+
+  try {
+    await fetch(`${API_BASE}/admin/vehicles/${key}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+  } catch {}
+
+  delete adminVehicles[key];
+  localStorage.setItem('rudraksha_fleet_config', JSON.stringify(adminVehicles));
+  showAdminToast('Vehicle deleted successfully.');
+  renderVehiclesTable();
+  populateDriverVehicleSelect();
+}
+
+function populateDriverVehicleSelect() {
+  const select = document.getElementById('drvVehicleType');
+  if (!select) return;
+
+  const keys = Object.keys(adminVehicles);
+  if (keys.length === 0) {
+    select.innerHTML = `<option value="Tata Ace">Tata Ace (1.5 Ton)</option>`;
+    return;
+  }
+
+  select.innerHTML = keys.map(k => `
+    <option value="${adminVehicles[k].name}">${adminVehicles[k].name}</option>
+  `).join('');
+}
+
+/* ==========================================================================
+   6. DRIVERS ROSTER
+   ========================================================================== */
+async function loadDriversFromBackend() {
+  try {
+    const res = await fetch(`${API_BASE}/drivers`, {
+      headers: getAuthHeaders()
+    });
+    if (res.ok) {
+      const data = await res.json();
+      adminDrivers = data.drivers || [];
+    }
+  } catch {
+    adminDrivers = [
+      { id: 'drv-101', driver_name: 'Mukesh Sharma', phone: '9876543210', vehicle_number: 'RJ-14-GA-1024', vehicle_type: 'Tata Ace (1.5 Ton)', status: 'available', rating: 4.9 },
+      { id: 'drv-102', driver_name: 'Vikram Singh', phone: '9829012345', vehicle_number: 'RJ-14-GB-5521', vehicle_type: 'Eicher 14ft (3.5 Ton)', status: 'available', rating: 4.8 },
+      { id: 'drv-103', driver_name: 'Ramesh Meena', phone: '9414098765', vehicle_number: 'RJ-14-GC-8840', vehicle_type: '19ft Container (7 Ton)', status: 'available', rating: 4.7 }
+    ];
+  }
+
+  renderDriversTable();
 }
 
 function renderDriversTable() {
