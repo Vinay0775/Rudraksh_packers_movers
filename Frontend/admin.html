@@ -3,678 +3,904 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Enterprise Admin Dashboard | Rudraksha Packers and Movers</title>
+  <title>Enterprise Operations Hub | Rudraksha Packers & Movers</title>
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
-  <link rel="apple-touch-icon" href="favicon.png">
 
-  <!-- Google Fonts -->
+  <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Bootstrap 5 CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <!-- FontAwesome Icons -->
+  <!-- FontAwesome 6 Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
-  <!-- Master Stylesheet -->
-  <link rel="stylesheet" href="style.css">
+  <!-- Bootstrap 5 Grid & Modals (Scoped) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Futuristic Cyberpunk Dark Design System -->
+  <link rel="stylesheet" href="admin.css">
 </head>
-<body class="bg-light">
+<body class="cyber-dark-body">
 
   <!-- ==========================================================================
-       ADMIN AUTHENTICATION LOCK SCREEN OVERLAY
+       1. AUTHENTICATION LOCK OVERLAY (Cyber Dark UI)
        ========================================================================== -->
-  <div id="adminLoginOverlay" class="admin-auth-overlay">
-    <div class="admin-auth-card">
-      <div class="admin-auth-header text-center">
-        <div class="admin-auth-icon-circle mx-auto mb-3">
-          <i class="fa-solid fa-shield-halved fa-2xl text-warning"></i>
+  <div id="adminLoginOverlay" style="position: fixed; inset: 0; background: rgba(13, 13, 15, 0.95); backdrop-filter: blur(20px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: #17171A; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; width: 100%; max-width: 420px; padding: 36px; box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(208, 253, 56, 0.15);">
+      <div class="text-center mb-4">
+        <div style="width: 56px; height: 56px; background: rgba(208, 253, 56, 0.1); border: 1px solid #D0FD38; border-radius: 18px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; box-shadow: 0 0 20px rgba(208, 253, 56, 0.3);">
+          <i class="fa-solid fa-shield-halved fa-xl" style="color: #D0FD38;"></i>
         </div>
-        <h3 class="fw-extrabold text-white mb-1">Rudraksha <span class="text-warning">Admin</span></h3>
-        <p class="text-white-50 small mb-0">Secure Enterprise Portal Access</p>
+        <h4 class="fw-bold text-white mb-1">Rudraksha <span style="color: #D0FD38;">Admin</span></h4>
+        <p class="small text-muted mb-0">Futuristic Enterprise Control Hub</p>
       </div>
 
-      <div class="admin-auth-body p-4">
-        <div id="loginErrorAlert" class="alert alert-danger py-2 px-3 small rounded-3 d-none mb-3" role="alert">
-          <i class="fa-solid fa-circle-exclamation me-1"></i> <span id="loginErrorMsg">Invalid credentials</span>
-        </div>
-
-        <form id="adminLoginForm" onsubmit="event.preventDefault(); submitAdminLogin();">
-          <div class="mb-3">
-            <label class="form-label text-light small fw-semibold" for="adminUsernameInput">Admin Username</label>
-            <div class="input-group">
-              <span class="input-group-text bg-dark border-secondary text-secondary-emphasis"><i class="fa-solid fa-user"></i></span>
-              <input type="text" class="form-control bg-dark text-white border-secondary" id="adminUsernameInput" value="admin" placeholder="admin" required autocomplete="username">
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label text-light small fw-semibold" for="adminPasswordInput">Security Password</label>
-            <div class="input-group">
-              <span class="input-group-text bg-dark border-secondary text-secondary-emphasis"><i class="fa-solid fa-lock"></i></span>
-              <input type="password" class="form-control bg-dark text-white border-secondary" id="adminPasswordInput" placeholder="Enter admin password" required autocomplete="current-password">
-              <button class="btn btn-outline-secondary text-light" type="button" onclick="toggleAdminPassVisibility()">
-                <i class="fa-solid fa-eye" id="passToggleIcon"></i>
-              </button>
-            </div>
-          </div>
-
-          <div class="d-flex justify-content-between align-items-center mb-4">
-            <div class="form-check">
-              <input class="form-check-input bg-dark border-secondary" type="checkbox" id="rememberAdminCheck" checked>
-              <label class="form-check-label text-white-50 small" for="rememberAdminCheck">Keep me signed in</label>
-            </div>
-            <span class="badge bg-secondary-subtle text-secondary small p-1 px-2 border border-secondary" style="font-size: 0.72rem;">256-Bit Encrypted</span>
-          </div>
-
-          <button type="submit" class="btn btn-warning w-100 fw-bold py-2 shadow-sm rounded-3" id="btnLoginSubmit">
-            <i class="fa-solid fa-arrow-right-to-bracket me-1"></i> Unlock Dashboard
-          </button>
-        </form>
-
-        <div class="mt-4 pt-3 border-top border-secondary text-center">
-          <div class="small text-white-50">
-            <i class="fa-solid fa-key text-warning me-1"></i> Default Master Password: <code class="text-warning">rudraksha@admin2026</code>
-          </div>
-          <a href="index.html" class="d-inline-block mt-3 text-decoration-none text-white-50 small hover-underline">
-            <i class="fa-solid fa-arrow-left me-1"></i> Return to Customer Website
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Admin Sidebar Navigation -->
-  <aside class="admin-sidebar" id="adminSidebar">
-    <div class="admin-sidebar-header">
-      <i class="fa-solid fa-truck-ramp-box fa-xl text-warning"></i>
-      <div class="fw-bold fs-5 text-white">Rudraksha <span>Admin</span></div>
-    </div>
-    
-    <ul class="admin-sidebar-menu">
-      <li>
-        <a href="#" class="active" id="nav-dashboard" onclick="switchAdminTab('dashboard')">
-          <i class="fa-solid fa-chart-pie"></i> Dashboard Overview
-        </a>
-      </li>
-      <li>
-        <a href="#" id="nav-bookings" onclick="switchAdminTab('bookings')">
-          <i class="fa-solid fa-list-check"></i> Customer Bookings
-        </a>
-      </li>
-      <li>
-        <a href="#" id="nav-fleet" onclick="switchAdminTab('fleet')">
-          <i class="fa-solid fa-truck-fast"></i> Fleet & Drivers
-        </a>
-      </li>
-      <li>
-        <a href="#" id="nav-rates" onclick="switchAdminTab('rates')">
-          <i class="fa-solid fa-sliders"></i> Rate Manager
-        </a>
-      </li>
-      <li>
-        <a href="#" id="nav-coupons" onclick="switchAdminTab('coupons')">
-          <i class="fa-solid fa-ticket"></i> Coupon Manager
-        </a>
-      </li>
-      <li>
-        <a href="#" id="nav-theme" onclick="switchAdminTab('theme')">
-          <i class="fa-solid fa-palette"></i> Theme Controller
-        </a>
-      </li>
-    </ul>
-
-    <div class="p-3 mt-auto border-top border-secondary d-flex flex-column gap-2">
-      <button onclick="logoutAdmin()" class="btn btn-outline-danger w-100 btn-sm text-start">
-        <i class="fa-solid fa-lock me-2"></i> Lock & Sign Out
-      </button>
-      <a href="index.html" class="btn btn-outline-light w-100 btn-sm text-start">
-        <i class="fa-solid fa-arrow-left me-2"></i> Customer Portal
-      </a>
-    </div>
-  </aside>
-
-  <!-- Admin Main Content Wrapper -->
-  <main class="admin-main-wrapper" id="adminMainWrapper">
-
-    <!-- Header Bar -->
-    <header class="admin-header-bar">
-      <div>
-        <h4 class="fw-bold mb-0 text-secondary-custom" id="tabTitleHeader">Dashboard Overview</h4>
-        <span class="small text-muted">Rudraksha Packers & Movers • Enterprise Control Hub</span>
-      </div>
-      <div class="d-flex align-items-center gap-3">
-        <div class="d-none d-md-flex align-items-center gap-2 px-3 py-1 bg-light rounded-pill border">
-          <span class="badge bg-success rounded-circle p-1" style="width: 8px; height: 8px;"></span>
-          <span class="small fw-semibold text-secondary">Owner Mode</span>
-        </div>
-        <span class="badge bg-success-subtle text-success p-2 px-3 border border-success-subtle" id="backendStatusBadge">
-          <i class="fa-solid fa-circle me-1 small"></i> API Connected
-        </span>
-        <button class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="refreshAdminAll()">
-          <i class="fa-solid fa-rotate me-1"></i> Refresh Data
-        </button>
-        <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="logoutAdmin()" title="Logout of Admin Panel">
-          <i class="fa-solid fa-right-from-bracket me-1"></i> Logout
-        </button>
-      </div>
-    </header>
-
-    <!-- Notification Toast alert container -->
-    <div id="adminToastContainer" class="mb-3"></div>
-
-    <!-- TAB 1: DASHBOARD OVERVIEW -->
-    <section class="admin-tab-content" id="tab-dashboard">
-      <div class="row g-4 mb-4">
-        <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-icon"><i class="fa-solid fa-calendar-check"></i></div>
-            <div>
-              <h3 class="fw-bold mb-0" id="dashTotalBookings">0</h3>
-              <span class="small text-muted">Total Bookings</span>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-icon"><i class="fa-solid fa-truck-front"></i></div>
-            <div>
-              <h3 class="fw-bold mb-0" id="dashTotalDrivers">3</h3>
-              <span class="small text-muted">Active Fleet Drivers</span>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-icon"><i class="fa-solid fa-route"></i></div>
-            <div>
-              <h3 class="fw-bold mb-0" id="dashPerKmRate">₹40</h3>
-              <span class="small text-muted">Per KM Rate</span>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-icon"><i class="fa-solid fa-ticket"></i></div>
-            <div>
-              <h3 class="fw-bold mb-0" id="dashActiveCoupons">3</h3>
-              <span class="small text-muted">Active Promo Codes</span>
-            </div>
-          </div>
-        </div>
+      <div id="loginErrorAlert" class="alert alert-danger py-2 px-3 small rounded-3 d-none mb-3" style="background: rgba(239, 68, 68, 0.15); border-color: #ef4444; color: #fca5a5;">
+        <i class="fa-solid fa-circle-exclamation me-1"></i> <span id="loginErrorMsg">Invalid credentials</span>
       </div>
 
-      <!-- Telegram & Automation Hub -->
-      <div class="row g-4 mb-4">
-        <div class="col-md-6">
-          <div class="custom-card h-100">
-            <h5 class="fw-bold mb-2"><i class="fa-brands fa-telegram text-primary me-2"></i>Telegram Instant Alert Bot</h5>
-            <p class="small text-muted mb-3">Owner ko har new booking aur status change par phone par direct alert bhejne ke liye configure karein.</p>
-            <div class="p-3 bg-light rounded-3 border mb-3">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <span class="fw-semibold small">Telegram Alert Status:</span>
-                <span class="badge bg-success" id="dashTelegramStatus">Configured / Active</span>
-              </div>
-              <div class="small text-muted">Bot Token & Chat ID in <code>Backend/.env</code></div>
-            </div>
-            <button class="btn btn-outline-primary btn-sm" onclick="sendTestTelegramAlert()">
-              <i class="fa-solid fa-paper-plane me-1"></i> Send Test Notification to Phone
+      <form id="adminLoginForm" onsubmit="event.preventDefault(); submitAdminLogin();">
+        <div class="mb-3">
+          <label class="cyber-label">Admin Username</label>
+          <input type="text" class="cyber-input" id="adminUsernameInput" value="admin" placeholder="admin" required>
+        </div>
+
+        <div class="mb-3">
+          <label class="cyber-label">Security Key / Password</label>
+          <div class="position-relative">
+            <input type="password" class="cyber-input" id="adminPasswordInput" placeholder="Enter password" required style="padding-right: 42px;">
+            <button type="button" onclick="toggleAdminPassVisibility()" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;">
+              <i class="fa-solid fa-eye" id="passToggleIcon"></i>
             </button>
           </div>
         </div>
 
-        <div class="col-md-6">
-          <div class="custom-card h-100">
-            <h5 class="fw-bold mb-3"><i class="fa-solid fa-bolt text-warning me-2"></i>Quick Operations Shortcuts</h5>
-            <div class="d-flex flex-wrap gap-2">
-              <button class="btn btn-outline-primary-custom" onclick="switchAdminTab('bookings')"><i class="fa-solid fa-list-check me-1"></i> View All Bookings</button>
-              <button class="btn btn-outline-primary-custom" onclick="switchAdminTab('fleet')"><i class="fa-solid fa-user-plus me-1"></i> Add Fleet Driver</button>
-              <button class="btn btn-outline-primary-custom" onclick="switchAdminTab('rates')"><i class="fa-solid fa-tags me-1"></i> Update Base Rates</button>
-              <button class="btn btn-outline-primary-custom" onclick="switchAdminTab('coupons')"><i class="fa-solid fa-ticket me-1"></i> Manage Coupons</button>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <label class="d-flex align-items-center gap-2 small text-muted cursor-pointer" style="cursor: pointer;">
+            <input type="checkbox" id="rememberAdminCheck" checked style="accent-color: #D0FD38;"> Remember session
+          </label>
+          <span class="cyber-badge-pill">256-Bit Encrypted</span>
+        </div>
+
+        <button type="submit" class="btn-cyber-neon w-100 py-3" id="btnLoginSubmit">
+          <i class="fa-solid fa-bolt me-1"></i> Unlock Dashboard
+        </button>
+      </form>
+
+      <div class="mt-4 pt-3 border-top border-secondary text-center">
+        <div class="small text-muted mb-2">
+          Master Pass: <code style="color: #D0FD38; background: #111; padding: 2px 6px; border-radius: 4px;">rudraksha@admin2026</code>
+        </div>
+        <a href="index.html" class="small text-decoration-none" style="color: var(--text-muted);">
+          <i class="fa-solid fa-arrow-left me-1"></i> Return to Client Website
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       2. CYBERPUNK MAIN LAYOUT
+       ========================================================================== -->
+  <div class="cyber-admin-layout" id="cyberAdminLayout">
+
+    <!-- DESKTOP LEFT SIDEBAR NAVIGATION -->
+    <aside class="cyber-sidebar" id="cyberSidebar">
+      <!-- Glowing Origami Logo -->
+      <div class="cyber-brand-logo" onclick="switchAdminTab('dashboard')" title="Rudraksha Hub">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M4 6L14 3L11 9L20 6L17 12L20 18L10 21L13 15L4 18L7 12L4 6Z" fill="#D0FD38"/>
+        </svg>
+      </div>
+
+      <!-- Icon Navigation -->
+      <ul class="cyber-nav-menu">
+        <li class="cyber-nav-item">
+          <button class="cyber-nav-btn active" id="nav-dashboard" onclick="switchAdminTab('dashboard')" title="Overview Dashboard">
+            <i class="fa-solid fa-shapes"></i>
+          </button>
+        </li>
+        <li class="cyber-nav-item">
+          <button class="cyber-nav-btn" id="nav-bookings" onclick="switchAdminTab('bookings')" title="Customer Bookings">
+            <i class="fa-solid fa-list-check"></i>
+          </button>
+        </li>
+        <li class="cyber-nav-item">
+          <button class="cyber-nav-btn" id="nav-fleet" onclick="switchAdminTab('fleet')" title="Transport Fleet & Drivers">
+            <i class="fa-solid fa-truck-fast"></i>
+          </button>
+        </li>
+        <li class="cyber-nav-item">
+          <button class="cyber-nav-btn" id="nav-rates" onclick="switchAdminTab('rates')" title="Tariff & Pricing Manager">
+            <i class="fa-solid fa-sliders"></i>
+          </button>
+        </li>
+        <li class="cyber-nav-item">
+          <button class="cyber-nav-btn" id="nav-coupons" onclick="switchAdminTab('coupons')" title="Discount Promo Codes">
+            <i class="fa-solid fa-ticket"></i>
+          </button>
+        </li>
+        <li class="cyber-nav-item">
+          <button class="cyber-nav-btn" id="nav-theme" onclick="switchAdminTab('theme')" title="Branding & Theme Controller">
+            <i class="fa-solid fa-palette"></i>
+          </button>
+        </li>
+      </ul>
+
+      <!-- Footer Action -->
+      <div class="cyber-sidebar-footer">
+        <button class="cyber-nav-btn" onclick="logoutAdmin()" title="Lock & Sign Out">
+          <i class="fa-solid fa-power-off text-danger"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <main class="cyber-main-content" id="cyberMainContent">
+
+      <!-- TOP BAR HEADER -->
+      <header class="cyber-top-header">
+        <div class="cyber-search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="globalSearchInput" placeholder="Search bookings, drivers, routes..." oninput="handleGlobalSearch(this.value)">
+        </div>
+
+        <div class="cyber-header-actions">
+          <div class="cyber-sync-status">
+            <span class="cyber-pulse-dot"></span>
+            <span id="backendStatusText">Live API Connected</span>
+          </div>
+
+          <button class="btn-cyber-outline" onclick="refreshAdminAll()" title="Refresh Data">
+            <i class="fa-solid fa-rotate"></i> <span class="d-none d-md-inline">Sync Data</span>
+          </button>
+
+          <a href="index.html" class="btn-cyber-outline d-none d-sm-inline-flex" title="View Customer Website">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> <span class="d-none d-md-inline">Portal</span>
+          </a>
+
+          <div class="cyber-profile-card">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" alt="Admin" class="cyber-profile-avatar">
+            <div class="cyber-profile-info d-none d-sm-flex">
+              <span class="cyber-profile-name" id="adminDisplayName">Arnold Aldridge</span>
+              <span class="cyber-profile-rating"><i class="fa-solid fa-star"></i> 4.9 rating</span>
+            </div>
+            <i class="fa-solid fa-chevron-down text-muted small ms-1"></i>
+          </div>
+        </div>
+      </header>
+
+      <!-- Toast Notification Container -->
+      <div id="adminToastContainer" class="mb-3"></div>
+
+      <!-- ======================================================================
+           TAB 1: FUTURISTIC OVERVIEW DASHBOARD (Identical to reference screenshot)
+           ====================================================================== -->
+      <section class="cyber-tab-panel active" id="tab-dashboard">
+        <div class="cyber-dashboard-grid">
+
+          <!-- WIDGET 1: NEXT DISPATCH / NEXT RIDE (Col 4) -->
+          <div class="cyber-card cyber-grid-col-4">
+            <div class="cyber-card-header">
+              <span class="cyber-card-title">Next Dispatch</span>
+              <button class="cyber-card-menu-btn" onclick="switchAdminTab('bookings')"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+            </div>
+
+            <div class="cyber-profile-preview">
+              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80" alt="Driver" class="cyber-profile-preview-avatar" id="dashNextAvatar">
+              <div>
+                <div class="fw-bold text-white fs-6" id="dashNextDriver">Mukesh Sharma</div>
+                <div class="small" style="color: var(--accent-neon);"><i class="fa-solid fa-star"></i> 4.9 Out of 5 <span class="text-muted">(230 reviews)</span></div>
+              </div>
+            </div>
+
+            <div class="cyber-destination-box mb-2">
+              <div>
+                <div class="small text-muted" style="font-size: 0.72rem;">Destination & Route</div>
+                <div class="fw-semibold text-white small text-truncate" style="max-width: 170px;" id="dashNextRoute">Jaipur ➔ Delhi NCR</div>
+              </div>
+              <button class="btn-cyber-outline py-1 px-3" style="font-size: 0.75rem;" onclick="switchAdminTab('bookings')">View Details</button>
+            </div>
+          </div>
+
+          <!-- WIDGET 2: EARNINGS & BALANCE (Col 3) -->
+          <div class="cyber-card cyber-grid-col-3">
+            <div class="cyber-card-header">
+              <span class="cyber-badge-pill active-glow"><span class="dot"></span> 30% Better</span>
+              <button class="cyber-card-menu-btn" onclick="switchAdminTab('rates')"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+            </div>
+
+            <div class="small text-muted">Earning Volume</div>
+            <div class="cyber-earning-amount">
+              <span id="dashTotalRevenue">₹45,250</span>
+              <!-- Mini vector sparkline -->
+              <svg class="cyber-sparkline-mini" viewBox="0 0 80 35" fill="none">
+                <path d="M2 28 C 15 28, 25 15, 40 22 C 55 29, 65 8, 78 5" stroke="#D0FD38" stroke-width="2.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+
+            <button class="btn-cyber-neon w-100 py-2 mt-1" onclick="switchAdminTab('rates')">
+              <i class="fa-solid fa-wallet me-1"></i> Manage Rates
+            </button>
+          </div>
+
+          <!-- WIDGET 3: DISTANCE TRAVELED & SPEEDOMETER (Col 5) -->
+          <div class="cyber-card cyber-grid-col-5">
+            <div class="cyber-card-header">
+              <span class="cyber-card-title">Distance Traveled</span>
+              <button class="cyber-card-menu-btn"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+            </div>
+
+            <!-- Vector World Map with Pulsing Neon Pins -->
+            <div class="cyber-map-container">
+              <svg class="cyber-world-map-svg" viewBox="0 0 600 250" fill="none">
+                <path d="M50,80 Q100,50 150,80 T250,90 T350,70 T450,110 T550,80 M70,140 Q130,120 200,160 T350,140 T480,180" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-dasharray="3 3"/>
+                <path d="M200,90 Q300,30 420,80" stroke="#D0FD38" stroke-width="2" stroke-dasharray="4 4" fill="none"/>
+              </svg>
+              <div class="cyber-map-pin pin-1"></div>
+              <div class="cyber-map-pin pin-2"></div>
+            </div>
+
+            <!-- Live Speedometer Transit Track -->
+            <div class="cyber-speedometer-box">
+              <div class="cyber-speed-display">
+                <div>
+                  <span class="cyber-speed-val" id="dashTotalKm">1,745</span>
+                  <span class="cyber-speed-unit">km/transit</span>
+                </div>
+                <span class="cyber-badge-pill" style="font-size: 0.7rem;">Live Fleet <i class="fa-solid fa-chevron-down ms-1"></i></span>
+              </div>
+
+              <div class="cyber-track-progress-wrapper">
+                <div class="cyber-track-bg">
+                  <div class="cyber-track-fill" id="speedoTrackFill"></div>
+                </div>
+                <div class="cyber-track-vehicle-icon"><i class="fa-solid fa-motorcycle"></i></div>
+              </div>
+
+              <div class="cyber-track-labels">
+                <span>34m</span>
+                <span>1h 24m</span>
+                <span>4h 30m</span>
+                <span>46m</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- WIDGET 4: TODAY'S EARNING CAPSULE BAR CHART (Col 4) -->
+          <div class="cyber-card cyber-grid-col-4">
+            <div class="cyber-card-header">
+              <span class="cyber-card-title">Today's Activity</span>
+              <button class="cyber-card-menu-btn"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+            </div>
+
+            <div class="cyber-bar-chart-container">
+              <div class="cyber-bar-col">
+                <div class="cyber-bar-capsule" style="height: 45%;"></div>
+                <span class="cyber-bar-label">M</span>
+              </div>
+              <div class="cyber-bar-col">
+                <div class="cyber-bar-capsule" style="height: 60%;"></div>
+                <span class="cyber-bar-label">T</span>
+              </div>
+              <div class="cyber-bar-col">
+                <div class="cyber-bar-capsule" style="height: 35%;"></div>
+                <span class="cyber-bar-label">W</span>
+              </div>
+              <div class="cyber-bar-col">
+                <div class="cyber-bar-capsule" style="height: 55%;"></div>
+                <span class="cyber-bar-label">T</span>
+              </div>
+              <div class="cyber-bar-col">
+                <div class="cyber-bar-capsule" style="height: 70%;"></div>
+                <span class="cyber-bar-label">F</span>
+              </div>
+              <!-- Active Highlight Bar -->
+              <div class="cyber-bar-col active">
+                <div class="cyber-bar-tooltip">99.2</div>
+                <div class="cyber-bar-capsule" style="height: 92%;"></div>
+                <span class="cyber-bar-label" style="color: var(--accent-neon);">S</span>
+              </div>
+              <div class="cyber-bar-col">
+                <div class="cyber-bar-capsule" style="height: 65%;"></div>
+                <span class="cyber-bar-label">S</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- WIDGET 5: ENERGY LEVEL & FLEET CAPACITY (Col 4) -->
+          <div class="cyber-card cyber-grid-col-4">
+            <div class="cyber-card-header">
+              <span class="cyber-card-title">Energy & Capacity</span>
+              <span class="cyber-badge-pill" style="font-size: 0.7rem;">Last 24h <i class="fa-solid fa-chevron-down ms-1"></i></span>
+            </div>
+
+            <div class="cyber-gauges-wrapper">
+              <!-- Gauge 1: Charged / In-Use -->
+              <div class="cyber-gauge-item">
+                <div class="cyber-gauge-svg-wrap">
+                  <svg width="90" height="90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#D0FD38" stroke-width="10" stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="65" transform="rotate(-90 50 50)" style="filter: drop-shadow(0 0 6px rgba(208, 253, 56, 0.6));"/>
+                  </svg>
+                  <div class="cyber-gauge-icon-center"><i class="fa-solid fa-bolt" style="color: #D0FD38;"></i></div>
+                </div>
+                <div class="cyber-gauge-label"><span class="dot"></span> Active (78%)</div>
+              </div>
+
+              <!-- Gauge 2: Used / Available -->
+              <div class="cyber-gauge-item">
+                <div class="cyber-gauge-svg-wrap">
+                  <svg width="90" height="90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#D0FD38" stroke-width="10" stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="95" transform="rotate(-90 50 50)" style="filter: drop-shadow(0 0 6px rgba(208, 253, 56, 0.6));"/>
+                  </svg>
+                  <div class="cyber-gauge-icon-center"><i class="fa-solid fa-battery-three-quarters" style="color: #D0FD38;"></i></div>
+                </div>
+                <div class="cyber-gauge-label"><span class="dot" style="background: #ffffff;"></span> Standby (62%)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- WIDGET 6: RIDES & RELOCATIONS HISTORY (Col 4) -->
+          <div class="cyber-card cyber-grid-col-4">
+            <div class="cyber-card-header">
+              <span class="cyber-card-title">Recent Relocations</span>
+              <button class="cyber-card-menu-btn" onclick="switchAdminTab('bookings')"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+            </div>
+
+            <div class="cyber-history-list" id="dashRecentHistoryList">
+              <div class="cyber-history-item" onclick="switchAdminTab('bookings')">
+                <div class="cyber-history-user">
+                  <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop&q=80" alt="Customer" class="cyber-history-avatar">
+                  <div>
+                    <div class="fw-bold text-white small">Jaipur ➔ Gurgaon</div>
+                    <div class="text-muted" style="font-size: 0.7rem;">4 June, 2026 • 07:40 PM</div>
+                    <div style="color: var(--accent-neon); font-size: 0.72rem;">Tata Ace - ₹4,800</div>
+                  </div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-muted small"></i>
+              </div>
+
+              <div class="cyber-history-item" onclick="switchAdminTab('bookings')">
+                <div class="cyber-history-user">
+                  <img src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&auto=format&fit=crop&q=80" alt="Customer" class="cyber-history-avatar">
+                  <div>
+                    <div class="fw-bold text-white small">Jaipur ➔ Delhi</div>
+                    <div class="text-muted" style="font-size: 0.7rem;">3 June, 2026 • 02:15 PM</div>
+                    <div style="color: var(--accent-neon); font-size: 0.72rem;">14ft Tempo - ₹8,500</div>
+                  </div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-muted small"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- WIDGET 7: TRAFFIC INTENSITY AREA CHART (Col 6) -->
+          <div class="cyber-card cyber-grid-col-6">
+            <div class="cyber-card-header">
+              <span class="cyber-card-title">Traffic & Demand Intensity</span>
+              <span class="cyber-badge-pill active-glow"><span class="dot"></span> Active Now | 14 Live</span>
+            </div>
+
+            <!-- Glowing Bezier Wave Graphic -->
+            <div class="cyber-wave-chart-wrap">
+              <svg width="100%" height="100%" viewBox="0 0 400 100" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="neonGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#D0FD38" stop-opacity="0.4"/>
+                    <stop offset="100%" stop-color="#D0FD38" stop-opacity="0.0"/>
+                  </linearGradient>
+                </defs>
+                <path d="M 0,80 Q 50,20 100,60 T 200,40 T 300,70 T 400,20 L 400,100 L 0,100 Z" fill="url(#neonGradient)"/>
+                <path d="M 0,80 Q 50,20 100,60 T 200,40 T 300,70 T 400,20" fill="none" stroke="#D0FD38" stroke-width="3" style="filter: drop-shadow(0 0 6px rgba(208, 253, 56, 0.8));"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- WIDGET 8: PERFORMANCE GAUGES (Col 6) -->
+          <div class="cyber-card cyber-grid-col-6">
+            <div class="cyber-card-header">
+              <span class="cyber-card-title">Performance Metrics</span>
+              <button class="cyber-card-menu-btn"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+            </div>
+
+            <div class="cyber-radial-container">
+              <!-- Radial 1: Acceptance Rate -->
+              <div class="cyber-radial-metric">
+                <div class="cyber-radial-svg-box">
+                  <svg width="85" height="85" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#D0FD38" stroke-width="10" stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="50" transform="rotate(-90 50 50)" style="filter: drop-shadow(0 0 6px rgba(208, 253, 56, 0.6));"/>
+                  </svg>
+                  <div class="cyber-radial-val-center">80%</div>
+                </div>
+                <div class="cyber-gauge-label"><span class="dot"></span> Acceptance Rate</div>
+              </div>
+
+              <!-- Radial 2: Passenger / Customer Rating -->
+              <div class="cyber-radial-metric">
+                <div class="cyber-radial-svg-box">
+                  <svg width="85" height="85" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#D0FD38" stroke-width="10" stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="25" transform="rotate(-90 50 50)" style="filter: drop-shadow(0 0 6px rgba(208, 253, 56, 0.6));"/>
+                  </svg>
+                  <div class="cyber-radial-val-center">4.9</div>
+                </div>
+                <div class="cyber-gauge-label"><span class="dot"></span> Passenger Rating</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           TAB 2: CUSTOMER BOOKINGS LOG
+           ====================================================================== -->
+      <section class="cyber-tab-panel" id="tab-bookings">
+        <div class="cyber-table-card">
+          <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+              <h5 class="fw-bold text-white mb-1"><i class="fa-solid fa-list-check me-2" style="color: #D0FD38;"></i>Customer Relocation Bookings</h5>
+              <span class="small text-muted">Assign drivers, update live delivery status, and view customer invoices.</span>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn-cyber-outline btn-sm" onclick="loadBookingsFromBackend()"><i class="fa-solid fa-rotate me-1"></i> Sync Bookings</button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="cyber-table">
+              <thead>
+                <tr>
+                  <th>Booking Ref</th>
+                  <th>Customer</th>
+                  <th>Route & Date</th>
+                  <th>Total Amount</th>
+                  <th>Delivery Status</th>
+                  <th>Assigned Fleet Driver</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="bookingsTableBody">
+                <!-- Dynamically Rendered -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           TAB 3: FLEET & VEHICLES MANAGEMENT (Add Custom Vehicles & Drivers)
+           ====================================================================== -->
+      <section class="cyber-tab-panel" id="tab-fleet">
+        <!-- Section A: Dedicated Transport Vehicles -->
+        <div class="cyber-table-card mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h5 class="fw-bold text-white mb-1"><i class="fa-solid fa-truck-moving me-2" style="color: #D0FD38;"></i>Transport Fleet Models (Website Calculator)</h5>
+              <span class="small text-muted">Add new vehicle models that appear in Step 2 of the customer cost calculator.</span>
+            </div>
+            <button class="btn-cyber-outline btn-sm" onclick="loadFleetVehicles()"><i class="fa-solid fa-rotate me-1"></i> Refresh</button>
+          </div>
+
+          <div class="row g-4">
+            <!-- Add Vehicle Form -->
+            <div class="col-lg-4">
+              <div style="background: #111113; border: 1px solid var(--border-subtle); border-radius: 16px; padding: 20px;">
+                <h6 class="fw-bold text-white mb-3"><i class="fa-solid fa-plus-circle me-1" style="color: #D0FD38;"></i> Add / Edit Vehicle Model</h6>
+                <form id="vehicleConfigForm" onsubmit="event.preventDefault(); handleSaveVehicle();">
+                  <div class="cyber-input-group">
+                    <label class="cyber-label">Unique Vehicle Key (lowercase, e.g. bolero_maxi)</label>
+                    <input type="text" class="cyber-input" id="vehKey" placeholder="e.g. bolero_maxi" required>
+                  </div>
+                  <div class="cyber-input-group">
+                    <label class="cyber-label">Display Vehicle Name</label>
+                    <input type="text" class="cyber-input" id="vehName" placeholder="e.g. Bolero Maxi Truck (2 Ton)" required>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-6 cyber-input-group">
+                      <label class="cyber-label">Base Fee (₹)</label>
+                      <input type="number" class="cyber-input" id="vehBasePrice" placeholder="3000" required>
+                    </div>
+                    <div class="col-6 cyber-input-group">
+                      <label class="cyber-label">Per KM (₹)</label>
+                      <input type="number" class="cyber-input" id="vehPerKm" placeholder="40" required>
+                    </div>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-6 cyber-input-group">
+                      <label class="cyber-label">Capacity Tag</label>
+                      <input type="text" class="cyber-input" id="vehCap" placeholder="1-2 BHK" required>
+                    </div>
+                    <div class="col-6 cyber-input-group">
+                      <label class="cyber-label">FontAwesome Icon</label>
+                      <input type="text" class="cyber-input" id="vehIcon" placeholder="fa-truck-pickup" value="fa-truck">
+                    </div>
+                  </div>
+                  <button type="submit" class="btn-cyber-neon w-100 py-2 mt-2"><i class="fa-solid fa-floppy-disk me-1"></i> Save to Calculator</button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Vehicle List Table -->
+            <div class="col-lg-8">
+              <div class="table-responsive">
+                <table class="cyber-table">
+                  <thead>
+                    <tr>
+                      <th>Icon</th>
+                      <th>Model Name</th>
+                      <th>Base (₹)</th>
+                      <th>Per KM (₹)</th>
+                      <th>Capacity</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="vehiclesTableBody">
+                    <!-- Dynamically Rendered -->
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- TAB 2: CUSTOMER BOOKINGS LOG -->
-    <section class="admin-tab-content" id="tab-bookings" style="display: none;">
-      <div class="custom-card">
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-          <div>
-            <h5 class="fw-bold mb-0"><i class="fa-solid fa-list-check text-primary-custom me-2"></i>Customer Bookings Log</h5>
-            <span class="small text-muted">Assign drivers, update live delivery status, and view invoices.</span>
+        <!-- Section B: Registered Drivers Roster -->
+        <div class="cyber-table-card">
+          <div class="row g-4">
+            <div class="col-lg-4">
+              <div style="background: #111113; border: 1px solid var(--border-subtle); border-radius: 16px; padding: 20px;">
+                <h6 class="fw-bold text-white mb-3"><i class="fa-solid fa-user-plus me-1" style="color: #D0FD38;"></i> Register Driver</h6>
+                <form id="driverForm" onsubmit="event.preventDefault(); handleAddDriver();">
+                  <div class="cyber-input-group">
+                    <label class="cyber-label">Driver Full Name</label>
+                    <input type="text" class="cyber-input" id="drvName" placeholder="Mukesh Sharma" required>
+                  </div>
+                  <div class="cyber-input-group">
+                    <label class="cyber-label">Mobile Number</label>
+                    <input type="tel" class="cyber-input" id="drvPhone" placeholder="9829012345" maxlength="10" required>
+                  </div>
+                  <div class="cyber-input-group">
+                    <label class="cyber-label">Vehicle Registration No.</label>
+                    <input type="text" class="cyber-input text-uppercase" id="drvVehicleNo" placeholder="RJ-14-GA-1024" required>
+                  </div>
+                  <div class="cyber-input-group">
+                    <label class="cyber-label">Assigned Vehicle Model</label>
+                    <select class="cyber-select" id="drvVehicleType">
+                      <!-- Populated dynamically -->
+                    </select>
+                  </div>
+                  <button type="submit" class="btn-cyber-neon w-100 py-2 mt-2"><i class="fa-solid fa-circle-plus me-1"></i> Register Driver Roster</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="col-lg-8">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold text-white mb-0"><i class="fa-solid fa-id-badge me-2" style="color: #D0FD38;"></i>Active Drivers Roster</h6>
+                <button class="btn-cyber-outline btn-sm" onclick="loadDriversFromBackend()"><i class="fa-solid fa-rotate me-1"></i> Refresh</button>
+              </div>
+              <div class="table-responsive">
+                <table class="cyber-table">
+                  <thead>
+                    <tr>
+                      <th>Driver</th>
+                      <th>Phone</th>
+                      <th>Vehicle</th>
+                      <th>Status</th>
+                      <th>Rating</th>
+                    </tr>
+                  </thead>
+                  <tbody id="driversTableBody">
+                    <!-- Dynamically Rendered -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-          <button class="btn btn-sm btn-outline-primary" onclick="loadBookingsFromBackend()">
-            <i class="fa-solid fa-rotate me-1"></i> Sync Bookings
-          </button>
         </div>
+      </section>
 
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-dark">
-              <tr>
-                <th>Booking ID</th>
-                <th>Customer Details</th>
-                <th>Route & Date</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Assigned Driver</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="bookingsTableBody">
-              <!-- Rendered dynamically -->
-            </tbody>
-          </table>
+      <!-- ======================================================================
+           TAB 4: RATE & TARIFF CONTROLLER (Full Pricing Controls)
+           ====================================================================== -->
+      <section class="cyber-tab-panel" id="tab-rates">
+        <div class="cyber-table-card">
+          <h5 class="fw-bold text-white mb-1"><i class="fa-solid fa-sliders me-2" style="color: #D0FD38;"></i>Live Tariff & Relocation Rate Controller</h5>
+          <p class="text-muted small mb-4">Updates made here instantly update live price quotes on the client calculator.</p>
+
+          <form id="ratesForm" onsubmit="event.preventDefault(); saveAdminRates();">
+            <!-- General Base Rates -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-4 cyber-input-group">
+                <label class="cyber-label">Default Base Relocation Fee (₹)</label>
+                <input type="number" class="cyber-input" id="rateBase" value="2500" required>
+              </div>
+              <div class="col-md-4 cyber-input-group">
+                <label class="cyber-label">Default Per KM Road Rate (₹)</label>
+                <input type="number" class="cyber-input" id="ratePerKm" value="40" required>
+              </div>
+              <div class="col-md-4 cyber-input-group">
+                <label class="cyber-label">Floor Labor Surcharge (No Lift) / Floor (₹)</label>
+                <input type="number" class="cyber-input" id="rateFloorNoLift" value="300" required>
+              </div>
+            </div>
+
+            <!-- House Size Fees -->
+            <h6 class="fw-bold text-white border-bottom pb-2 mb-3" style="border-color: var(--border-subtle) !important;"><i class="fa-solid fa-house-chimney me-1" style="color: #D0FD38;"></i> House / Cargo Size Surcharges (₹)</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-2.4 col-6 cyber-input-group">
+                <label class="cyber-label">1 RK Studio (₹)</label>
+                <input type="number" class="cyber-input" id="rateHouse1rk" value="0">
+              </div>
+              <div class="col-md-2.4 col-6 cyber-input-group">
+                <label class="cyber-label">1 BHK Apartment (₹)</label>
+                <input type="number" class="cyber-input" id="rateHouse1bhk" value="1000">
+              </div>
+              <div class="col-md-2.4 col-6 cyber-input-group">
+                <label class="cyber-label">2 BHK Apartment (₹)</label>
+                <input type="number" class="cyber-input" id="rateHouse2bhk" value="2500">
+              </div>
+              <div class="col-md-2.4 col-6 cyber-input-group">
+                <label class="cyber-label">3 BHK Apartment (₹)</label>
+                <input type="number" class="cyber-input" id="rateHouse3bhk" value="4500">
+              </div>
+              <div class="col-md-2.4 col-6 cyber-input-group">
+                <label class="cyber-label">4+ BHK / Villa (₹)</label>
+                <input type="number" class="cyber-input" id="rateHouseVilla" value="7500">
+              </div>
+            </div>
+
+            <!-- Item Unit Rates -->
+            <h6 class="fw-bold text-white border-bottom pb-2 mb-3" style="border-color: var(--border-subtle) !important;"><i class="fa-solid fa-boxes-packing me-1" style="color: #D0FD38;"></i> Item Unit Rates (₹ / Item)</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-2 col-6 cyber-input-group">
+                <label class="cyber-label">Sofa Set (₹)</label>
+                <input type="number" class="cyber-input" id="rateItemSofa" value="500">
+              </div>
+              <div class="col-md-2 col-6 cyber-input-group">
+                <label class="cyber-label">Double Bed (₹)</label>
+                <input type="number" class="cyber-input" id="rateItemBed" value="600">
+              </div>
+              <div class="col-md-2 col-6 cyber-input-group">
+                <label class="cyber-label">Dining Table (₹)</label>
+                <input type="number" class="cyber-input" id="rateItemDining" value="400">
+              </div>
+              <div class="col-md-2 col-6 cyber-input-group">
+                <label class="cyber-label">Refrigerator (₹)</label>
+                <input type="number" class="cyber-input" id="rateItemFridge" value="400">
+              </div>
+              <div class="col-md-2 col-6 cyber-input-group">
+                <label class="cyber-label">Washing Machine (₹)</label>
+                <input type="number" class="cyber-input" id="rateItemWashing" value="350">
+              </div>
+              <div class="col-md-2 col-6 cyber-input-group">
+                <label class="cyber-label">Carton Box (₹)</label>
+                <input type="number" class="cyber-input" id="rateItemBoxes" value="80">
+              </div>
+            </div>
+
+            <!-- Add-on Services Pricing -->
+            <h6 class="fw-bold text-white border-bottom pb-2 mb-3" style="border-color: var(--border-subtle) !important;"><i class="fa-solid fa-shield-halved me-1" style="color: #D0FD38;"></i> Add-on Services Rates (₹)</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-3 col-6 cyber-input-group">
+                <label class="cyber-label">Bubble Packing (₹)</label>
+                <input type="number" class="cyber-input" id="rateAddonBubble" value="1500">
+              </div>
+              <div class="col-md-3 col-6 cyber-input-group">
+                <label class="cyber-label">Unpacking & Assembly (₹)</label>
+                <input type="number" class="cyber-input" id="rateAddonUnpacking" value="1200">
+              </div>
+              <div class="col-md-3 col-6 cyber-input-group">
+                <label class="cyber-label">Transit Insurance (₹)</label>
+                <input type="number" class="cyber-input" id="rateAddonInsurance" value="999">
+              </div>
+              <div class="col-md-3 col-6 cyber-input-group">
+                <label class="cyber-label">Vehicle Transport (₹)</label>
+                <input type="number" class="cyber-input" id="rateAddonVehicleTransport" value="2500">
+              </div>
+            </div>
+
+            <button type="submit" class="btn-cyber-neon py-3 px-5"><i class="fa-solid fa-floppy-disk me-2"></i> Save & Apply All Rates</button>
+          </form>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- TAB 3: FLEET & VEHICLES MANAGEMENT -->
-    <section class="admin-tab-content" id="tab-fleet" style="display: none;">
-      <!-- Section A: Dedicated Vehicle Types in Calculator -->
-      <div class="custom-card mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <div>
-            <h5 class="fw-bold mb-0"><i class="fa-solid fa-truck-moving text-primary-custom me-2"></i>Website Transport Fleet (Calculator Vehicles)</h5>
-            <span class="small text-muted">Add or modify dedicated vehicle models that appear in Step 2 of the customer Cost Calculator.</span>
-          </div>
-          <button class="btn btn-sm btn-outline-primary" onclick="loadFleetVehicles()"><i class="fa-solid fa-rotate me-1"></i> Refresh Vehicles</button>
-        </div>
-
+      <!-- ======================================================================
+           TAB 5: DISCOUNT COUPON MANAGER
+           ====================================================================== -->
+      <section class="cyber-tab-panel" id="tab-coupons">
         <div class="row g-4">
-          <!-- Add Vehicle Form -->
-          <div class="col-lg-4">
-            <div class="p-3 bg-light rounded-3 border">
-              <h6 class="fw-bold mb-3 text-secondary-custom"><i class="fa-solid fa-plus-circle text-primary-custom me-1"></i> Add / Edit Vehicle</h6>
-              <form id="vehicleConfigForm" onsubmit="event.preventDefault(); handleSaveVehicle();">
-                <div class="mb-2">
-                  <label class="form-label small fw-semibold">Vehicle Key (Unique ID, lowercase)</label>
-                  <input type="text" class="form-control form-control-sm" id="vehKey" placeholder="e.g. bolero_maxi" required>
+          <div class="col-md-5">
+            <div class="cyber-table-card">
+              <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-plus-circle me-2" style="color: #D0FD38;"></i>Create Promo Code</h5>
+              <form id="couponForm" onsubmit="event.preventDefault(); createAdminCoupon();">
+                <div class="cyber-input-group">
+                  <label class="cyber-label">Coupon Code (Uppercase)</label>
+                  <input type="text" class="cyber-input text-uppercase" id="newCouponCode" placeholder="e.g. FESTIVE25" required>
                 </div>
-                <div class="mb-2">
-                  <label class="form-label small fw-semibold">Vehicle Display Name</label>
-                  <input type="text" class="form-control form-control-sm" id="vehName" placeholder="e.g. Bolero Maxi Truck (2 Ton)" required>
+                <div class="cyber-input-group">
+                  <label class="cyber-label">Discount Type</label>
+                  <select class="cyber-select" id="newCouponType">
+                    <option value="percent">Percentage (%) Discount</option>
+                    <option value="fixed">Flat Fixed Amount (₹) Discount</option>
+                  </select>
                 </div>
-                <div class="row g-2 mb-2">
-                  <div class="col-6">
-                    <label class="form-label small fw-semibold">Base Price (₹)</label>
-                    <input type="number" class="form-control form-control-sm" id="vehBasePrice" placeholder="3000" required>
-                  </div>
-                  <div class="col-6">
-                    <label class="form-label small fw-semibold">Per KM Rate (₹)</label>
-                    <input type="number" class="form-control form-control-sm" id="vehPerKm" placeholder="40" required>
-                  </div>
+                <div class="cyber-input-group">
+                  <label class="cyber-label">Discount Value</label>
+                  <input type="number" class="cyber-input" id="newCouponValue" placeholder="15 (for 15%) or 750 (for ₹750)" required>
                 </div>
-                <div class="row g-2 mb-3">
-                  <div class="col-6">
-                    <label class="form-label small fw-semibold">Capacity Tag</label>
-                    <input type="text" class="form-control form-control-sm" id="vehCap" placeholder="1-2 BHK" required>
-                  </div>
-                  <div class="col-6">
-                    <label class="form-label small fw-semibold">FontAwesome Icon</label>
-                    <input type="text" class="form-control form-control-sm" id="vehIcon" placeholder="fa-truck-pickup" value="fa-truck">
-                  </div>
+                <div class="cyber-input-group">
+                  <label class="cyber-label">Offer Tagline / Description</label>
+                  <input type="text" class="cyber-input" id="newCouponDesc" placeholder="Special Seasonal Relocation Discount">
                 </div>
-                <button type="submit" class="btn btn-primary-custom btn-sm w-100"><i class="fa-solid fa-circle-plus me-1"></i> Save Vehicle to Calculator</button>
+                <button type="submit" class="btn-cyber-neon w-100 py-2 mt-2"><i class="fa-solid fa-circle-check me-1"></i> Save Promo Code</button>
               </form>
             </div>
           </div>
 
-          <!-- Vehicle List Table -->
-          <div class="col-lg-8">
-            <div class="table-responsive">
-              <table class="table table-hover align-middle">
-                <thead class="table-light">
-                  <tr>
-                    <th>Icon</th>
-                    <th>Vehicle Name</th>
-                    <th>Base (₹)</th>
-                    <th>Per KM (₹)</th>
-                    <th>Capacity</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody id="vehiclesTableBody">
-                  <!-- Rendered dynamically -->
-                </tbody>
-              </table>
+          <div class="col-md-7">
+            <div class="cyber-table-card">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-ticket me-2" style="color: #D0FD38;"></i>Active Promo Codes</h5>
+                <button class="btn-cyber-outline btn-sm" onclick="loadAdminCoupons()"><i class="fa-solid fa-rotate me-1"></i> Refresh</button>
+              </div>
+              <div class="table-responsive">
+                <table class="cyber-table">
+                  <thead>
+                    <tr>
+                      <th>Code</th>
+                      <th>Type</th>
+                      <th>Value</th>
+                      <th>Description</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="couponsTableBody">
+                    <!-- Dynamically Rendered -->
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Section B: Registered Drivers & Real-time Roster -->
-      <div class="row g-4">
-        <!-- Add Driver Form -->
-        <div class="col-lg-4">
-          <div class="custom-card">
-            <h5 class="fw-bold mb-3"><i class="fa-solid fa-user-plus text-primary-custom me-2"></i>Register Driver</h5>
-            <form id="driverForm" onsubmit="event.preventDefault(); handleAddDriver();">
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Driver Full Name</label>
-                <input type="text" class="form-control" id="drvName" placeholder="e.g. Mukesh Sharma" required>
+      <!-- ======================================================================
+           TAB 6: BRANDING & THEME CONTROLLER
+           ====================================================================== -->
+      <section class="cyber-tab-panel" id="tab-theme">
+        <div class="cyber-table-card mb-4">
+          <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-building me-2" style="color: #D0FD38;"></i>Company & Contact Details</h5>
+          <form id="companyForm" onsubmit="event.preventDefault(); saveCompanyBranding();">
+            <div class="row g-3 mb-3">
+              <div class="col-md-6 cyber-input-group">
+                <label class="cyber-label">Company Brand Name</label>
+                <input type="text" class="cyber-input" id="compName" value="Rudraksha Packers & Movers" required>
               </div>
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Phone Number</label>
-                <div class="input-group">
-                  <span class="input-group-text">+91</span>
-                  <input type="tel" class="form-control" id="drvPhone" placeholder="9829012345" maxlength="10" required>
-                </div>
+              <div class="col-md-6 cyber-input-group">
+                <label class="cyber-label">Calling Contact Number</label>
+                <input type="tel" class="cyber-input" id="compPhone" value="7296831460" required>
               </div>
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Vehicle Registration No.</label>
-                <input type="text" class="form-control text-uppercase" id="drvVehicleNo" placeholder="RJ-14-GA-1024" required>
+            </div>
+            <div class="row g-3 mb-3">
+              <div class="col-md-4 cyber-input-group">
+                <label class="cyber-label">Support WhatsApp Number</label>
+                <input type="tel" class="cyber-input" id="compWhatsapp" value="7296831460" required>
               </div>
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Assigned Vehicle Model</label>
-                <select class="form-select" id="drvVehicleType">
-                  <!-- Populated from fleet vehicles -->
-                </select>
+              <div class="col-md-4 cyber-input-group">
+                <label class="cyber-label">Support Email Address</label>
+                <input type="email" class="cyber-input" id="compEmail" value="support@rudrakshapackers.com">
               </div>
-              <button type="submit" class="btn btn-primary-custom w-100"><i class="fa-solid fa-circle-plus me-1"></i> Register Driver Roster</button>
-            </form>
-          </div>
+              <div class="col-md-4 cyber-input-group">
+                <label class="cyber-label">Business GSTIN</label>
+                <input type="text" class="cyber-input text-uppercase" id="compGstin" value="08AAACR1234F1Z5">
+              </div>
+            </div>
+            <div class="cyber-input-group mb-3">
+              <label class="cyber-label">Office Address (Printed on Tax Invoices)</label>
+              <input type="text" class="cyber-input" id="compAddress" value="Near SNM Hospital, Gandhipath (West), Jaipur, RJ">
+            </div>
+            <button type="submit" class="btn-cyber-neon py-2 px-4"><i class="fa-solid fa-floppy-disk me-1"></i> Save Company Info</button>
+          </form>
         </div>
 
-        <!-- Drivers List -->
-        <div class="col-lg-8">
-          <div class="custom-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5 class="fw-bold mb-0"><i class="fa-solid fa-id-badge text-primary-custom me-2"></i>Active Driver Roster</h5>
-              <button class="btn btn-sm btn-outline-primary" onclick="loadDriversFromBackend()"><i class="fa-solid fa-rotate me-1"></i> Refresh Drivers</button>
-            </div>
-            <div class="table-responsive">
-              <table class="table table-hover align-middle">
-                <thead class="table-light">
-                  <tr>
-                    <th>Driver Name</th>
-                    <th>Phone</th>
-                    <th>Vehicle Details</th>
-                    <th>Status</th>
-                    <th>Rating</th>
-                  </tr>
-                </thead>
-                <tbody id="driversTableBody">
-                  <!-- Rendered dynamically -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 4: RATE MANAGER (Full Control) -->
-    <section class="admin-tab-content" id="tab-rates" style="display: none;">
-      <div class="custom-card">
-        <h5 class="fw-bold mb-3"><i class="fa-solid fa-sliders text-primary-custom me-2"></i>Relocation Rate & Tariff Controller</h5>
-        <p class="text-muted small mb-4">Live pricing parameters. Changing these numbers instantly updates cost calculations for all users on the website.</p>
-
-        <form id="ratesForm" onsubmit="event.preventDefault(); saveAdminRates();">
-          <!-- General Rates -->
-          <div class="row g-3 mb-4">
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Default Base Relocation Fee (₹)</label>
-              <input type="number" class="form-control form-control-lg" id="rateBase" value="2500" required>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Default Per KM Road Rate (₹)</label>
-              <input type="number" class="form-control form-control-lg" id="ratePerKm" value="40" required>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Floor Labor Surcharge (No Lift) / Floor (₹)</label>
-              <input type="number" class="form-control form-control-lg" id="rateFloorNoLift" value="300" required>
-            </div>
-          </div>
-
-          <!-- House Size Fees -->
-          <h6 class="fw-bold text-secondary-custom border-bottom pb-2 mb-3"><i class="fa-solid fa-house-chimney text-primary-custom me-1"></i> House / Cargo Size Surcharges (₹)</h6>
-          <div class="row g-3 mb-4">
-            <div class="col-md-2.4">
-              <label class="form-label small fw-semibold">1 RK Studio (₹)</label>
-              <input type="number" class="form-control" id="rateHouse1rk" value="0">
-            </div>
-            <div class="col-md-2.4">
-              <label class="form-label small fw-semibold">1 BHK Apartment (₹)</label>
-              <input type="number" class="form-control" id="rateHouse1bhk" value="1000">
-            </div>
-            <div class="col-md-2.4">
-              <label class="form-label small fw-semibold">2 BHK Apartment (₹)</label>
-              <input type="number" class="form-control" id="rateHouse2bhk" value="2500">
-            </div>
-            <div class="col-md-2.4">
-              <label class="form-label small fw-semibold">3 BHK Apartment (₹)</label>
-              <input type="number" class="form-control" id="rateHouse3bhk" value="4500">
-            </div>
-            <div class="col-md-2.4">
-              <label class="form-label small fw-semibold">4+ BHK / Villa (₹)</label>
-              <input type="number" class="form-control" id="rateHouseVilla" value="7500">
-            </div>
-          </div>
-
-          <!-- Item Breakdown Rates -->
-          <h6 class="fw-bold text-secondary-custom border-bottom pb-2 mb-3"><i class="fa-solid fa-boxes-packing text-primary-custom me-1"></i> Item Breakdown Unit Rates (₹ / Item)</h6>
-          <div class="row g-3 mb-4">
-            <div class="col-md-2">
-              <label class="form-label small fw-semibold">Sofa Set (₹)</label>
-              <input type="number" class="form-control" id="rateItemSofa" value="500">
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small fw-semibold">Double Bed / Cot (₹)</label>
-              <input type="number" class="form-control" id="rateItemBed" value="600">
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small fw-semibold">Dining Table (₹)</label>
-              <input type="number" class="form-control" id="rateItemDining" value="400">
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small fw-semibold">Refrigerator (₹)</label>
-              <input type="number" class="form-control" id="rateItemFridge" value="400">
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small fw-semibold">Washing Machine (₹)</label>
-              <input type="number" class="form-control" id="rateItemWashing" value="350">
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small fw-semibold">Carton Box (₹)</label>
-              <input type="number" class="form-control" id="rateItemBoxes" value="80">
-            </div>
-          </div>
-
-          <!-- Add-on Services Rates -->
-          <h6 class="fw-bold text-secondary-custom border-bottom pb-2 mb-3"><i class="fa-solid fa-cart-flatbed-suitcases text-primary-custom me-1"></i> Add-on Services Pricing (₹)</h6>
-          <div class="row g-3 mb-4">
-            <div class="col-md-3">
-              <label class="form-label small fw-semibold">Bubble Packing (₹)</label>
-              <input type="number" class="form-control" id="rateAddonBubble" value="1500">
-            </div>
-            <div class="col-md-3">
-              <label class="form-label small fw-semibold">Unpacking & Assembly (₹)</label>
-              <input type="number" class="form-control" id="rateAddonUnpacking" value="1200">
-            </div>
-            <div class="col-md-3">
-              <label class="form-label small fw-semibold">Transit Insurance (₹)</label>
-              <input type="number" class="form-control" id="rateAddonInsurance" value="999">
-            </div>
-            <div class="col-md-3">
-              <label class="form-label small fw-semibold">Vehicle Transport (₹)</label>
-              <input type="number" class="form-control" id="rateAddonVehicleTransport" value="2500">
-            </div>
-          </div>
-
-          <div class="mt-4 pt-2 border-top">
-            <button type="submit" class="btn btn-primary-custom btn-lg px-5 shadow-sm"><i class="fa-solid fa-floppy-disk me-2"></i> Save & Apply All Rates</button>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <!-- TAB 5: COUPON MANAGER -->
-    <section class="admin-tab-content" id="tab-coupons" style="display: none;">
-      <div class="row g-4">
-        <div class="col-md-5">
-          <div class="custom-card">
-            <h5 class="fw-bold mb-3"><i class="fa-solid fa-plus-circle text-primary-custom me-2"></i>Create New Promo Coupon</h5>
-            <form id="couponForm" onsubmit="event.preventDefault(); createAdminCoupon();">
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Coupon Code</label>
-                <input type="text" class="form-control text-uppercase" id="newCouponCode" placeholder="e.g. FESTIVE20" required>
+        <div class="cyber-table-card">
+          <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-palette me-2" style="color: #D0FD38;"></i>Website Color Palette</h5>
+          <div class="row g-4">
+            <div class="col-md-4 cyber-input-group">
+              <label class="cyber-label">Primary Brand Color</label>
+              <div class="d-flex align-items-center gap-2">
+                <input type="color" class="form-control form-control-color bg-dark border-secondary" id="primaryColorInput" value="#f97316" oninput="previewThemeColors()">
+                <input type="text" class="cyber-input" id="primaryColorText" value="#f97316">
               </div>
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Discount Type</label>
-                <select class="form-select" id="newCouponType">
-                  <option value="percent">Percentage (%) Discount</option>
-                  <option value="fixed">Flat Fixed Amount (₹) Discount</option>
-                </select>
+            </div>
+            <div class="col-md-4 cyber-input-group">
+              <label class="cyber-label">Secondary Dark Color</label>
+              <div class="d-flex align-items-center gap-2">
+                <input type="color" class="form-control form-control-color bg-dark border-secondary" id="secondaryColorInput" value="#1e293b" oninput="previewThemeColors()">
+                <input type="text" class="cyber-input" id="secondaryColorText" value="#1e293b">
               </div>
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Discount Value</label>
-                <input type="number" class="form-control" id="newCouponValue" placeholder="e.g. 15 (for 15%) or 750 (for ₹750)" required>
+            </div>
+            <div class="col-md-4 cyber-input-group">
+              <label class="cyber-label">Accent Cyan Color</label>
+              <div class="d-flex align-items-center gap-2">
+                <input type="color" class="form-control form-control-color bg-dark border-secondary" id="accentColorInput" value="#06b6d4" oninput="previewThemeColors()">
+                <input type="text" class="cyber-input" id="accentColorText" value="#06b6d4">
               </div>
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Description / Tagline</label>
-                <input type="text" class="form-control" id="newCouponDesc" placeholder="e.g. Special Holiday Moving Offer">
-              </div>
-              <button type="submit" class="btn btn-primary-custom w-100"><i class="fa-solid fa-circle-check me-1"></i> Save Promo Code</button>
-            </form>
+            </div>
           </div>
+          <button type="button" class="btn-cyber-neon py-2 px-4 mt-3" onclick="saveAdminTheme()"><i class="fa-solid fa-floppy-disk me-1"></i> Apply & Save Palette</button>
         </div>
+      </section>
 
-        <div class="col-md-7">
-          <div class="custom-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5 class="fw-bold mb-0"><i class="fa-solid fa-ticket me-2"></i>Active Discount Coupons</h5>
-              <button class="btn btn-sm btn-outline-primary" onclick="loadCouponsFromBackend()"><i class="fa-solid fa-rotate me-1"></i> Refresh</button>
-            </div>
-            <div class="table-responsive">
-              <table class="table table-hover align-middle">
-                <thead class="table-light">
-                  <tr>
-                    <th>Code</th>
-                    <th>Type</th>
-                    <th>Value</th>
-                    <th>Description</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody id="couponsTableBody">
-                  <!-- Rendered dynamically -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+    </main>
 
-    <!-- TAB 6: THEME & BRANDING CONTROLLER -->
-    <section class="admin-tab-content" id="tab-theme" style="display: none;">
-      <div class="custom-card mb-4">
-        <h5 class="fw-bold mb-3"><i class="fa-solid fa-building text-primary-custom me-2"></i>Company & Contact Details</h5>
-        <p class="text-muted small mb-4">Update your business contact information that appears on the website, header, and invoices.</p>
+    <!-- ======================================================================
+         3. MOBILE BOTTOM FLOATING NAVIGATION BAR
+         ====================================================================== -->
+    <nav class="cyber-mobile-bottom-nav">
+      <button class="cyber-mobile-nav-btn active" id="mob-nav-dashboard" onclick="switchAdminTab('dashboard')">
+        <i class="fa-solid fa-shapes"></i>
+        <span>Overview</span>
+      </button>
+      <button class="cyber-mobile-nav-btn" id="mob-nav-bookings" onclick="switchAdminTab('bookings')">
+        <i class="fa-solid fa-list-check"></i>
+        <span>Bookings</span>
+      </button>
+      <button class="cyber-mobile-nav-btn" id="mob-nav-fleet" onclick="switchAdminTab('fleet')">
+        <i class="fa-solid fa-truck-fast"></i>
+        <span>Fleet</span>
+      </button>
+      <button class="cyber-mobile-nav-btn" id="mob-nav-rates" onclick="switchAdminTab('rates')">
+        <i class="fa-solid fa-sliders"></i>
+        <span>Tariff</span>
+      </button>
+      <button class="cyber-mobile-nav-btn" id="mob-nav-coupons" onclick="switchAdminTab('coupons')">
+        <i class="fa-solid fa-ticket"></i>
+        <span>Coupons</span>
+      </button>
+      <button class="cyber-mobile-nav-btn" id="mob-nav-theme" onclick="switchAdminTab('theme')">
+        <i class="fa-solid fa-palette"></i>
+        <span>Brand</span>
+      </button>
+    </nav>
 
-        <form id="companyForm" onsubmit="event.preventDefault(); saveCompanyBranding();">
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Company Brand Name</label>
-              <input type="text" class="form-control" id="compName" value="Rudraksha Packers & Movers" required>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Calling Phone Number</label>
-              <input type="tel" class="form-control" id="compPhone" value="7296831460" required>
-            </div>
-          </div>
-          <div class="row g-3 mb-3">
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Support WhatsApp Number</label>
-              <input type="tel" class="form-control" id="compWhatsapp" value="7296831460" required>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Support Email Address</label>
-              <input type="email" class="form-control" id="compEmail" value="support@rudrakshapackers.com">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Business GSTIN</label>
-              <input type="text" class="form-control text-uppercase" id="compGstin" value="08AAACR1234F1Z5">
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Office Address (Shown on Invoice)</label>
-            <input type="text" class="form-control" id="compAddress" value="Near SNM Hospital, Gandhipath (West), Jaipur, RJ">
-          </div>
-          <button type="submit" class="btn btn-primary-custom px-4"><i class="fa-solid fa-floppy-disk me-1"></i> Save Company Info</button>
-        </form>
-      </div>
-
-      <div class="custom-card">
-        <h5 class="fw-bold mb-3"><i class="fa-solid fa-palette text-primary-custom me-2"></i>Website Color Palette</h5>
-        <div class="row g-4">
-          <div class="col-md-4">
-            <label class="form-label fw-semibold">Primary Brand Color</label>
-            <div class="d-flex align-items-center gap-2">
-              <input type="color" class="form-control form-control-color" id="primaryColorInput" value="#f97316" oninput="previewThemeColors()">
-              <input type="text" class="form-control" id="primaryColorText" value="#f97316">
-            </div>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label fw-semibold">Secondary Dark Color</label>
-            <div class="d-flex align-items-center gap-2">
-              <input type="color" class="form-control form-control-color" id="secondaryColorInput" value="#1e293b" oninput="previewThemeColors()">
-              <input type="text" class="form-control" id="secondaryColorText" value="#1e293b">
-            </div>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label fw-semibold">Accent Cyan Color</label>
-            <div class="d-flex align-items-center gap-2">
-              <input type="color" class="form-control form-control-color" id="accentColorInput" value="#06b6d4" oninput="previewThemeColors()">
-              <input type="text" class="form-control" id="accentColorText" value="#06b6d4">
-            </div>
-          </div>
-        </div>
-        <div class="mt-4">
-          <button type="button" class="btn btn-primary-custom" onclick="saveAdminTheme()"><i class="fa-solid fa-floppy-disk me-1"></i> Apply & Save Palette</button>
-        </div>
-      </div>
-    </section>
-
-  </main>
+  </div>
 
   <!-- ==========================================================================
        MODAL: ASSIGN DRIVER TO BOOKING
        ========================================================================== -->
   <div class="modal fade" id="assignDriverModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
-        <div class="modal-header bg-secondary-custom text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-          <h5 class="modal-title fw-bold"><i class="fa-solid fa-truck-fast text-primary-custom me-2"></i>Assign Vehicle & Driver</h5>
+      <div class="modal-content" style="background: #17171A; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; color: #ffffff;">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold"><i class="fa-solid fa-truck-fast me-2" style="color: #D0FD38;"></i>Assign Fleet Driver</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body p-4">
           <form id="assignDriverForm" onsubmit="event.preventDefault(); submitDriverAssignment();">
             <input type="hidden" id="assignBookingId">
-            <div class="p-3 bg-light rounded-3 border mb-3">
+            <div style="background: #111113; border: 1px solid var(--border-subtle); border-radius: 12px; padding: 14px; margin-bottom: 16px;">
               <div class="small text-muted">Booking Reference:</div>
-              <div class="fw-bold text-secondary-custom fs-5" id="assignBookingDisplayId">RB-XXXXXX</div>
-              <div class="small text-muted mt-1">Customer: <strong id="assignBookingCustName">-</strong></div>
+              <div class="fw-bold fs-5" id="assignBookingDisplayId" style="color: #D0FD38;">RB-XXXXXX</div>
+              <div class="small text-muted mt-1">Customer: <strong id="assignBookingCustName" class="text-white">-</strong></div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label fw-semibold">Select Available Driver & Vehicle</label>
-              <select class="form-select form-select-lg" id="assignDriverSelect" required>
+              <label class="cyber-label">Choose Available Driver & Vehicle</label>
+              <select class="cyber-select" id="assignDriverSelect" required>
                 <!-- Populated dynamically -->
               </select>
             </div>
 
             <div id="assignStatusMsg" class="small fw-semibold mb-3"></div>
 
-            <button type="submit" class="btn btn-primary-custom w-100 py-2">
+            <button type="submit" class="btn-cyber-neon w-100 py-3">
               <i class="fa-solid fa-circle-check me-1"></i> Confirm Driver Assignment
             </button>
           </form>
@@ -686,7 +912,7 @@
   <!-- Bootstrap 5 JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Admin App JS -->
+  <!-- Futuristic Admin App Script -->
   <script src="admin.js"></script>
 </body>
 </html>
