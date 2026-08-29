@@ -972,16 +972,216 @@ body.cyber-dark-body {
 }
 
 /* ==========================================================================
-   RESPONSIVE MEDIA QUERIES (Ultra-clean Mobile & Tablet look)
+   MOBILE RESPONSIVE CARD TRANSFORMATION FOR CYBER TABLES
    ========================================================================== */
 
-@media (max-width: 1200px) {
+@media (max-width: 768px) {
+  /* Prevent horizontal scroll */
+  html, body.cyber-dark-body {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .cyber-admin-layout {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .cyber-main-content {
+    padding: 16px 12px 140px 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Compact Mobile Top Header */
+  .cyber-top-header {
+    margin-bottom: 16px !important;
+    gap: 8px !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+
+  .cyber-header-actions {
+    width: 100% !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .cyber-sync-status {
+    padding: 5px 10px !important;
+    font-size: 0.72rem !important;
+    white-space: nowrap !important;
+    border-radius: var(--radius-pill) !important;
+  }
+
+  .cyber-profile-card {
+    padding: 3px 8px !important;
+    gap: 4px !important;
+    border-radius: var(--radius-pill) !important;
+  }
+
+  .cyber-profile-avatar {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  /* Card padding on mobile */
+  .cyber-card,
+  .cyber-table-card {
+    padding: 16px 12px !important;
+    border-radius: 18px !important;
+    margin-bottom: 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Transform Tables into Mobile-Friendly Cards */
+  .table-responsive {
+    overflow-x: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+  }
+
+  .cyber-table {
+    display: block !important;
+    width: 100% !important;
+    border-spacing: 0 !important;
+  }
+
+  .cyber-table thead {
+    display: none !important; /* Hide desktop table headers on mobile */
+  }
+
+  .cyber-table tbody {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .cyber-table tbody tr {
+    display: flex !important;
+    flex-direction: column !important;
+    background: #131316 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px !important;
+    padding: 14px !important;
+    width: 100% !important;
+    gap: 8px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4) !important;
+    box-sizing: border-box !important;
+  }
+
+  .cyber-table tbody tr:hover {
+    border-color: var(--accent-neon) !important;
+    box-shadow: 0 0 12px var(--accent-neon-glow) !important;
+  }
+
+  .cyber-table tbody tr td {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 3px 0 !important;
+    border: none !important;
+    font-size: 0.85rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .cyber-table tbody tr td.cell-ref {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .cyber-table tbody tr td.cell-actions {
+    border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+    padding-top: 10px !important;
+    margin-top: 4px !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+  }
+
+  /* Form columns stack on mobile */
+  .col-md-2.4,
+  .col-md-2,
+  .col-md-3,
+  .col-md-4,
+  .col-md-5,
+  .col-md-6,
+  .col-md-7,
+  .col-md-8 {
+    width: 100% !important;
+  }
+
+  /* Mobile floating bottom nav */
+  .cyber-mobile-bottom-nav {
+    bottom: 10px !important;
+    left: 8px !important;
+    right: 8px !important;
+    padding: 6px 4px !important;
+    background: rgba(18, 18, 22, 0.92) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: var(--radius-pill) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(208, 253, 56, 0.15) !important;
+  }
+
+  .cyber-mobile-nav-btn {
+    padding: 4px 6px !important;
+    font-size: 0.62rem !important;
+    flex: 1 !important;
+    text-align: center !important;
+  }
+
+  .cyber-mobile-nav-btn i {
+    font-size: 1rem !important;
+    margin-bottom: 2px !important;
+  }
+
+  .cyber-mobile-nav-btn.active {
+    color: var(--accent-neon) !important;
+    font-weight: 700 !important;
+  }
+
+  .cyber-mobile-nav-btn.active i {
+    color: var(--accent-neon) !important;
+    filter: drop-shadow(0 0 6px var(--accent-neon)) !important;
+  }
+
+  /* Destination & Speedometer box spacing */
+  .cyber-destination-box {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .cyber-destination-box button {
+    width: 100% !important;
+  }
+
+  .cyber-bar-chart-container {
+    height: 120px !important;
+  }
+}
+
+/* Tablet & Desktop queries */
+@media (min-width: 769px) and (max-width: 1200px) {
   .cyber-dashboard-grid {
     grid-template-columns: repeat(6, 1fr);
   }
   .cyber-grid-col-4 { grid-column: span 6; }
   .cyber-grid-col-3 { grid-column: span 3; }
   .cyber-grid-col-5 { grid-column: span 6; }
+  .cyber-grid-col-6 { grid-column: span 6; }
 }
 
 @media (min-width: 1201px) {
@@ -992,33 +1192,4 @@ body.cyber-dark-body {
   .cyber-grid-col-7 { grid-column: span 7; }
   .cyber-grid-col-8 { grid-column: span 8; }
   .cyber-grid-col-12 { grid-column: span 12; }
-}
-
-@media (max-width: 992px) {
-  .cyber-sidebar {
-    display: none;
-  }
-  .cyber-main-content {
-    margin-left: 0;
-    width: 100%;
-    padding: 20px 18px 100px 18px;
-  }
-  .cyber-mobile-bottom-nav {
-    display: flex;
-  }
-  .cyber-dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-  .cyber-grid-col-4,
-  .cyber-grid-col-3,
-  .cyber-grid-col-5,
-  .cyber-grid-col-6,
-  .cyber-grid-col-7,
-  .cyber-grid-col-8,
-  .cyber-grid-col-12 {
-    grid-column: span 1;
-  }
-  .cyber-search-box {
-    display: none;
-  }
 }

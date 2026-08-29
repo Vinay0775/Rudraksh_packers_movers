@@ -335,23 +335,34 @@ function renderBookingsTable(list = adminBookings) {
     const amount = b.total_amount ? `₹${Number(b.total_amount).toLocaleString('en-IN')}` : (b.total || '₹0');
     const status = (b.status || 'received').toLowerCase();
 
-    const driverName = b.assigned_driver_name ? `👨‍✈️ ${b.assigned_driver_name} (${b.assigned_vehicle_no})` : `<span class="badge" style="background: rgba(255,255,255,0.06); color: #8E8E93;">Unassigned</span>`;
+    const driverName = b.assigned_driver_name ? `👨‍✈️ ${b.assigned_driver_name} (${b.assigned_vehicle_no})` : `<span class="cyber-badge-pill" style="color: #8E8E93;">Unassigned</span>`;
 
     return `
-      <tr>
-        <td><strong style="color: #D0FD38;">${bId}</strong></td>
-        <td>
-          <div class="fw-bold text-white">${cName}</div>
-          <div class="small text-muted"><a href="tel:${cPhone}" class="text-decoration-none" style="color: #8E8E93;"><i class="fa-solid fa-phone me-1 text-success"></i>+91 ${cPhone}</a></div>
+      <tr class="cyber-booking-row">
+        <td class="cell-ref">
+          <div class="d-flex justify-content-between align-items-center w-100">
+            <strong style="color: #D0FD38; font-size: 0.95rem;">${bId}</strong>
+            <span class="d-md-none fw-bold fs-6 text-white">${amount}</span>
+          </div>
         </td>
-        <td>
-          <div class="small fw-semibold text-white">${pickup} ➔ ${drop}</div>
-          <div class="small text-muted"><i class="fa-solid fa-calendar me-1"></i>${date} • ${dist} KM</div>
-          <div class="small fw-semibold mt-1" style="color: #D0FD38;"><i class="fa-solid fa-truck-pickup me-1"></i>${b.selected_vehicle || 'Tata Ace'}</div>
+        <td class="cell-customer">
+          <div>
+            <div class="fw-bold text-white">${cName}</div>
+            <div class="small text-muted"><a href="tel:${cPhone}" class="text-decoration-none" style="color: #8E8E93;"><i class="fa-solid fa-phone me-1 text-success"></i>+91 ${cPhone}</a></div>
+          </div>
         </td>
-        <td><strong class="text-white">${amount}</strong></td>
-        <td>
-          <select class="cyber-select py-1 px-2 fw-bold" onchange="handleStatusChange('${bId}', this.value)" style="width: 140px; font-size: 0.78rem;">
+        <td class="cell-route">
+          <div>
+            <div class="small fw-semibold text-white text-break"><i class="fa-solid fa-location-dot me-1 text-warning"></i>${pickup} ➔ ${drop}</div>
+            <div class="small text-muted mt-1"><i class="fa-solid fa-calendar me-1"></i>${date} • ${dist} KM</div>
+            <div class="small fw-semibold mt-1" style="color: #D0FD38;"><i class="fa-solid fa-truck-pickup me-1"></i>${b.selected_vehicle || 'Tata Ace'}</div>
+          </div>
+        </td>
+        <td class="cell-amount d-none d-md-table-cell">
+          <strong class="text-white fs-6">${amount}</strong>
+        </td>
+        <td class="cell-status">
+          <select class="cyber-select py-1 px-2 fw-bold" onchange="handleStatusChange('${bId}', this.value)" style="width: 100%; max-width: 150px; font-size: 0.78rem;">
             <option value="received" ${status === 'received' ? 'selected' : ''}>📥 Received</option>
             <option value="reviewing" ${status === 'reviewing' ? 'selected' : ''}>🔍 Reviewing</option>
             <option value="confirmed" ${status === 'confirmed' ? 'selected' : ''}>✅ Confirmed</option>
@@ -361,14 +372,16 @@ function renderBookingsTable(list = adminBookings) {
             <option value="cancelled" ${status === 'cancelled' ? 'selected' : ''}>❌ Cancelled</option>
           </select>
         </td>
-        <td><div class="small">${driverName}</div></td>
-        <td>
-          <div class="btn-group btn-group-sm">
-            <button class="btn-cyber-outline py-1 px-2" title="Assign Driver" onclick="openAssignDriverModal('${bId}')">
-              <i class="fa-solid fa-user-plus"></i>
+        <td class="cell-driver">
+          <div class="small">${driverName}</div>
+        </td>
+        <td class="cell-actions">
+          <div class="d-flex gap-2">
+            <button class="btn-cyber-outline py-1 px-3" title="Assign Driver" onclick="openAssignDriverModal('${bId}')">
+              <i class="fa-solid fa-user-plus me-1"></i> <span class="d-md-none">Assign</span>
             </button>
-            <a href="https://wa.me/91${cPhone}?text=Hello%20${encodeURIComponent(cName)},%20regarding%20your%20Rudraksha%20Packers%20booking%20${bId}" target="_blank" class="btn-cyber-outline py-1 px-2 text-success" title="WhatsApp Chat">
-              <i class="fa-brands fa-whatsapp"></i>
+            <a href="https://wa.me/91${cPhone}?text=Hello%20${encodeURIComponent(cName)},%20regarding%20your%20Rudraksha%20Packers%20booking%20${bId}" target="_blank" class="btn-cyber-outline py-1 px-3 text-success" title="WhatsApp Chat">
+              <i class="fa-brands fa-whatsapp me-1"></i> <span class="d-md-none">Chat</span>
             </a>
           </div>
         </td>
@@ -436,134 +449,38 @@ function renderVehiclesTable(list = adminVehicles) {
     const v = list[key];
     return `
       <tr>
-        <td><i class="fa-solid ${v.icon || 'fa-truck'} fa-lg" style="color: #D0FD38;"></i></td>
-        <td>
+        <td class="cell-icon">
+          <div class="d-flex align-items-center gap-2">
+            <i class="fa-solid ${v.icon || 'fa-truck'} fa-lg" style="color: #D0FD38;"></i>
+            <span class="d-md-none fw-bold text-white">${v.name}</span>
+          </div>
+        </td>
+        <td class="cell-name d-none d-md-table-cell">
           <div class="fw-bold text-white">${v.name}</div>
           <div class="small text-muted"><code>${key}</code></div>
         </td>
-        <td><strong class="text-white">₹${Number(v.basePrice || 0).toLocaleString('en-IN')}</strong></td>
-        <td><strong style="color: #D0FD38;">₹${v.perKmRate || 0} / KM</strong></td>
-        <td><span class="cyber-badge-pill">${v.cap || 'Standard'}</span></td>
-        <td>
-          <div class="btn-group btn-group-sm">
-            <button class="btn-cyber-outline py-1 px-2" title="Edit Vehicle" onclick="editVehicle('${key}')">
-              <i class="fa-solid fa-pen-to-square"></i>
+        <td class="cell-base">
+          <div class="d-flex justify-content-between w-100"><span class="d-md-none text-muted small">Base Price:</span> <strong class="text-white">₹${Number(v.basePrice || 0).toLocaleString('en-IN')}</strong></div>
+        </td>
+        <td class="cell-rate">
+          <div class="d-flex justify-content-between w-100"><span class="d-md-none text-muted small">Per KM:</span> <strong style="color: #D0FD38;">₹${v.perKmRate || 0} / KM</strong></div>
+        </td>
+        <td class="cell-cap">
+          <div class="d-flex justify-content-between w-100"><span class="d-md-none text-muted small">Capacity:</span> <span class="cyber-badge-pill">${v.cap || 'Standard'}</span></div>
+        </td>
+        <td class="cell-actions">
+          <div class="d-flex gap-2">
+            <button class="btn-cyber-outline py-1 px-3" title="Edit Vehicle" onclick="editVehicle('${key}')">
+              <i class="fa-solid fa-pen-to-square me-1"></i> <span class="d-md-none">Edit</span>
             </button>
-            <button class="btn-cyber-outline py-1 px-2 text-danger" title="Delete Vehicle" onclick="deleteVehicle('${key}')">
-              <i class="fa-solid fa-trash"></i>
+            <button class="btn-cyber-outline py-1 px-3 text-danger" title="Delete Vehicle" onclick="deleteVehicle('${key}')">
+              <i class="fa-solid fa-trash me-1"></i> <span class="d-md-none">Delete</span>
             </button>
           </div>
         </td>
       </tr>
     `;
   }).join('');
-}
-
-function editVehicle(key) {
-  const v = adminVehicles[key];
-  if (!v) return;
-  document.getElementById('vehKey').value = key;
-  document.getElementById('vehName').value = v.name;
-  document.getElementById('vehBasePrice').value = v.basePrice;
-  document.getElementById('vehPerKm').value = v.perKmRate;
-  document.getElementById('vehCap').value = v.cap || '';
-  document.getElementById('vehIcon').value = v.icon || 'fa-truck';
-  document.getElementById('vehName').focus();
-}
-
-async function handleSaveVehicle() {
-  const key = document.getElementById('vehKey').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
-  const name = document.getElementById('vehName').value.trim();
-  const basePrice = parseFloat(document.getElementById('vehBasePrice').value) || 2500;
-  const perKmRate = parseFloat(document.getElementById('vehPerKm').value) || 35;
-  const cap = document.getElementById('vehCap').value.trim() || 'Custom';
-  const icon = document.getElementById('vehIcon').value.trim() || 'fa-truck';
-
-  if (!key || !name) {
-    alert('Please enter vehicle key and name.');
-    return;
-  }
-
-  const payload = { vehicle_key: key, name, basePrice, perKmRate, cap, icon };
-
-  try {
-    const res = await fetch(`${API_BASE}/admin/vehicles`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(payload)
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data.config && data.config.vehicles) adminVehicles = data.config.vehicles;
-      else adminVehicles[key] = { name, basePrice, perKmRate, cap, icon };
-    } else {
-      adminVehicles[key] = { name, basePrice, perKmRate, cap, icon };
-    }
-  } catch {
-    adminVehicles[key] = { name, basePrice, perKmRate, cap, icon };
-  }
-
-  localStorage.setItem('rudraksha_fleet_config', JSON.stringify(adminVehicles));
-  showAdminToast(`Vehicle model "${name}" added to Client Calculator!`);
-  document.getElementById('vehicleConfigForm').reset();
-  renderVehiclesTable();
-  populateDriverVehicleSelect();
-}
-
-async function deleteVehicle(key) {
-  if (!confirm(`Delete vehicle "${adminVehicles[key]?.name || key}" from calculator?`)) return;
-
-  try {
-    await fetch(`${API_BASE}/admin/vehicles/${key}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders()
-    });
-  } catch {}
-
-  delete adminVehicles[key];
-  localStorage.setItem('rudraksha_fleet_config', JSON.stringify(adminVehicles));
-  showAdminToast('Vehicle deleted successfully.');
-  renderVehiclesTable();
-  populateDriverVehicleSelect();
-}
-
-function populateDriverVehicleSelect() {
-  const select = document.getElementById('drvVehicleType');
-  if (!select) return;
-
-  const keys = Object.keys(adminVehicles);
-  if (keys.length === 0) {
-    select.innerHTML = `<option value="Tata Ace">Tata Ace (1.5 Ton)</option>`;
-    return;
-  }
-
-  select.innerHTML = keys.map(k => `
-    <option value="${adminVehicles[k].name}">${adminVehicles[k].name}</option>
-  `).join('');
-}
-
-/* ==========================================================================
-   6. DRIVERS ROSTER
-   ========================================================================== */
-async function loadDriversFromBackend() {
-  try {
-    const res = await fetch(`${API_BASE}/drivers`, {
-      headers: getAuthHeaders()
-    });
-    if (res.ok) {
-      const data = await res.json();
-      adminDrivers = data.drivers || [];
-    }
-  } catch {
-    adminDrivers = [
-      { id: 'drv-101', driver_name: 'Mukesh Sharma', phone: '9876543210', vehicle_number: 'RJ-14-GA-1024', vehicle_type: 'Tata Ace (1.5 Ton)', status: 'available', rating: 4.9 },
-      { id: 'drv-102', driver_name: 'Vikram Singh', phone: '9829012345', vehicle_number: 'RJ-14-GB-5521', vehicle_type: 'Eicher 14ft (3.5 Ton)', status: 'available', rating: 4.8 },
-      { id: 'drv-103', driver_name: 'Ramesh Meena', phone: '9414098765', vehicle_number: 'RJ-14-GC-8840', vehicle_type: '19ft Container (7 Ton)', status: 'available', rating: 4.7 }
-    ];
-  }
-
-  renderDriversTable();
 }
 
 function renderDriversTable() {
@@ -573,20 +490,40 @@ function renderDriversTable() {
   tbody.innerHTML = adminDrivers.map((d) => `
     <tr>
       <td>
-        <div class="fw-bold text-white">${d.driver_name}</div>
-        <div class="small text-muted">ID: ${d.id}</div>
+        <div class="d-flex justify-content-between align-items-center w-100">
+          <div>
+            <div class="fw-bold text-white">${d.driver_name}</div>
+            <div class="small text-muted">ID: ${d.id}</div>
+          </div>
+          <span style="color: #D0FD38; font-weight: bold;">⭐ ${d.rating || 4.8}</span>
+        </div>
       </td>
-      <td><a href="tel:${d.phone}" class="text-decoration-none" style="color: #8E8E93;"><i class="fa-solid fa-phone text-success me-1"></i>+91 ${d.phone}</a></td>
       <td>
-        <span class="cyber-badge-pill" style="color: #ffffff;">${d.vehicle_number}</span>
-        <span class="small text-muted ms-1">${d.vehicle_type}</span>
+        <div class="d-flex justify-content-between w-100 align-items-center">
+          <span class="d-md-none text-muted small">Phone:</span>
+          <a href="tel:${d.phone}" class="text-decoration-none" style="color: #8E8E93;"><i class="fa-solid fa-phone text-success me-1"></i>+91 ${d.phone}</a>
+        </div>
       </td>
       <td>
-        <span class="cyber-badge-pill ${d.status === 'available' ? 'active-glow' : ''}">
-          <span class="dot"></span> ${(d.status || 'available').toUpperCase()}
-        </span>
+        <div class="d-flex justify-content-between w-100 align-items-center">
+          <span class="d-md-none text-muted small">Vehicle:</span>
+          <div>
+            <span class="cyber-badge-pill" style="color: #ffffff;">${d.vehicle_number}</span>
+            <span class="small text-muted ms-1">${d.vehicle_type}</span>
+          </div>
+        </div>
       </td>
-      <td><span style="color: #D0FD38; font-weight: bold;">⭐ ${d.rating || 4.8}</span></td>
+      <td>
+        <div class="d-flex justify-content-between w-100 align-items-center">
+          <span class="d-md-none text-muted small">Status:</span>
+          <span class="cyber-badge-pill ${d.status === 'available' ? 'active-glow' : ''}">
+            <span class="dot"></span> ${(d.status || 'available').toUpperCase()}
+          </span>
+        </div>
+      </td>
+      <td class="d-none d-md-table-cell">
+        <span style="color: #D0FD38; font-weight: bold;">⭐ ${d.rating || 4.8}</span>
+      </td>
     </tr>
   `).join('');
 }
@@ -782,11 +719,25 @@ function renderCouponsTable() {
 
   tbody.innerHTML = adminCoupons.map((c) => `
     <tr>
-      <td><span class="cyber-badge-pill active-glow font-monospace fs-6">${c.code}</span></td>
-      <td>${c.type === 'percent' ? 'Percentage (%)' : 'Flat (₹)'}</td>
-      <td><strong style="color: #D0FD38;">${c.type === 'percent' ? `${c.value}%` : `₹${c.value}`}</strong></td>
-      <td class="small text-muted">${c.description || '-'}</td>
-      <td><button class="btn-cyber-outline py-1 px-2 text-danger" onclick="deleteAdminCoupon('${c.code}')"><i class="fa-solid fa-trash"></i></button></td>
+      <td>
+        <div class="d-flex justify-content-between align-items-center w-100">
+          <span class="cyber-badge-pill active-glow font-monospace fs-6">${c.code}</span>
+          <strong style="color: #D0FD38;" class="fs-6">${c.type === 'percent' ? `${c.value}% OFF` : `₹${c.value} OFF`}</strong>
+        </div>
+      </td>
+      <td class="d-none d-md-table-cell">${c.type === 'percent' ? 'Percentage (%)' : 'Flat (₹)'}</td>
+      <td class="d-none d-md-table-cell"><strong style="color: #D0FD38;">${c.type === 'percent' ? `${c.value}%` : `₹${c.value}`}</strong></td>
+      <td>
+        <div class="d-flex justify-content-between w-100 align-items-center">
+          <span class="small text-muted">${c.description || 'Special Relocation Discount'}</span>
+          <button class="btn-cyber-outline py-1 px-3 text-danger ms-2 d-md-none" onclick="deleteAdminCoupon('${c.code}')">
+            <i class="fa-solid fa-trash me-1"></i> Delete
+          </button>
+        </div>
+      </td>
+      <td class="d-none d-md-table-cell">
+        <button class="btn-cyber-outline py-1 px-2 text-danger" onclick="deleteAdminCoupon('${c.code}')"><i class="fa-solid fa-trash"></i></button>
+      </td>
     </tr>
   `).join('');
 }
