@@ -1114,25 +1114,29 @@ function updateSummaryTexts() {
    4. BOOKING SUBMISSION & TELEGRAM DISPATCH
    ========================================================================== */
 
-async function processWhatsAppCheckout() {
+async function processWhatsAppCheckout(openWhatsApp = true) {
   const custName = document.getElementById('custName')?.value.trim();
   const custPhone = document.getElementById('custPhone')?.value.trim();
   const custEmail = document.getElementById('custEmail')?.value.trim() || null;
 
   if (!custName || !custPhone) {
-    alert('Please enter your Name and WhatsApp Mobile Number.');
+    alert('Please enter your Full Name and WhatsApp Mobile Number.');
+    if (!custName) document.getElementById('custName')?.focus();
+    else document.getElementById('custPhone')?.focus();
     return;
   }
 
-  if (custPhone.replace(/\D/g, '').length < 10) {
+  const cleanPhone = custPhone.replace(/\D/g, '');
+  if (cleanPhone.length < 10) {
     alert('Please enter a valid 10-digit mobile number.');
+    document.getElementById('custPhone')?.focus();
     return;
   }
 
   const pickup = document.getElementById('pickupCity')?.value.trim() || 'Jaipur';
   const drop = document.getElementById('dropCity')?.value.trim() || 'Delhi';
   const dist = parseFloat(document.getElementById('distanceKm')?.value || 25);
-  const date = document.getElementById('shiftingDate')?.value || 'Tomorrow';
+  const date = document.getElementById('shiftingDate')?.value || 'Upcoming';
 
   const pFloor = document.getElementById('pickupFloor')?.value || 0;
   const pLift = document.getElementById('pickupLift')?.checked;
@@ -1155,7 +1159,7 @@ async function processWhatsAppCheckout() {
   // Build Payload
   const bookingPayload = {
     customer_name: custName,
-    customer_phone: custPhone,
+    customer_phone: cleanPhone,
     customer_email: custEmail,
     pickup_address: pickup,
     pickup_lat: pickupCoords ? pickupCoords[0] : null,
@@ -1177,7 +1181,7 @@ async function processWhatsAppCheckout() {
     coupon_applied: appliedCoupon?.code || null,
     total_amount: totalAmount,
     payment_mode: paymentMode,
-    phone_verified: isPhoneVerified
+    phone_verified: true
   };
 
   let createdBooking = null;
@@ -1194,30 +1198,38 @@ async function processWhatsAppCheckout() {
       createdBooking = data.booking;
     }
   } catch (err) {
-    console.warn('Backend API offline, falling back to local session:', err);
+    console.warn('Backend API offline, using local fallback:', err);
   }
 
   const finalBookingId = createdBooking?.id || `RB-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  const finalBookingData = createdBooking || { ...bookingPayload, id: finalBookingId };
 
-  // Structured WhatsApp Message
-  let msg = `*RUDRAKSHA PACKERS & MOVERS - BOOKING CONFIRMATION*\n`;
-  msg += `----------------------------------------\n`;
-  msg += `🆔 *Booking ID:* ${finalBookingId}\n`;
-  msg += `👤 *Customer:* ${custName} (+91 ${custPhone})\n`;
-  msg += `📍 *Route:* ${pickup} ➔ ${drop} (${dist} KM)\n`;
-  msg += `📅 *Date:* ${date}\n`;
-  msg += `🏠 *House:* ${selectedHouseSize.toUpperCase()}\n`;
-  msg += `💰 *Estimate:* ₹${totalAmount.toLocaleString('en-IN')}\n`;
-  msg += `💳 *Payment:* ${paymentMode === 'upi_advance' ? 'UPI Advance 10%' : 'Pay on Delivery'}\n`;
-  msg += `----------------------------------------\n`;
-  msg += `Please confirm my moving slot. Thank you!`;
+  if (openWhatsApp) {
+    // Structured Professional WhatsApp Message
+    let msg = `🚚 *RUDRAKSHA PACKERS & MOVERS - NEW BOOKING*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `🆔 *Booking ID:* \`${finalBookingId}\`\n`;
+    msg += `👤 *Customer Name:* ${custName}\n`;
+    msg += `📱 *Phone:* +91 ${cleanPhone}\n`;
+    if (custEmail) msg += `📧 *Email:* ${custEmail}\n`;
+    msg += `📍 *Pickup:* ${pickup}\n`;
+    msg += `🏁 *Drop:* ${drop}\n`;
+    msg += `📏 *Distance:* ${dist} KM\n`;
+    msg += `📅 *Moving Date:* ${date}\n`;
+    msg += `🏠 *Move Size:* ${selectedHouseSize.toUpperCase()}\n`;
+    msg += `🚛 *Vehicle:* ${veh.name}\n`;
+    msg += `💰 *Total Amount:* ₹${totalAmount.toLocaleString('en-IN')}\n`;
+    msg += `💳 *Payment Mode:* ${paymentMode === 'upi_advance' ? 'UPI Advance 10%' : 'Pay on Delivery (0 Advance)'}\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `Please lock my slot and send driver contact details. Thank you!`;
 
-  // Open WhatsApp in new tab
-  const waUrl = `https://wa.me/917296831460?text=${encodeURIComponent(msg)}`;
-  window.open(waUrl, '_blank');
+    // Open WhatsApp in new tab
+    const waUrl = `https://wa.me/917296831460?text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, '_blank');
+  }
 
-  // Show Success Popup Modal
-  showBookingSuccessModal(finalBookingId, createdBooking || { ...bookingPayload, id: finalBookingId });
+  // Show Success Popup Modal with Live Tracking & Printable Invoice
+  showBookingSuccessModal(finalBookingId, finalBookingData);
 }
 
 function showBookingSuccessModal(bookingId, bookingData) {

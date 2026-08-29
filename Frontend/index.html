@@ -792,72 +792,44 @@
                 </div>
               </div>
 
-              <!-- STEP 5: Final Estimate & Checkout -->
+              <!-- STEP 5: Final Estimate & Instant WhatsApp Confirmation -->
               <div class="wizard-step-content" id="step5">
-                <h4 class="fw-bold mb-1 text-secondary-custom"><i class="fa-solid fa-circle-check text-primary-custom me-2"></i>Step 5: Verification & Booking Confirmation</h4>
-                <p class="text-muted small mb-3">Verify your mobile number via OTP to lock your relocation slot.</p>
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <h4 class="fw-bold mb-0 text-secondary-custom">
+                    <i class="fa-solid fa-circle-check text-success me-2"></i>Step 5: Contact & Instant Confirmation
+                  </h4>
+                  <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill">
+                    <i class="fa-brands fa-whatsapp me-1"></i> 100% Free & Fast
+                  </span>
+                </div>
+                <p class="text-muted small mb-3">No waiting for OTP! Get instant quotation, shifting slot booking, and live tracking directly on WhatsApp.</p>
 
                 <div class="row g-3">
                   <div class="col-md-6">
-                    <label class="form-label fw-semibold">Your Full Name</label>
-                    <input type="text" class="form-control form-control-lg" id="custName" placeholder="e.g. Rajesh Sharma" required>
+                    <label class="form-label fw-semibold">Your Full Name <span class="text-danger">*</span></label>
+                    <div class="input-group input-group-lg">
+                      <span class="input-group-text"><i class="fa-solid fa-user text-muted"></i></span>
+                      <input type="text" class="form-control" id="custName" placeholder="e.g. Rajesh Sharma" required>
+                    </div>
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label fw-semibold">Email Address <span class="text-muted fw-normal">(Optional for Invoice)</span></label>
-                    <input type="email" class="form-control form-control-lg" id="custEmail" placeholder="e.g. rajesh@gmail.com">
+                    <label class="form-label fw-semibold">Email Address <span class="text-muted fw-normal">(Optional for GST Invoice)</span></label>
+                    <div class="input-group input-group-lg">
+                      <span class="input-group-text"><i class="fa-solid fa-envelope text-muted"></i></span>
+                      <input type="email" class="form-control" id="custEmail" placeholder="e.g. rajesh@gmail.com">
+                    </div>
                   </div>
                   <div class="col-12">
-                    <label class="form-label fw-semibold">Mobile Number</label>
+                    <label class="form-label fw-semibold">WhatsApp Mobile Number <span class="text-danger">*</span></label>
                     <div class="input-group input-group-lg">
-                      <span class="input-group-text">+91</span>
-                      <input type="tel" class="form-control" id="custPhone" placeholder="9876543210" maxlength="10" required>
-                      <button class="btn btn-outline-primary-custom px-4" type="button" id="btnSendOtp" onclick="requestPhoneOTP()">
-                        <i class="fa-solid fa-paper-plane me-1"></i> Send OTP
-                      </button>
+                      <span class="input-group-text bg-success-subtle text-success fw-bold">
+                        <i class="fa-brands fa-whatsapp me-1"></i> +91
+                      </span>
+                      <input type="tel" class="form-control" id="custPhone" placeholder="Enter 10-digit WhatsApp number (e.g. 9876543210)" maxlength="10" required>
                     </div>
-                  </div>
-                </div>
-
-                <!-- Firebase Invisible Recaptcha Container -->
-                <div id="recaptcha-container"></div>
-
-                <!-- OTP Verification Box (Appears when OTP requested) -->
-                <div class="otp-container-card" id="otpVerificationSection" style="display: none;">
-                  <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="fw-bold text-secondary-custom"><i class="fa-solid fa-shield-halved text-primary-custom me-1"></i> Enter 6-Digit Verification Code</span>
-                    <div class="d-flex gap-1 align-items-center">
-                      <span class="badge bg-warning-subtle text-warning-emphasis">Dev Code: 123456</span>
-                      <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2 rounded-pill" onclick="autoFillDevOtp('123456')" title="Click to fill test code 123456" style="font-size: 0.75rem;">
-                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Fill 123456
-                      </button>
+                    <div class="form-text text-muted small mt-1">
+                      <i class="fa-solid fa-shield-halved text-success me-1"></i> We respect your privacy. Your quotation & driver details are sent securely to this number.
                     </div>
-                  </div>
-                  <p class="small text-muted mb-2">We sent a verification code to <strong id="otpTargetPhone">+91 XXXXXXXXXX</strong></p>
-                  
-                  <div class="otp-digit-inputs">
-                    <input type="text" class="otp-digit-input" maxlength="1" id="otp1" oninput="moveToNextOtp(this, 'otp2')">
-                    <input type="text" class="otp-digit-input" maxlength="1" id="otp2" oninput="moveToNextOtp(this, 'otp3')">
-                    <input type="text" class="otp-digit-input" maxlength="1" id="otp3" oninput="moveToNextOtp(this, 'otp4')">
-                    <input type="text" class="otp-digit-input" maxlength="1" id="otp4" oninput="moveToNextOtp(this, 'otp5')">
-                    <input type="text" class="otp-digit-input" maxlength="1" id="otp5" oninput="moveToNextOtp(this, 'otp6')">
-                    <input type="text" class="otp-digit-input" maxlength="1" id="otp6" oninput="moveToNextOtp(this, null)">
-                  </div>
-
-                  <div class="d-flex justify-content-between align-items-center mt-3">
-                    <button type="button" class="btn btn-sm btn-link text-muted p-0" id="btnResendOtp" onclick="requestPhoneOTP()" disabled>
-                      Resend Code in (<span id="otpTimer">30</span>s)
-                    </button>
-                    <button type="button" class="btn btn-primary-custom btn-sm px-4" onclick="verifyEnteredOTP()">
-                      <i class="fa-solid fa-circle-check me-1"></i> Verify OTP
-                    </button>
-                  </div>
-                  <div id="otpStatusMsg" class="small mt-2"></div>
-                </div>
-
-                <!-- Verified Badge Indicator -->
-                <div id="phoneVerifiedBadge" class="mt-3" style="display: none;">
-                  <div class="verified-badge">
-                    <i class="fa-solid fa-circle-check"></i> Phone Verified (+91 <span id="verifiedPhoneText"></span>)
                   </div>
                 </div>
 
@@ -869,7 +841,7 @@
                       <div class="form-check p-2 border rounded bg-white">
                         <input class="form-check-input ms-1" type="radio" name="paymentMode" id="payCOD" value="cash_on_delivery" checked>
                         <label class="form-check-label ms-2 fw-semibold" for="payCOD">
-                          <i class="fa-solid fa-hand-holding-dollar text-success me-1"></i> Pay on Delivery (0 Advance)
+                          <i class="fa-solid fa-hand-holding-dollar text-success me-1"></i> Pay on Delivery (₹0 Advance)
                         </label>
                       </div>
                     </div>
@@ -877,7 +849,7 @@
                       <div class="form-check p-2 border rounded bg-white">
                         <input class="form-check-input ms-1" type="radio" name="paymentMode" id="payUPI" value="upi_advance">
                         <label class="form-check-label ms-2 fw-semibold" for="payUPI">
-                          <i class="fa-solid fa-qrcode text-primary-custom me-1"></i> UPI QR Advance (10% Token)
+                          <i class="fa-solid fa-qrcode text-primary-custom me-1"></i> UPI Advance (10% Token)
                         </label>
                       </div>
                     </div>
@@ -886,7 +858,7 @@
 
                 <!-- Coupon Code Box -->
                 <div class="mt-3 p-3 bg-light border rounded-3">
-                  <label class="form-label fw-semibold text-secondary-custom">Have a Coupon Code?</label>
+                  <label class="form-label fw-semibold text-secondary-custom">Have a Promo / Coupon Code?</label>
                   <div class="input-group">
                     <input type="text" class="form-control text-uppercase" id="couponCodeInput" placeholder="Try 'RUDRAKSHA10'">
                     <button class="btn btn-secondary-custom" type="button" onclick="applyCouponCode()">Apply Coupon</button>
@@ -897,7 +869,7 @@
                 <!-- Complete Booking Summary -->
                 <div class="mt-3 p-3 border rounded-3 bg-white">
                   <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="fw-bold mb-0">Booking Summary Overview</h6>
+                    <h6 class="fw-bold mb-0">Relocation Summary Overview</h6>
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="previewCurrentInvoice()">
                       <i class="fa-solid fa-file-invoice me-1"></i> Preview Invoice
                     </button>
@@ -912,12 +884,17 @@
                   </div>
                 </div>
 
-                <!-- WhatsApp Redirect Button & Submit -->
-                <div class="mt-4">
-                  <button type="button" class="btn-whatsapp w-100" onclick="processWhatsAppCheckout()">
-                    <i class="fa-brands fa-whatsapp fa-xl"></i> Confirm Booking & Open WhatsApp
+                <!-- Dual High-Impact Booking Buttons -->
+                <div class="mt-4 d-flex flex-column gap-2">
+                  <button type="button" class="btn-whatsapp-booking w-100 shadow" onclick="processWhatsAppCheckout(true)">
+                    <i class="fa-brands fa-whatsapp fa-xl"></i> Lock Slot & Confirm via WhatsApp
                   </button>
-                  <p class="text-center small text-muted mt-2 mb-0"><i class="fa-solid fa-lock me-1"></i> Secure direct booking. Telegram alert will notify the owner instantly.</p>
+                  <button type="button" class="btn-online-booking w-100" onclick="processWhatsAppCheckout(false)">
+                    <i class="fa-solid fa-circle-check text-primary-custom me-1"></i> Confirm Booking Directly (Without WhatsApp)
+                  </button>
+                  <p class="text-center small text-muted mt-2 mb-0">
+                    <i class="fa-solid fa-shield-check text-success me-1"></i> Instant confirmation. Owner gets real-time Telegram notification immediately.
+                  </p>
                 </div>
 
               </div>
