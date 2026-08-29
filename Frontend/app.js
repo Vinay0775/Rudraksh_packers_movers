@@ -1387,20 +1387,46 @@ function previewCurrentInvoice() {
 }
 
 function renderTaxInvoice(booking) {
-  document.getElementById('invBookingId').innerText = booking.id;
+  document.getElementById('invBookingId').innerText = booking.id || 'RB-ESTIMATE';
   document.getElementById('invDateToday').innerText = new Date().toLocaleDateString('en-IN');
-  document.getElementById('invCustName').innerText = booking.customer_name || booking.name || 'Customer';
+  document.getElementById('invCustName').innerText = booking.customer_name || booking.name || 'Valued Customer';
   document.getElementById('invCustPhone').innerText = booking.customer_phone || booking.phone || '-';
   document.getElementById('invCustEmail').innerText = booking.customer_email || 'customer@mail.com';
   document.getElementById('invPickup').innerText = booking.pickup_address || booking.pickup || '-';
   document.getElementById('invDrop').innerText = booking.drop_address || booking.drop || '-';
-  document.getElementById('invShiftingDate').innerText = booking.shifting_date || booking.date || '-';
+  document.getElementById('invShiftingDate').innerText = booking.shifting_date || booking.date || 'Upcoming';
   document.getElementById('invDistance').innerText = `${booking.distance_km || 25} KM`;
   document.getElementById('invDistanceKmRow').innerText = booking.distance_km || 25;
 
-  const total = booking.total_amount || 5700;
-  document.getElementById('invGrandTotal').innerText = `₹${total.toLocaleString('en-IN')}.00`;
-  document.getElementById('invSubtotal').innerText = `₹${total.toLocaleString('en-IN')}.00`;
+  // Sync itemized breakdown
+  const baseVal = document.getElementById('priceBase')?.innerText || '₹2,500.00';
+  const distVal = document.getElementById('priceDistance')?.innerText || '₹875.00';
+  const invVal = document.getElementById('priceInventory')?.innerText || '₹1,200.00';
+  const laborVal = document.getElementById('priceLabor')?.innerText || '₹0.00';
+  const addonsVal = document.getElementById('priceAddons')?.innerText || '₹0.00';
+
+  if (document.getElementById('invBaseCharge')) document.getElementById('invBaseCharge').innerText = baseVal;
+  if (document.getElementById('invDistCharge')) document.getElementById('invDistCharge').innerText = distVal;
+  if (document.getElementById('invInventoryCharge')) document.getElementById('invInventoryCharge').innerText = invVal;
+  if (document.getElementById('invLaborCharge')) document.getElementById('invLaborCharge').innerText = laborVal;
+  if (document.getElementById('invAddonsCharge')) document.getElementById('invAddonsCharge').innerText = addonsVal;
+
+  const total = booking.total_amount || parseFloat(document.getElementById('priceTotal')?.innerText.replace(/[^\d.]/g, '')) || 5700;
+  document.getElementById('invGrandTotal').innerText = `₹${Number(total).toLocaleString('en-IN')}.00`;
+  document.getElementById('invSubtotal').innerText = `₹${Number(total).toLocaleString('en-IN')}.00`;
+
+  const discountRow = document.getElementById('invDiscountRow');
+  if (appliedCoupon && discountRow) {
+    discountRow.style.display = 'table-row';
+    document.getElementById('invCouponCode').innerText = appliedCoupon.code;
+    document.getElementById('invDiscountAmount').innerText = document.getElementById('priceDiscount')?.innerText || '- ₹0.00';
+  } else if (discountRow) {
+    discountRow.style.display = 'none';
+  }
+}
+
+function printInvoice() {
+  window.print();
 }
 
 /* ==========================================================================
