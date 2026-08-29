@@ -674,56 +674,53 @@ async function requestPhoneOTP() {
 
   try {
     if (isFirebaseActive) {
-      // 1. Send Real SMS via Google Firebase Phone Auth (10,000 Free SMS/Month)
-      const fullPhoneNumber = `+91${phone}`;
-      firebaseConfirmationResult = await firebase.auth().signInWithPhoneNumber(fullPhoneNumber, window.recaptchaVerifier);
-      
-      const otpSection = document.getElementById('otpVerificationSection');
-      if (otpSection) otpSection.style.display = 'block';
-      
-      document.getElementById('otpTargetPhone').innerText = `+91 ${phone}`;
-      const statusMsg = document.getElementById('otpStatusMsg');
-      if (statusMsg) {
-        statusMsg.innerHTML = `<span class="text-success"><i class="fa-brands fa-google me-1"></i> <strong>Google SMS Sent!</strong> Verification code delivered to +91 ${phone}.</span>`;
-      }
-    } else {
-      // 2. Server / Dev Mode Fallback
-      const response = await fetch(`${BOOKING_API_URL}/otp/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone })
-      });
+      try {
+        // 1. Send Real SMS via Google Firebase Phone Auth (10,000 Free SMS/Month)
+        const fullPhoneNumber = `+91${phone}`;
+        firebaseConfirmationResult = await firebase.auth().signInWithPhoneNumber(fullPhoneNumber, window.recaptchaVerifier);
+        
+        const otpSection = document.getElementById('otpVerificationSection');
+        if (otpSection) otpSection.style.display = 'block';
+        
+        document.getElementById('otpTargetPhone').innerText = `+91 ${phone}`;
+        const statusMsg = document.getElementById('otpStatusMsg');
+        if (statusMsg) {
+          statusMsg.innerHTML = `<span class="text-success"><i class="fa-brands fa-google me-1"></i> <strong>Google SMS Sent!</strong> Verification code delivered to +91 ${phone}.</span>`;
+        }
+        startOtpTimer(30);
+        document.getElementById('otp1')?.focus();
+        return;
+      } catch (fbErr) {
+        console.warn('Firebase SMS error:', fbErr);
+        if (window.recaptchaVerifier && typeof window.recaptchaVerifier.clear === 'function') {
+          try { window.recaptchaVerifier.clear(); } catch(e){}
+          window.recaptchaVerifier = null;
+        }
 
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to send OTP.');
-      }
-
-      // Show OTP container
-      const otpSection = document.getElementById('otpVerificationSection');
-      if (otpSection) otpSection.style.display = 'block';
-      
-      document.getElementById('otpTargetPhone').innerText = `+91 ${phone}`;
-      const statusMsg = document.getElementById('otpStatusMsg');
-      if (statusMsg) {
-        if (data.smsDelivered) {
-          statusMsg.innerHTML = `<span class="text-success"><i class="fa-solid fa-circle-check me-1"></i> SMS sent to +91 ${phone} via ${data.smsProvider || 'SMS Gateway'}.</span>`;
+        if (fbErr.code === 'auth/operation-not-allowed') {
+          alert('⚠️ Firebase Notice:\nPhone Auth is not enabled in Firebase Console yet.\n\n👉 Go to: Firebase Console -> Authentication -> Sign-in method -> Click "Phone" -> Enable -> Save.\n\nFor now, we have opened the Dev Mode so you can verify using code: 123456');
+        } else if (fbErr.code === 'auth/unauthorized-domain') {
+          alert('⚠️ Firebase Notice:\nThis domain is not added to Authorized Domains in Firebase.\n\n👉 Go to: Firebase Console -> Authentication -> Settings -> Authorized domains -> Add your domain (e.g. rudraksh-packers-and-movers.pages.dev).');
         } else {
-          const codeToShow = data.devOtp || '123456';
-          statusMsg.innerHTML = `<span class="text-info"><i class="fa-solid fa-circle-info me-1"></i> <strong>Dev Mode Active:</strong> OTP is <strong>${codeToShow}</strong> (or use <strong>123456</strong>). <a href="javascript:void(0)" onclick="autoFillDevOtp('${codeToShow}')" class="fw-bold text-decoration-underline ms-1">Click to auto-fill</a></span>`;
+          alert(`Firebase SMS Notice: ${fbErr.message}\n\nFalling back to test mode (use code: 123456).`);
         }
       }
+    }
+
+    // 2. Server / Dev Mode Fallback
+    const otpSection = document.getElementById('otpVerificationSection');
+    if (otpSection) otpSection.style.display = 'block';
+    
+    document.getElementById('otpTargetPhone').innerText = `+91 ${phone}`;
+    const statusMsg = document.getElementById('otpStatusMsg');
+    if (statusMsg) {
+      statusMsg.innerHTML = `<span class="text-info"><i class="fa-solid fa-circle-info me-1"></i> <strong>Dev Mode:</strong> Use code <strong>123456</strong>. <a href="javascript:void(0)" onclick="autoFillDevOtp('123456')" class="fw-bold text-decoration-underline ms-1">Auto-fill 123456</a></span>`;
     }
 
     startOtpTimer(30);
     document.getElementById('otp1')?.focus();
   } catch (err) {
     console.error('OTP request error:', err);
-    // Reset recaptcha if failed so user can retry cleanly
-    if (window.recaptchaVerifier && typeof window.recaptchaVerifier.clear === 'function') {
-      try { window.recaptchaVerifier.clear(); } catch(e){}
-      window.recaptchaVerifier = null;
-    }
     alert(`Could not send OTP: ${err.message}\n\nTip: You can also verify instantly with test code 123456.`);
   } finally {
     if (btnSend) {
