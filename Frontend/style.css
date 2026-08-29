@@ -1707,5 +1707,107 @@ body {
   color: #f8fafc !important;
 }
 
+/* --- Live Location Autocomplete & Quick Chips --- */
+.location-input-wrap {
+  position: relative;
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15);
+  border: 1px solid #e2e8f0;
+  z-index: 1050;
+  margin-top: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  display: none;
+}
+
+.autocomplete-dropdown.show {
+  display: block;
+}
+
+.autocomplete-item {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s ease;
+  font-size: 0.9rem;
+  color: #1e293b;
+}
+
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-item:hover {
+  background: #f8fafc;
+  color: var(--primary-color, #f97316);
+}
+
+.autocomplete-item i {
+  color: var(--primary-color, #f97316);
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.autocomplete-main-text {
+  font-weight: 600;
+  display: block;
+}
+
+.autocomplete-sub-text {
+  font-size: 0.75rem;
+  color: #64748b;
+  display: block;
+}
+
+.quick-location-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.chip-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chip-btn:hover {
+  background: var(--primary-color, #f97316);
+  color: #ffffff;
+  border-color: var(--primary-color, #f97316);
+  transform: translateY(-1px);
+}
+
+.map-helper-tip {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
 
 

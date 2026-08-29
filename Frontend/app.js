@@ -100,19 +100,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Attach event listeners for live recalculations
   document.getElementById('distanceKm')?.addEventListener('input', recalculateTotal);
-  document.getElementById('pickupCity')?.addEventListener('input', () => {
-    pickupCoords = null;
-    updateSummaryTexts();
-  });
-  document.getElementById('dropCity')?.addEventListener('input', () => {
-    dropCoords = null;
-    updateSummaryTexts();
-  });
   document.getElementById('shiftingDate')?.addEventListener('change', updateSummaryTexts);
+
+  // Initialize Live Location Autocomplete for Pickup and Drop
+  initLocationAutocomplete('pickupCity', 'pickupSuggestions', 'pickup');
+  initLocationAutocomplete('dropCity', 'dropSuggestions', 'drop');
 
   // Debounced auto-route lookup on input change
   document.getElementById('pickupCity')?.addEventListener('change', () => calculateOSRMRoute(false));
   document.getElementById('dropCity')?.addEventListener('change', () => calculateOSRMRoute(false));
+
+  // Close autocomplete dropdowns when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.location-input-wrap')) {
+      document.querySelectorAll('.autocomplete-dropdown').forEach(d => d.classList.remove('show'));
+    }
+  });
 
   // Initial Calculation
   recalculateTotal();
@@ -120,7 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /* ==========================================================================
-   1. MAP & ROUTE ENGINE (OpenStreetMap, Leaflet, Geolocation, OSRM)
+   1. MAP & ROUTE ENGINE (OpenStreetMap, Leaflet, Live Autocomplete, OSRM)
    ========================================================================== */
 
 function initRouteMap() {
@@ -128,16 +131,198 @@ function initRouteMap() {
   if (!mapEl || typeof L === 'undefined') return;
 
   try {
-    // Default center at India center (22.5, 78.9) with pan/zoom
-    leafletMap = L.map('routeMap').setView([22.5937, 78.9629], 5);
+    // Default center at Jaipur (Company Headquarter & Hub: 26.9124, 75.7873)
+    leafletMap = L.map('routeMap').setView([26.9124, 75.7873], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '© OpenStreetMap contributors'
     }).addTo(leafletMap);
+
+    // Allow user to click anywhere on map to pinpoint their exact location
+    leafletMap.on('click', async (e) => {
+      const { lat, lng } = e.latlng;
+      await applyPinpointCoords(lat, lng, 'Pinned on Map', true);
+    });
   } catch (err) {
     console.warn('Leaflet map initialization skipped or map container not ready:', err);
   }
+}
+
+/**
+ * Apply Pinpoint Coordinates from Map Click, Drag, or GPS
+ */
+async function applyPinpointCoords(lat, lng, defaultLabel = 'Selected Point', isPickup = true) {
+  const statusEl = document.getElementById('routeMapStatus');
+  if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary-custom me-1"></i> Pinpointing exact location on map...';
+
+  if (isPickup) {
+    pickupCoords = [lat, lng];
+
+    if (leafletMap) {
+      if (pickupMarker) {
+        pickupMarker.setLatLng([lat, lng]);
+      } else {
+        pickupMarker = L.marker([lat, lng], { draggable: true }).addTo(leafletMap);
+        pickupMarker.on('dragend', async (e) => {
+          const newPos = e.target.getLatLng();
+          await applyPinpointCoords(newPos.lat, newPos.lng, 'Dragged Pin', true);
+        });
+      }
+      pickupMarker.bindPopup('<b>📍 Your Pickup Location</b><br><small class="text-muted">Drag to adjust</small>').openPopup();
+      leafletMap.panTo([lat, lng]);
+    }
+
+    // High precision reverse geocode to get exact street/colony
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+      const data = await res.json();
+      let address = '';
+      if (data && data.address) {
+        const a = data.address;
+        const street = a.road || a.suburb || a.neighbourhood || a.residential || '';
+        const city = a.city || a.town || a.county || a.state_district || '';
+        const state = a.state || '';
+        address = [street, city, state].filter(Boolean).join(', ');
+      }
+      if (!address && data && data.display_name) {
+        address = data.display_name.split(',').slice(0, 3).join(',');
+      }
+
+      const finalAddress = address || defaultLabel;
+      const pickupInput = document.getElementById('pickupCity');
+      if (pickupInput) {
+        pickupInput.value = finalAddress;
+        updateSummaryTexts();
+      }
+      if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> Exact Location Set: <strong>${finalAddress}</strong>`;
+    } catch (e) {
+      if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> Location pinned at [${lat.toFixed(4)}, ${lng.toFixed(4)}]`;
+    }
+
+    // Auto calculate route if drop is filled
+    const dropVal = document.getElementById('dropCity')?.value.trim();
+    if (dropVal) calculateOSRMRoute(false);
+  }
+}
+
+/**
+ * Fast Indian Location Auto-Suggest Engine
+ */
+let autocompleteDebounceTimer = null;
+function initLocationAutocomplete(inputId, dropdownId, type) {
+  const input = document.getElementById(inputId);
+  const dropdown = document.getElementById(dropdownId);
+  if (!input || !dropdown) return;
+
+  input.addEventListener('input', () => {
+    const query = input.value.trim();
+    clearTimeout(autocompleteDebounceTimer);
+
+    if (type === 'pickup') pickupCoords = null;
+    if (type === 'drop') dropCoords = null;
+
+    if (query.length < 2) {
+      dropdown.innerHTML = '';
+      dropdown.classList.remove('show');
+      return;
+    }
+
+    autocompleteDebounceTimer = setTimeout(async () => {
+      try {
+        // Photon OpenStreetMap Search API
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6&lang=en`);
+        const data = await res.json();
+
+        if (data && data.features && data.features.length > 0) {
+          dropdown.innerHTML = '';
+          data.features.forEach(f => {
+            const props = f.properties;
+            const [lng, lat] = f.geometry.coordinates;
+
+            const name = props.name || '';
+            const city = props.city || props.county || props.state || '';
+            const state = props.state || props.country || '';
+            const sub = [city, state].filter(Boolean).join(', ');
+
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.innerHTML = `
+              <i class="fa-solid ${type === 'pickup' ? 'fa-location-dot' : 'fa-flag-checkered'}"></i>
+              <div>
+                <span class="autocomplete-main-text">${name}</span>
+                <span class="autocomplete-sub-text">${sub}</span>
+              </div>
+            `;
+
+            item.addEventListener('click', () => {
+              const fullAddress = [name, sub].filter(Boolean).join(', ');
+              input.value = fullAddress;
+              dropdown.classList.remove('show');
+
+              if (type === 'pickup') {
+                pickupCoords = [lat, lng];
+                if (leafletMap) {
+                  if (pickupMarker) pickupMarker.setLatLng([lat, lng]);
+                  else pickupMarker = L.marker([lat, lng], { draggable: true }).addTo(leafletMap);
+                  pickupMarker.bindPopup(`<b>📍 ${fullAddress}</b>`).openPopup();
+                  leafletMap.setView([lat, lng], 14);
+                }
+              } else {
+                dropCoords = [lat, lng];
+                if (leafletMap) {
+                  if (dropMarker) dropMarker.setLatLng([lat, lng]);
+                  else dropMarker = L.marker([lat, lng]).addTo(leafletMap);
+                  dropMarker.bindPopup(`<b>🏁 ${fullAddress}</b>`);
+                }
+              }
+
+              updateSummaryTexts();
+              calculateOSRMRoute(false);
+            });
+
+            dropdown.appendChild(item);
+          });
+          dropdown.classList.add('show');
+        } else {
+          dropdown.classList.remove('show');
+        }
+      } catch (err) {
+        console.warn('Autocomplete fetch error:', err);
+      }
+    }, 250);
+  });
+}
+
+/**
+ * 1-Click Quick Location Chip Selector
+ */
+async function selectQuickArea(type, fullAddress) {
+  const input = document.getElementById(type === 'pickup' ? 'pickupCity' : 'dropCity');
+  if (input) input.value = fullAddress;
+
+  const coords = await geocodeAddress(fullAddress);
+  if (coords) {
+    if (type === 'pickup') {
+      pickupCoords = coords;
+      if (leafletMap) {
+        if (pickupMarker) pickupMarker.setLatLng(coords);
+        else pickupMarker = L.marker(coords, { draggable: true }).addTo(leafletMap);
+        pickupMarker.bindPopup(`<b>📍 ${fullAddress}</b>`).openPopup();
+        leafletMap.setView(coords, 14);
+      }
+    } else {
+      dropCoords = coords;
+      if (leafletMap) {
+        if (dropMarker) dropMarker.setLatLng(coords);
+        else dropMarker = L.marker(coords).addTo(leafletMap);
+        dropMarker.bindPopup(`<b>🏁 ${fullAddress}</b>`);
+      }
+    }
+  }
+
+  updateSummaryTexts();
+  calculateOSRMRoute(false);
 }
 
 /**

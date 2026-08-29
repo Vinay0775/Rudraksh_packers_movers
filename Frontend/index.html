@@ -399,30 +399,61 @@
                 </div>
 
                 <div class="row g-3">
+                  <!-- Pickup Input with Autocomplete & Chips -->
                   <div class="col-md-6">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                       <label class="form-label fw-semibold mb-0">Pickup Address / Area</label>
                       <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold shadow-xs" id="btnUsePreciseLocation" onclick="useCurrentLocation()">
-                        <i class="fa-solid fa-location-crosshairs me-1"></i> Use Precise Location
+                        <i class="fa-solid fa-location-crosshairs me-1"></i> Detect GPS
                       </button>
                     </div>
-                    <input type="text" class="form-control form-control-lg" id="pickupCity" placeholder="e.g. Malviya Nagar, Jaipur" required>
+                    <div class="location-input-wrap">
+                      <input type="text" class="form-control form-control-lg" id="pickupCity" placeholder="Type colony, area or city (e.g. Sirsi Road, Jaipur)" autocomplete="off" required>
+                      <div class="autocomplete-dropdown" id="pickupSuggestions"></div>
+                    </div>
+                    <!-- Quick Local Chips -->
+                    <div class="quick-location-chips">
+                      <span class="small text-muted align-self-center me-1" style="font-size: 0.75rem;">Quick:</span>
+                      <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Sirsi Road, Jaipur')">📍 Sirsi Road</button>
+                      <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Vaishali Nagar, Jaipur')">📍 Vaishali Nagar</button>
+                      <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Mansarovar, Jaipur')">📍 Mansarovar</button>
+                      <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Malviya Nagar, Jaipur')">📍 Malviya Nagar</button>
+                      <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Ajmer Road, Jaipur')">📍 Ajmer Road</button>
+                    </div>
                   </div>
+
+                  <!-- Drop Input with Autocomplete & Chips -->
                   <div class="col-md-6">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                       <label class="form-label fw-semibold mb-0">Drop Address / City</label>
-                      <button type="button" class="map-location-btn" onclick="calculateOSRMRoute()">
-                        <i class="fa-solid fa-route text-primary-custom"></i> Find Route
+                      <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold shadow-xs" onclick="calculateOSRMRoute()">
+                        <i class="fa-solid fa-route text-primary-custom me-1"></i> Find Route
                       </button>
                     </div>
-                    <input type="text" class="form-control form-control-lg" id="dropCity" placeholder="e.g. Mansarovar, Jaipur" required>
+                    <div class="location-input-wrap">
+                      <input type="text" class="form-control form-control-lg" id="dropCity" placeholder="Type destination area or city (e.g. Noida, Delhi NCR)" autocomplete="off" required>
+                      <div class="autocomplete-dropdown" id="dropSuggestions"></div>
+                    </div>
+                    <!-- Quick Drop Chips -->
+                    <div class="quick-location-chips">
+                      <span class="small text-muted align-self-center me-1" style="font-size: 0.75rem;">Quick:</span>
+                      <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Mansarovar, Jaipur')">🏁 Mansarovar</button>
+                      <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Jagatpura, Jaipur')">🏁 Jagatpura</button>
+                      <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Gurugram, Delhi NCR')">🏁 Gurgaon</button>
+                      <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Noida, Delhi NCR')">🏁 Noida</button>
+                      <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Mumbai, Maharashtra')">🏁 Mumbai</button>
+                    </div>
                   </div>
 
-                  <!-- Interactive OpenStreetMap Preview -->
+                  <!-- Interactive OpenStreetMap Preview with Click-To-Set Guidance -->
                   <div class="col-12">
                     <div id="routeMap"></div>
+                    <div class="map-helper-tip">
+                      <span><i class="fa-solid fa-hand-pointer text-primary-custom me-1"></i> <strong>Pro Tip:</strong> Click anywhere on the map or drag the 📍 marker to pinpoint your exact street or house!</span>
+                      <span class="badge bg-light text-secondary border">Interactive Map</span>
+                    </div>
                     <div class="route-info-badge mt-2">
-                      <span id="routeMapStatus"><i class="fa-solid fa-map-pin text-primary-custom me-1"></i> OpenStreetMap route finder ready.</span>
+                      <span id="routeMapStatus"><i class="fa-solid fa-map-pin text-primary-custom me-1"></i> Map ready. Type address or click on map to set location.</span>
                       <span id="routeDistanceCalculated" class="badge bg-primary-subtle text-primary-custom px-2 py-1">25 KM (Est.)</span>
                     </div>
                   </div>
