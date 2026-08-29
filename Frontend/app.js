@@ -100,11 +100,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Attach event listeners for live recalculations
   document.getElementById('distanceKm')?.addEventListener('input', recalculateTotal);
-  document.getElementById('pickupCity')?.addEventListener('input', updateSummaryTexts);
-  document.getElementById('dropCity')?.addEventListener('input', updateSummaryTexts);
+  document.getElementById('pickupCity')?.addEventListener('input', () => {
+    pickupCoords = null;
+    updateSummaryTexts();
+  });
+  document.getElementById('dropCity')?.addEventListener('input', () => {
+    dropCoords = null;
+    updateSummaryTexts();
+  });
   document.getElementById('shiftingDate')?.addEventListener('change', updateSummaryTexts);
 
-  // Debounced auto-route lookup on input blur
+  // Debounced auto-route lookup on input change
   document.getElementById('pickupCity')?.addEventListener('change', () => calculateOSRMRoute(false));
   document.getElementById('dropCity')?.addEventListener('change', () => calculateOSRMRoute(false));
 
@@ -122,8 +128,8 @@ function initRouteMap() {
   if (!mapEl || typeof L === 'undefined') return;
 
   try {
-    // Default center at Jaipur, India
-    leafletMap = L.map('routeMap').setView([26.9124, 75.7873], 11);
+    // Default center at India center (22.5, 78.9) with pan/zoom
+    leafletMap = L.map('routeMap').setView([22.5937, 78.9629], 5);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -135,57 +141,115 @@ function initRouteMap() {
 }
 
 /**
- * HTML5 Browser Geolocation with Nominatim Reverse Geocoding
+ * Smart Geolocation Engine: GPS First -> Automatic IP Geolocation Fallback
  */
 async function useCurrentLocation() {
+  const statusEl = document.getElementById('routeMapStatus');
+  if (statusEl) {
+    statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary-custom me-1"></i> Detecting your location...';
+  }
+
+  // Helper to apply detected coordinates
+  async function applyDetectedCoords(lat, lng, label, isFromGps = false) {
+    pickupCoords = [lat, lng];
+
+    if (leafletMap) {
+      leafletMap.setView([lat, lng], 13);
+      if (pickupMarker) leafletMap.removeLayer(pickupMarker);
+      pickupMarker = L.marker([lat, lng]).addTo(leafletMap).bindPopup(`<b>📍 ${label}</b>`).openPopup();
+    }
+
+    const pickupInput = document.getElementById('pickupCity');
+    if (pickupInput) {
+      pickupInput.value = label;
+      updateSummaryTexts();
+    }
+
+    if (statusEl) {
+      if (isFromGps) {
+        statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> GPS Detected: <strong>${label}</strong>`;
+      } else {
+        statusEl.innerHTML = `<i class="fa-solid fa-location-dot text-primary-custom me-1"></i> Network Location: <strong>${label}</strong> <span class="small text-muted">(Allow GPS in browser 🔒 for street-level precision)</span>`;
+      }
+    }
+
+    // Auto calculate route if drop location is already filled
+    const dropVal = document.getElementById('dropCity')?.value.trim();
+    if (dropVal) {
+      calculateOSRMRoute(false);
+    }
+  }
+
+  // Fallback: IP-based Geolocation
+  async function fallbackToIpLocation() {
+    try {
+      if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary-custom me-1"></i> Detecting network location...';
+      
+      // Try IP API 1 (ipwho.is)
+      let res = await fetch('https://ipwho.is/');
+      let data = await res.json();
+      
+      if (data && data.success && data.latitude && data.longitude) {
+        const placeName = [data.city, data.region, data.country].filter(Boolean).join(', ');
+        await applyDetectedCoords(data.latitude, data.longitude, placeName || 'Current Location', false);
+        return;
+      }
+
+      // Try IP API 2 (ipapi.co)
+      res = await fetch('https://ipapi.co/json/');
+      data = await res.json();
+      if (data && data.latitude && data.longitude) {
+        const placeName = [data.city, data.region].filter(Boolean).join(', ');
+        await applyDetectedCoords(data.latitude, data.longitude, placeName || 'Current Location', false);
+        return;
+      }
+      
+      throw new Error('IP detection exhausted');
+    } catch (ipErr) {
+      console.warn('IP Geolocation fallback error:', ipErr);
+      if (statusEl) {
+        statusEl.innerHTML = '<i class="fa-solid fa-circle-exclamation text-warning me-1"></i> Location permission blocked. Please type your city manually or allow GPS in address bar 🔒.';
+      }
+    }
+  }
+
+  // Step 1: Check if browser supports GPS
   if (!navigator.geolocation) {
-    alert('Geolocation is not supported by your browser.');
+    await fallbackToIpLocation();
     return;
   }
 
-  const statusEl = document.getElementById('routeMapStatus');
-  if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary-custom me-1"></i> Detecting your GPS location...';
-
+  // Step 2: Try HTML5 Browser GPS with 6 second timeout
   navigator.geolocation.getCurrentPosition(
     async (position) => {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
-      pickupCoords = [lat, lng];
 
-      // Update Map View
-      if (leafletMap) {
-        leafletMap.setView([lat, lng], 14);
-        if (pickupMarker) leafletMap.removeLayer(pickupMarker);
-        pickupMarker = L.marker([lat, lng]).addTo(leafletMap).bindPopup('<b>📍 Your Pickup Location</b>').openPopup();
-      }
-
-      // Reverse geocode via Nominatim
       try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
-        const data = await response.json();
-        const address = data.display_name ? data.display_name.split(',').slice(0, 3).join(',') : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-        
-        const pickupInput = document.getElementById('pickupCity');
-        if (pickupInput) {
-          pickupInput.value = address;
-          updateSummaryTexts();
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+        const data = await res.json();
+        let address = '';
+        if (data && data.address) {
+          const addr = data.address;
+          const road = addr.road || addr.neighbourhood || addr.suburb || '';
+          const city = addr.city || addr.town || addr.county || addr.state_district || '';
+          const state = addr.state || '';
+          address = [road, city, state].filter(Boolean).join(', ');
         }
-        if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> Location detected: ${address}`;
-      } catch (err) {
-        if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-circle-check text-success me-1"></i> Current coordinates set.';
-      }
-
-      // If drop address already filled, compute route
-      const dropVal = document.getElementById('dropCity')?.value.trim();
-      if (dropVal) {
-        calculateOSRMRoute(false);
+        if (!address && data && data.display_name) {
+          address = data.display_name.split(',').slice(0, 3).join(',');
+        }
+        await applyDetectedCoords(lat, lng, address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`, true);
+      } catch (e) {
+        await applyDetectedCoords(lat, lng, `Location (${lat.toFixed(3)}, ${lng.toFixed(3)})`, true);
       }
     },
-    (error) => {
-      alert(`Location permission denied or unavailable: ${error.message}`);
-      if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-circle-exclamation text-danger me-1"></i> Could not access location.';
+    async (error) => {
+      console.warn('GPS Error code:', error.code, error.message);
+      // Seamlessly switch to network IP geolocation instead of failing
+      await fallbackToIpLocation();
     },
-    { enableHighAccuracy: true, timeout: 10000 }
+    { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
   );
 }
 
@@ -214,11 +278,16 @@ async function calculateOSRMRoute(showAlert = true) {
     }
 
     // 2. Geocode Drop
-    let dCoord = await geocodeAddress(drop);
-    dropCoords = dCoord;
+    let dCoord = dropCoords;
+    if (!dCoord) {
+      dCoord = await geocodeAddress(drop);
+      dropCoords = dCoord;
+    }
 
     if (!pCoord || !dCoord) {
-      if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-circle-info text-warning me-1"></i> Could not locate exact road points. Using standard distance.';
+      if (statusEl) {
+        statusEl.innerHTML = '<i class="fa-solid fa-circle-exclamation text-warning me-1"></i> Could not pinpoint location. Please check city name (e.g. Delhi, Jaipur, Mumbai).';
+      }
       return;
     }
 
@@ -235,7 +304,7 @@ async function calculateOSRMRoute(showAlert = true) {
       // Update distance input and badge
       setDistance(distanceKm);
       if (distBadge) distBadge.innerText = `${distanceKm} KM (${durationMins} mins drive)`;
-      if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> Road route found: <strong>${distanceKm} KM</strong>`;
+      if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> Road route found: <strong>${distanceKm} KM</strong> (${durationMins} min drive)`;
 
       // Draw markers and route on Leaflet map
       if (leafletMap) {
@@ -261,18 +330,45 @@ async function calculateOSRMRoute(showAlert = true) {
 }
 
 async function geocodeAddress(query) {
+  if (!query || !query.trim()) return null;
+  const cleanQuery = query.trim();
+
+  // 1. Nominatim with clean query in India
   try {
-    const encoded = encodeURIComponent(query + ', India');
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&limit=1`);
+    const encoded = encodeURIComponent(cleanQuery + ', India');
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&countrycodes=in&limit=1`);
     const results = await res.json();
     if (results && results.length > 0) {
       return [parseFloat(results[0].lat), parseFloat(results[0].lon)];
     }
-    // Fallback Jaipur approximate coordinate shift
-    return [26.9124 + (Math.random() - 0.5) * 0.05, 75.7873 + (Math.random() - 0.5) * 0.05];
   } catch (e) {
-    return [26.9124, 75.7873];
+    console.warn('Nominatim geocode primary failed:', e);
   }
+
+  // 2. Try searching without adding ', India'
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQuery)}&limit=1`);
+    const results = await res.json();
+    if (results && results.length > 0) {
+      return [parseFloat(results[0].lat), parseFloat(results[0].lon)];
+    }
+  } catch (e) {
+    console.warn('Nominatim fallback failed:', e);
+  }
+
+  // 3. Photon Komoot API fallback
+  try {
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(cleanQuery)}&limit=1`);
+    const data = await res.json();
+    if (data.features && data.features.length > 0) {
+      const [lng, lat] = data.features[0].geometry.coordinates;
+      return [lat, lng];
+    }
+  } catch (e) {
+    console.warn('Photon fallback failed:', e);
+  }
+
+  return null;
 }
 
 /* ==========================================================================
