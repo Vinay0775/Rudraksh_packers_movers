@@ -1029,3 +1029,21 @@ function applyCSSVariables(theme) {
   if (theme.secondaryColor) root.style.setProperty('--secondary-color', theme.secondaryColor);
   if (theme.accentColor) root.style.setProperty('--accent-color', theme.accentColor);
 }
+
+// Background Video Auto-play booster
+document.addEventListener('DOMContentLoaded', () => {
+  loadBackendData();
+  const heroVideo = document.querySelector('.hero-background-video');
+  if (heroVideo) {
+    heroVideo.muted = true;
+    const playPromise = heroVideo.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Autoplay policy prevented immediate playback
+        document.addEventListener('click', () => {
+          heroVideo.play().catch(() => {});
+        }, { once: true });
+      });
+    }
+  }
+});
