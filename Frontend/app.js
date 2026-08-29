@@ -1356,8 +1356,7 @@ function showBookingSuccessModal(bookingId, bookingData) {
   document.getElementById('successBookingId').innerText = bookingId;
 
   document.getElementById('successTrackBtn').onclick = () => {
-    bootstrap.Modal.getInstance(document.getElementById('bookingSuccessModal'))?.hide();
-    openTrackingModal(bookingId);
+    window.location.href = `track.html?id=${bookingId}`;
   };
 
   document.getElementById('successInvoiceBtn').onclick = () => {
