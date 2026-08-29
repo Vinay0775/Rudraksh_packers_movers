@@ -141,116 +141,185 @@ function initRouteMap() {
 }
 
 /**
- * Smart Geolocation Engine: GPS First -> Automatic IP Geolocation Fallback
+ * Smart Geolocation Engine: Direct Browser Permission Prompt -> Pinpoint GPS -> Modal Guide if Blocked
  */
 async function useCurrentLocation() {
   const statusEl = document.getElementById('routeMapStatus');
+  const btn = document.getElementById('btnUsePreciseLocation');
+
+  if (btn) {
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary me-1"></i> Requesting GPS...';
+    btn.disabled = true;
+  }
+
   if (statusEl) {
-    statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary-custom me-1"></i> Detecting your location...';
+    statusEl.innerHTML = '<span class="text-primary fw-semibold"><i class="fa-solid fa-hand-pointer me-1"></i> 👆 Please click <strong>"Allow"</strong> on your browser\'s location permission prompt</span>';
   }
 
-  // Helper to apply detected coordinates
-  async function applyDetectedCoords(lat, lng, label, isFromGps = false) {
-    pickupCoords = [lat, lng];
-
-    if (leafletMap) {
-      leafletMap.setView([lat, lng], 13);
-      if (pickupMarker) leafletMap.removeLayer(pickupMarker);
-      pickupMarker = L.marker([lat, lng]).addTo(leafletMap).bindPopup(`<b>📍 ${label}</b>`).openPopup();
-    }
-
-    const pickupInput = document.getElementById('pickupCity');
-    if (pickupInput) {
-      pickupInput.value = label;
-      updateSummaryTexts();
-    }
-
-    if (statusEl) {
-      if (isFromGps) {
-        statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> GPS Detected: <strong>${label}</strong>`;
-      } else {
-        statusEl.innerHTML = `<i class="fa-solid fa-location-dot text-primary-custom me-1"></i> Network Location: <strong>${label}</strong> <span class="small text-muted">(Allow GPS in browser 🔒 for street-level precision)</span>`;
-      }
-    }
-
-    // Auto calculate route if drop location is already filled
-    const dropVal = document.getElementById('dropCity')?.value.trim();
-    if (dropVal) {
-      calculateOSRMRoute(false);
-    }
-  }
-
-  // Fallback: IP-based Geolocation
-  async function fallbackToIpLocation() {
-    try {
-      if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary-custom me-1"></i> Detecting network location...';
-      
-      // Try IP API 1 (ipwho.is)
-      let res = await fetch('https://ipwho.is/');
-      let data = await res.json();
-      
-      if (data && data.success && data.latitude && data.longitude) {
-        const placeName = [data.city, data.region, data.country].filter(Boolean).join(', ');
-        await applyDetectedCoords(data.latitude, data.longitude, placeName || 'Current Location', false);
-        return;
-      }
-
-      // Try IP API 2 (ipapi.co)
-      res = await fetch('https://ipapi.co/json/');
-      data = await res.json();
-      if (data && data.latitude && data.longitude) {
-        const placeName = [data.city, data.region].filter(Boolean).join(', ');
-        await applyDetectedCoords(data.latitude, data.longitude, placeName || 'Current Location', false);
-        return;
-      }
-      
-      throw new Error('IP detection exhausted');
-    } catch (ipErr) {
-      console.warn('IP Geolocation fallback error:', ipErr);
-      if (statusEl) {
-        statusEl.innerHTML = '<i class="fa-solid fa-circle-exclamation text-warning me-1"></i> Location permission blocked. Please type your city manually or allow GPS in address bar 🔒.';
-      }
-    }
-  }
-
-  // Step 1: Check if browser supports GPS
   if (!navigator.geolocation) {
-    await fallbackToIpLocation();
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-location-crosshairs me-1"></i> Use Precise Location';
+    }
+    await useNetworkLocationFallback();
     return;
   }
 
-  // Step 2: Try HTML5 Browser GPS with 6 second timeout
+  // Request high-accuracy GPS with maximumAge: 0 to force a live check and trigger the browser prompt
   navigator.geolocation.getCurrentPosition(
     async (position) => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-circle-check text-success me-1"></i> Location Active';
+      }
+
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
+      const accuracy = Math.round(position.coords.accuracy || 10);
+      pickupCoords = [lat, lng];
 
+      // Update Map View
+      if (leafletMap) {
+        leafletMap.setView([lat, lng], 15);
+        if (pickupMarker) leafletMap.removeLayer(pickupMarker);
+        pickupMarker = L.marker([lat, lng]).addTo(leafletMap)
+          .bindPopup(`<b>📍 Your Exact Pickup Location</b><br><small class="text-muted">GPS Accuracy: ±${accuracy}m</small>`)
+          .openPopup();
+      }
+
+      // Reverse geocode with high precision Nominatim
       try {
+        if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary-custom me-1"></i> Resolving street address...';
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
         const data = await res.json();
         let address = '';
         if (data && data.address) {
-          const addr = data.address;
-          const road = addr.road || addr.neighbourhood || addr.suburb || '';
-          const city = addr.city || addr.town || addr.county || addr.state_district || '';
-          const state = addr.state || '';
-          address = [road, city, state].filter(Boolean).join(', ');
+          const a = data.address;
+          const street = a.road || a.suburb || a.neighbourhood || a.commercial || a.residential || '';
+          const city = a.city || a.town || a.county || a.state_district || '';
+          const state = a.state || '';
+          const postcode = a.postcode ? ` - ${a.postcode}` : '';
+          address = [street, city, state].filter(Boolean).join(', ') + postcode;
         }
         if (!address && data && data.display_name) {
-          address = data.display_name.split(',').slice(0, 3).join(',');
+          address = data.display_name.split(',').slice(0, 4).join(',');
         }
-        await applyDetectedCoords(lat, lng, address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`, true);
+
+        const finalAddress = address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        const pickupInput = document.getElementById('pickupCity');
+        if (pickupInput) {
+          pickupInput.value = finalAddress;
+          updateSummaryTexts();
+        }
+        if (statusEl) {
+          statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> Exact GPS Location: <strong>${finalAddress}</strong>`;
+        }
       } catch (e) {
-        await applyDetectedCoords(lat, lng, `Location (${lat.toFixed(3)}, ${lng.toFixed(3)})`, true);
+        const pickupInput = document.getElementById('pickupCity');
+        if (pickupInput) {
+          pickupInput.value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          updateSummaryTexts();
+        }
+        if (statusEl) {
+          statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> GPS Coordinates captured: [${lat.toFixed(4)}, ${lng.toFixed(4)}]`;
+        }
+      }
+
+      // If drop address already filled, compute route
+      const dropVal = document.getElementById('dropCity')?.value.trim();
+      if (dropVal) {
+        calculateOSRMRoute(false);
       }
     },
     async (error) => {
-      console.warn('GPS Error code:', error.code, error.message);
-      // Seamlessly switch to network IP geolocation instead of failing
-      await fallbackToIpLocation();
+      console.warn('Geolocation Error:', error.code, error.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-location-crosshairs me-1"></i> Use Precise Location';
+      }
+
+      if (error.code === 1) {
+        // PERMISSION_DENIED: Browser popup was dismissed or blocked previously
+        const modalEl = document.getElementById('locationPermissionModal');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+          const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+          modal.show();
+        }
+        if (statusEl) {
+          statusEl.innerHTML = '<span class="text-danger fw-semibold"><i class="fa-solid fa-lock me-1"></i> Location permission is blocked. Click the 🔒 lock icon in the address bar to Allow.</span>';
+        }
+      } else {
+        // Timeout or Position Unavailable - fallback to IP Geolocation
+        await useNetworkLocationFallback();
+      }
     },
-    { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
+}
+
+/**
+ * Retry GPS location after user unblocks permission in address bar
+ */
+function retryLocationPermission() {
+  const modalEl = document.getElementById('locationPermissionModal');
+  if (modalEl && typeof bootstrap !== 'undefined') {
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+  }
+  setTimeout(() => {
+    useCurrentLocation();
+  }, 300);
+}
+
+/**
+ * Network / IP Location Fallback
+ */
+async function useNetworkLocationFallback() {
+  const statusEl = document.getElementById('routeMapStatus');
+  if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary-custom me-1"></i> Detecting city via network...';
+
+  try {
+    let res = await fetch('https://ipwho.is/');
+    let data = await res.json();
+
+    if (!data || !data.success || !data.latitude) {
+      res = await fetch('https://ipapi.co/json/');
+      data = await res.json();
+    }
+
+    if (data && data.latitude && data.longitude) {
+      const lat = data.latitude;
+      const lng = data.longitude;
+      const placeName = [data.city, data.region, data.country].filter(Boolean).join(', ');
+
+      pickupCoords = [lat, lng];
+
+      if (leafletMap) {
+        leafletMap.setView([lat, lng], 12);
+        if (pickupMarker) leafletMap.removeLayer(pickupMarker);
+        pickupMarker = L.marker([lat, lng]).addTo(leafletMap).bindPopup(`<b>📍 ${placeName}</b>`).openPopup();
+      }
+
+      const pickupInput = document.getElementById('pickupCity');
+      if (pickupInput) {
+        pickupInput.value = placeName;
+        updateSummaryTexts();
+      }
+
+      if (statusEl) {
+        statusEl.innerHTML = `<i class="fa-solid fa-location-dot text-primary-custom me-1"></i> Network Area: <strong>${placeName}</strong> <span class="small text-muted">(Click 🔒 in address bar for street GPS)</span>`;
+      }
+
+      const dropVal = document.getElementById('dropCity')?.value.trim();
+      if (dropVal) calculateOSRMRoute(false);
+      return;
+    }
+    throw new Error('All IP services failed');
+  } catch (err) {
+    if (statusEl) {
+      statusEl.innerHTML = '<i class="fa-solid fa-circle-exclamation text-warning me-1"></i> Please type your pickup area or city name manually.';
+    }
+  }
 }
 
 /**

@@ -402,8 +402,8 @@
                   <div class="col-md-6">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                       <label class="form-label fw-semibold mb-0">Pickup Address / Area</label>
-                      <button type="button" class="map-location-btn" onclick="useCurrentLocation()">
-                        <i class="fa-solid fa-crosshairs text-primary-custom"></i> Use My Location
+                      <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold shadow-xs" id="btnUsePreciseLocation" onclick="useCurrentLocation()">
+                        <i class="fa-solid fa-location-crosshairs me-1"></i> Use Precise Location
                       </button>
                     </div>
                     <input type="text" class="form-control form-control-lg" id="pickupCity" placeholder="e.g. Malviya Nagar, Jaipur" required>
@@ -1645,6 +1645,45 @@
           </button>
           <button type="button" class="btn btn-outline-secondary w-100" id="successInvoiceBtn">
             <i class="fa-solid fa-file-invoice me-1"></i> Download Invoice
+          </button>
+        </div>
+      </div>
+    </div>
+  <!-- ==========================================================================
+       MODAL: LOCATION PERMISSION HELPER (If Browser Blocked Location)
+       ========================================================================== -->
+  <div class="modal fade" id="locationPermissionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg p-4" style="border-radius: 20px;">
+        <div class="text-center mb-3">
+          <div class="d-inline-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-circle mb-2" style="width: 70px; height: 70px;">
+            <i class="fa-solid fa-location-dot fa-2xl"></i>
+          </div>
+          <h5 class="fw-bold text-secondary-custom mb-1">Allow Precise GPS Location</h5>
+          <p class="text-muted small">Your browser blocked location access. Follow these 2 easy steps to enable high-accuracy GPS:</p>
+        </div>
+
+        <div class="p-3 bg-light rounded-3 border mb-3">
+          <div class="d-flex align-items-start gap-3 mb-2">
+            <span class="badge bg-primary rounded-circle p-2" style="width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;">1</span>
+            <div class="small">
+              Look at your browser's <strong>Address Bar</strong> (top left) and click the 🔒 <strong>Lock / Settings icon</strong> next to the URL.
+            </div>
+          </div>
+          <div class="d-flex align-items-start gap-3">
+            <span class="badge bg-primary rounded-circle p-2" style="width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;">2</span>
+            <div class="small">
+              Change <strong>Location</strong> setting from <em>Block</em> to <strong>"Allow"</strong>.
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-column gap-2">
+          <button type="button" class="btn btn-primary-custom w-100 py-2 fw-semibold" onclick="retryLocationPermission()">
+            <i class="fa-solid fa-rotate-right me-1"></i> I've Allowed It - Detect My Location
+          </button>
+          <button type="button" class="btn btn-outline-secondary w-100 py-2 small" onclick="useNetworkLocationFallback()" data-bs-dismiss="modal">
+            <i class="fa-solid fa-globe me-1"></i> Use Approximate City Instead
           </button>
         </div>
       </div>
