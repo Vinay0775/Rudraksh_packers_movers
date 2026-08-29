@@ -1903,26 +1903,24 @@ body {
   flex-shrink: 0;
 }
 
-/* 🖨️ PERFECT 1-PAGE A4 PRINT STYLESHEET */
+/* 🖨️ PERFECT 1-PAGE A4 PRINT STYLESHEET (Full Signature & Zero Clipping) */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 5mm 8mm;
+    margin: 8mm 10mm;
   }
 
   *, *::before, *::after {
     box-sizing: border-box !important;
   }
 
-  /* 1. Hide everything on the webpage */
+  /* 1. Hide everything on the webpage except invoice */
   html, body {
     background: #ffffff !important;
     color: #0f172a !important;
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
-    height: 100% !important;
-    overflow: hidden !important;
   }
 
   body > *:not(#invoiceModal) {
@@ -1942,7 +1940,6 @@ body {
     visibility: visible !important;
     opacity: 1 !important;
     background: #ffffff !important;
-    overflow: hidden !important;
   }
 
   #invoiceModal * {
@@ -1983,35 +1980,33 @@ body {
   .modal-body {
     padding: 0 !important;
     margin: 0 !important;
-    overflow: hidden !important;
   }
 
-  /* 3. Ultra-Crisp Guaranteed Single Page A4 Container */
+  /* 3. Guaranteed Single Page A4 Container */
   .invoice-container {
     border: 1.5px solid #1e293b !important;
     border-radius: 6px !important;
-    padding: 10px 14px !important;
+    padding: 12px 16px !important;
     margin: 0 auto !important;
     width: 100% !important;
     max-width: 100% !important;
-    max-height: 275mm !important;
     background: #ffffff !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     page-break-after: avoid !important;
     page-break-before: avoid !important;
-    font-size: 10px !important;
-    line-height: 1.25 !important;
+    font-size: 10.5px !important;
+    line-height: 1.3 !important;
   }
 
   .invoice-header {
     border-bottom: 1.5px solid #cbd5e1 !important;
-    padding-bottom: 6px !important;
-    margin-bottom: 8px !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 10px !important;
   }
 
   .invoice-header .brand-title-text {
-    font-size: 1.15rem !important;
+    font-size: 1.25rem !important;
     color: #ea580c !important;
     font-weight: 800 !important;
     -webkit-print-color-adjust: exact !important;
@@ -2019,40 +2014,40 @@ body {
   }
 
   .invoice-header h4 {
-    font-size: 1.05rem !important;
-    margin-bottom: 1px !important;
+    font-size: 1.1rem !important;
+    margin-bottom: 2px !important;
   }
 
   .invoice-container .row {
-    margin-bottom: 4px !important;
+    margin-bottom: 6px !important;
   }
 
   .invoice-container .bg-light {
     background-color: #f8fafc !important;
     border: 1px solid #cbd5e1 !important;
-    padding: 6px 10px !important;
-    margin-bottom: 8px !important;
+    padding: 8px 12px !important;
+    margin-bottom: 10px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
   .table {
-    margin-bottom: 6px !important;
+    margin-bottom: 8px !important;
     border-color: #cbd5e1 !important;
-    font-size: 9.5px !important;
+    font-size: 10px !important;
   }
 
   .invoice-table th {
     background-color: #f1f5f9 !important;
     color: #0f172a !important;
-    padding: 4px 6px !important;
-    font-size: 9px !important;
+    padding: 5px 8px !important;
+    font-size: 9.5px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
   .invoice-table td {
-    padding: 3.5px 6px !important;
+    padding: 4px 8px !important;
     border-color: #e2e8f0 !important;
   }
 
@@ -2064,9 +2059,9 @@ body {
   }
 
   .invoice-qr-box {
-    width: 46px !important;
-    height: 46px !important;
-    padding: 1px !important;
+    width: 50px !important;
+    height: 50px !important;
+    padding: 2px !important;
   }
 
   .text-warning {
@@ -2077,8 +2072,8 @@ body {
 
   .badge {
     border: 1px solid #94a3b8 !important;
-    padding: 2px 5px !important;
-    font-size: 8.5px !important;
+    padding: 2px 6px !important;
+    font-size: 9px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
