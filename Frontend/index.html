@@ -73,9 +73,6 @@
           <a href="tel:+917296831460" class="nav-phone-link d-none d-xl-inline-flex">
             <i class="fa-solid fa-phone text-warning"></i> +91 72968 31460
           </a>
-          <a href="admin.html" class="btn btn-sm btn-light border rounded-circle shadow-sm p-2" title="Admin Control Panel" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;">
-            <i class="fa-solid fa-user-gear text-secondary"></i>
-          </a>
           <a href="#calculator" class="btn-calc-nav">
             <i class="fa-solid fa-calculator"></i> Cost Calculator
           </a>
@@ -495,11 +492,11 @@
                 <!-- 1. Dedicated Vehicle Selection Cards -->
                 <div class="mb-4">
                   <label class="form-label fw-semibold text-secondary-custom mb-2">
-                    <i class="fa-solid fa-truck-front text-primary-custom me-1"></i> Choose Dedicated Transport Vehicle
+                    <i class="fa-solid fa-truck-front text-primary-custom me-1"></i> Choose Dedicated Transport Vehicle <span class="text-danger">*</span>
                   </label>
                   <div class="row g-2">
                     <div class="col-6 col-md-4 col-lg-2.4">
-                      <div class="vehicle-select-card selected" data-vehicle="mini_truck" onclick="selectVehicleType('mini_truck')">
+                      <div class="vehicle-select-card" data-vehicle="mini_truck" onclick="selectVehicleType('mini_truck')">
                         <div class="vehicle-icon-wrap"><i class="fa-solid fa-truck-pickup"></i></div>
                         <h6 class="vehicle-name">Tata Ace / Mini</h6>
                         <span class="vehicle-cap">1.5 Ton • 1 RK/Studio</span>
@@ -544,7 +541,7 @@
                 <!-- 2. House Size Selection Cards -->
                 <div class="mb-4" id="houseSizeSelectionWrap">
                   <label class="form-label fw-semibold text-secondary-custom mb-2">
-                    <i class="fa-solid fa-house-chimney text-primary-custom me-1"></i> House / Cargo Size
+                    <i class="fa-solid fa-house-chimney text-primary-custom me-1"></i> House / Cargo Size <span class="text-danger">*</span>
                   </label>
                   <div class="row g-2">
                     <div class="col-6 col-md-4 col-lg-2.4">
@@ -555,7 +552,7 @@
                       </div>
                     </div>
                     <div class="col-6 col-md-4 col-lg-2.4">
-                      <div class="house-size-card selected" data-size="1bhk" onclick="selectHouseSize('1bhk')">
+                      <div class="house-size-card" data-size="1bhk" onclick="selectHouseSize('1bhk')">
                         <i class="fa-solid fa-bed"></i>
                         <h6>1 BHK</h6>
                         <span class="badge bg-secondary-subtle text-dark">Standard</span>
@@ -586,7 +583,7 @@
                 </div>
 
                 <!-- Item Category Breakdown List -->
-                <h6 class="fw-bold mb-3 border-bottom pb-2">Item Breakdown & Quantity Adjuster</h6>
+                <h6 class="fw-bold mb-3 border-bottom pb-2">Item Breakdown & Quantity Adjuster <span class="text-muted fw-normal small">(Optional - Adjust as per your home)</span></h6>
                 
                 <div class="row">
                   <div class="col-md-6">
@@ -600,7 +597,7 @@
                       </div>
                       <div class="counter-controls">
                         <button type="button" class="qty-btn" onclick="updateItemQty('sofa', -1)">-</button>
-                        <span class="qty-val" id="qty_sofa">1</span>
+                        <span class="qty-val" id="qty_sofa">0</span>
                         <button type="button" class="qty-btn" onclick="updateItemQty('sofa', 1)">+</button>
                       </div>
                     </div>
@@ -615,7 +612,7 @@
                       </div>
                       <div class="counter-controls">
                         <button type="button" class="qty-btn" onclick="updateItemQty('bed', -1)">-</button>
-                        <span class="qty-val" id="qty_bed">1</span>
+                        <span class="qty-val" id="qty_bed">0</span>
                         <button type="button" class="qty-btn" onclick="updateItemQty('bed', 1)">+</button>
                       </div>
                     </div>
@@ -630,7 +627,7 @@
                       </div>
                       <div class="counter-controls">
                         <button type="button" class="qty-btn" onclick="updateItemQty('dining', -1)">-</button>
-                        <span class="qty-val" id="qty_dining">1</span>
+                        <span class="qty-val" id="qty_dining">0</span>
                         <button type="button" class="qty-btn" onclick="updateItemQty('dining', 1)">+</button>
                       </div>
                     </div>
@@ -647,7 +644,7 @@
                       </div>
                       <div class="counter-controls">
                         <button type="button" class="qty-btn" onclick="updateItemQty('fridge', -1)">-</button>
-                        <span class="qty-val" id="qty_fridge">1</span>
+                        <span class="qty-val" id="qty_fridge">0</span>
                         <button type="button" class="qty-btn" onclick="updateItemQty('fridge', 1)">+</button>
                       </div>
                     </div>
@@ -662,7 +659,7 @@
                       </div>
                       <div class="counter-controls">
                         <button type="button" class="qty-btn" onclick="updateItemQty('washing', -1)">-</button>
-                        <span class="qty-val" id="qty_washing">1</span>
+                        <span class="qty-val" id="qty_washing">0</span>
                         <button type="button" class="qty-btn" onclick="updateItemQty('washing', 1)">+</button>
                       </div>
                     </div>
@@ -676,9 +673,9 @@
                         </div>
                       </div>
                       <div class="counter-controls">
-                        <button type="button" class="qty-btn" onclick="updateItemQty('boxes', -5)">-</button>
-                        <span class="qty-val" id="qty_boxes">10</span>
-                        <button type="button" class="qty-btn" onclick="updateItemQty('boxes', 5)">+</button>
+                        <button type="button" class="qty-btn" onclick="updateItemQty('boxes', -1)">-</button>
+                        <span class="qty-val" id="qty_boxes">0</span>
+                        <button type="button" class="qty-btn" onclick="updateItemQty('boxes', 1)">+</button>
                       </div>
                     </div>
                   </div>

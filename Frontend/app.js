@@ -10,18 +10,18 @@
  * - Printable GST-compliant Tax Quotation & Invoice
  */
 
-// Global State
+// Global State (Initial state without forced presets)
 let currentStep = 1;
-let selectedVehicleType = 'mini_truck';
-let selectedServiceType = 'House Shifting';
-let selectedHouseSize = '1bhk';
+let selectedVehicleType = null;
+let selectedServiceType = null;
+let selectedHouseSize = null;
 let itemQuantities = {
-  sofa: 1,
-  bed: 1,
-  dining: 1,
-  fridge: 1,
-  washing: 1,
-  boxes: 10
+  sofa: 0,
+  bed: 0,
+  dining: 0,
+  fridge: 0,
+  washing: 0,
+  boxes: 0
 };
 let appliedCoupon = null;
 let isPhoneVerified = false;
@@ -882,19 +882,36 @@ function validateStep(step) {
   if (step === 1) {
     const pickup = document.getElementById('pickupCity')?.value.trim();
     const drop = document.getElementById('dropCity')?.value.trim();
-    const dist = document.getElementById('distanceKm')?.value;
+    const dist = parseFloat(document.getElementById('distanceKm')?.value || 0);
     const date = document.getElementById('shiftingDate')?.value;
 
-    if (!pickup || !drop) {
-      alert('Please enter both Pickup and Drop locations.');
+    if (!pickup) {
+      alert('⚠️ Missing Detail: Please enter your Pickup City / Street Location in Step 1.');
+      document.getElementById('pickupCity')?.focus();
+      return false;
+    }
+    if (!drop) {
+      alert('⚠️ Missing Detail: Please enter your Drop Destination City / Street in Step 1.');
+      document.getElementById('dropCity')?.focus();
       return false;
     }
     if (!dist || dist <= 0) {
-      alert('Please enter a valid moving distance (in KM).');
+      alert('⚠️ Missing Detail: Please enter or detect a valid moving distance (in KM).');
+      document.getElementById('distanceKm')?.focus();
       return false;
     }
     if (!date) {
-      alert('Please choose a preferred shifting date.');
+      alert('⚠️ Missing Detail: Please select your preferred moving/shifting date.');
+      document.getElementById('shiftingDate')?.focus();
+      return false;
+    }
+  } else if (step === 2) {
+    if (!selectedVehicleType) {
+      alert('⚠️ Step Incomplete: Please select your Dedicated Transport Vehicle above.');
+      return false;
+    }
+    if (!selectedHouseSize) {
+      alert('⚠️ Step Incomplete: Please select your House / Cargo Size (e.g. 1 BHK, 2 BHK) above.');
       return false;
     }
   }
@@ -968,18 +985,8 @@ function selectHouseSize(size) {
     else card.classList.remove('selected');
   });
 
-  if (size === '1rk') itemQuantities = { sofa: 0, bed: 1, dining: 0, fridge: 1, washing: 0, boxes: 5 };
-  else if (size === '1bhk') itemQuantities = { sofa: 1, bed: 1, dining: 1, fridge: 1, washing: 1, boxes: 10 };
-  else if (size === '2bhk') itemQuantities = { sofa: 1, bed: 2, dining: 1, fridge: 1, washing: 1, boxes: 18 };
-  else if (size === '3bhk') itemQuantities = { sofa: 2, bed: 3, dining: 1, fridge: 1, washing: 1, boxes: 25 };
-  else if (size === 'villa') itemQuantities = { sofa: 3, bed: 4, dining: 1, fridge: 2, washing: 1, boxes: 40 };
-
-  for (const key in itemQuantities) {
-    const el = document.getElementById(`qty_${key}`);
-    if (el) el.innerText = itemQuantities[key];
-  }
-
   recalculateTotal();
+  updateSummaryTexts();
 }
 
 function updateItemQty(itemKey, delta) {
@@ -1028,16 +1035,16 @@ function applyCouponCode() {
 }
 
 function recalculateTotal() {
-  const veh = vehicleConfig[selectedVehicleType] || vehicleConfig['mini_truck'];
-  const distKm = parseFloat(document.getElementById('distanceKm')?.value || 25);
-  const perKmRate = veh.perKmRate || ratesConfig.perKmRate;
-  const distanceCost = distKm * perKmRate;
-  const houseSizeFee = ratesConfig.houseSizeRates[selectedHouseSize] || 1000;
-  const baseVehicleCost = veh.basePrice;
+  const veh = selectedVehicleType ? vehicleConfig[selectedVehicleType] : null;
+  const distKm = parseFloat(document.getElementById('distanceKm')?.value || 0);
+  const perKmRate = veh ? (veh.perKmRate || ratesConfig.perKmRate) : (ratesConfig.perKmRate || 35);
+  const distanceCost = distKm > 0 && veh ? distKm * perKmRate : 0;
+  const houseSizeFee = selectedHouseSize ? (ratesConfig.houseSizeRates[selectedHouseSize] || 0) : 0;
+  const baseVehicleCost = veh ? veh.basePrice : 0;
 
   let inventoryCost = 0;
   for (const key in itemQuantities) {
-    inventoryCost += itemQuantities[key] * (ratesConfig.itemRates[key] || 100);
+    inventoryCost += (itemQuantities[key] || 0) * (ratesConfig.itemRates[key] || 100);
   }
 
   const pickupFloor = parseInt(document.getElementById('pickupFloor')?.value || 0);
@@ -1088,15 +1095,17 @@ function recalculateTotal() {
 function updateSummaryTexts() {
   const pickup = document.getElementById('pickupCity')?.value.trim() || 'Not set';
   const drop = document.getElementById('dropCity')?.value.trim() || 'Not set';
-  const dist = document.getElementById('distanceKm')?.value || 25;
+  const dist = document.getElementById('distanceKm')?.value || 0;
   const date = document.getElementById('shiftingDate')?.value || 'Not set';
-  const veh = vehicleConfig[selectedVehicleType] || vehicleConfig['mini_truck'];
+  const veh = selectedVehicleType ? vehicleConfig[selectedVehicleType] : null;
 
   if (document.getElementById('sumPickup')) document.getElementById('sumPickup').innerText = pickup;
   if (document.getElementById('sumDrop')) document.getElementById('sumDrop').innerText = drop;
   if (document.getElementById('sumDistance')) document.getElementById('sumDistance').innerText = `${dist} KM`;
   if (document.getElementById('sumDate')) document.getElementById('sumDate').innerText = date;
-  if (document.getElementById('sumVehicle')) document.getElementById('sumVehicle').innerText = veh.name;
+  if (document.getElementById('sumVehicle')) {
+    document.getElementById('sumVehicle').innerText = veh ? veh.name : 'Select Vehicle in Step 2';
+  }
 
   const houseMap = {
     '1rk': '1 RK Studio',
@@ -1106,7 +1115,7 @@ function updateSummaryTexts() {
     'villa': '4+ BHK / Villa'
   };
   if (document.getElementById('sumHouseType')) {
-    document.getElementById('sumHouseType').innerText = houseMap[selectedHouseSize] || selectedHouseSize;
+    document.getElementById('sumHouseType').innerText = selectedHouseSize ? (houseMap[selectedHouseSize] || selectedHouseSize) : 'Select House Size in Step 2';
   }
 }
 
@@ -1119,24 +1128,33 @@ async function processWhatsAppCheckout(openWhatsApp = true) {
   const custPhone = document.getElementById('custPhone')?.value.trim();
   const custEmail = document.getElementById('custEmail')?.value.trim() || null;
 
-  if (!custName || !custPhone) {
-    alert('Please enter your Full Name and WhatsApp Mobile Number.');
-    if (!custName) document.getElementById('custName')?.focus();
-    else document.getElementById('custPhone')?.focus();
+  if (!custName || custName.length < 2) {
+    alert('⚠️ Please enter your Full Name.');
+    document.getElementById('custName')?.focus();
     return;
   }
 
-  const cleanPhone = custPhone.replace(/\D/g, '');
+  const cleanPhone = custPhone ? custPhone.replace(/\D/g, '') : '';
   if (cleanPhone.length < 10) {
-    alert('Please enter a valid 10-digit mobile number.');
+    alert('⚠️ Please enter a valid 10-digit WhatsApp Mobile Number.');
     document.getElementById('custPhone')?.focus();
     return;
   }
 
-  const pickup = document.getElementById('pickupCity')?.value.trim() || 'Jaipur';
-  const drop = document.getElementById('dropCity')?.value.trim() || 'Delhi';
-  const dist = parseFloat(document.getElementById('distanceKm')?.value || 25);
-  const date = document.getElementById('shiftingDate')?.value || 'Upcoming';
+  const pickup = document.getElementById('pickupCity')?.value.trim();
+  const drop = document.getElementById('dropCity')?.value.trim();
+  const dist = parseFloat(document.getElementById('distanceKm')?.value || 0);
+  const date = document.getElementById('shiftingDate')?.value;
+
+  if (!pickup || !drop || !date || dist <= 0) {
+    alert('⚠️ Incomplete Details:\nPlease fill Pickup, Drop, Distance, and Moving Date in Step 1 first.');
+    return;
+  }
+
+  if (!selectedVehicleType || !selectedHouseSize) {
+    alert('⚠️ Incomplete Details:\nPlease choose your Transport Vehicle and House Size in Step 2 first.');
+    return;
+  }
 
   const pFloor = document.getElementById('pickupFloor')?.value || 0;
   const pLift = document.getElementById('pickupLift')?.checked;
@@ -1154,7 +1172,7 @@ async function processWhatsAppCheckout(openWhatsApp = true) {
 
   const totalRaw = document.getElementById('priceTotal')?.innerText || '₹0';
   const totalAmount = parseFloat(totalRaw.replace(/[^\d.]/g, '')) || 0;
-  const veh = vehicleConfig[selectedVehicleType] || vehicleConfig['mini_truck'];
+  const veh = vehicleConfig[selectedVehicleType] || { name: 'Custom Fleet' };
 
   // Build Payload
   const bookingPayload = {
@@ -1173,7 +1191,7 @@ async function processWhatsAppCheckout(openWhatsApp = true) {
     drop_lift: dLift,
     distance_km: dist,
     shifting_date: date,
-    service_type: selectedServiceType,
+    service_type: selectedServiceType || 'House Shifting',
     selected_vehicle: veh.name,
     house_type: selectedHouseSize,
     items: { ...itemQuantities },
@@ -1216,7 +1234,7 @@ async function processWhatsAppCheckout(openWhatsApp = true) {
     msg += `🏁 *Drop:* ${drop}\n`;
     msg += `📏 *Distance:* ${dist} KM\n`;
     msg += `📅 *Moving Date:* ${date}\n`;
-    msg += `🏠 *Move Size:* ${selectedHouseSize.toUpperCase()}\n`;
+    msg += `🏠 *Move Size:* ${selectedHouseSize ? selectedHouseSize.toUpperCase() : 'STANDARD'}\n`;
     msg += `🚛 *Vehicle:* ${veh.name}\n`;
     msg += `💰 *Total Amount:* ₹${totalAmount.toLocaleString('en-IN')}\n`;
     msg += `💳 *Payment Mode:* ${paymentMode === 'upi_advance' ? 'UPI Advance 10%' : 'Pay on Delivery (0 Advance)'}\n`;
@@ -1258,80 +1276,83 @@ function showBookingSuccessModal(bookingId, bookingData) {
 function openTrackingModal(prefillId = '') {
   const modal = new bootstrap.Modal(document.getElementById('trackingModal'));
   modal.show();
+
   if (prefillId) {
-    document.getElementById('trackSearchInput').value = prefillId;
-    searchBookingTracking();
+    document.getElementById('trackBookingIdInput').value = prefillId;
+    trackBookingStatus();
   }
 }
 
-async function searchBookingTracking() {
-  const query = document.getElementById('trackSearchInput')?.value.trim();
-  const errorEl = document.getElementById('trackSearchError');
-  const resultsContainer = document.getElementById('trackResultsContainer');
+async function trackBookingStatus() {
+  const input = document.getElementById('trackBookingIdInput');
+  const bookingId = input.value.trim().toUpperCase();
+  const resultDiv = document.getElementById('trackingResult');
 
-  if (!query) {
-    if (errorEl) {
-      errorEl.innerText = 'Please enter your Booking ID or Mobile Number.';
-      errorEl.style.display = 'block';
-    }
+  if (!bookingId) {
+    alert('Please enter your Booking ID (e.g. RB-XXXXXX)');
     return;
   }
 
-  if (errorEl) errorEl.style.display = 'none';
+  resultDiv.style.display = 'block';
+  resultDiv.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin fa-2x text-primary-custom"></i><div class="mt-2 small text-muted">Retrieving relocation status...</div></div>';
 
   try {
-    const res = await fetch(`${BOOKING_API_URL}/bookings/track/${encodeURIComponent(query)}`);
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Booking not found.');
+    const res = await fetch(`${BOOKING_API_URL}/bookings/track/${bookingId}`);
+    const data = await res.json();
+
+    if (!res.ok || !data.booking) {
+      throw new Error(data.error || 'Booking reference not found. Please check your ID.');
     }
 
-    const data = await res.json();
     currentTrackedBooking = data.booking;
     renderTrackingView(data.booking);
   } catch (err) {
-    if (errorEl) {
-      errorEl.innerText = err.message;
-      errorEl.style.display = 'block';
-    }
-    if (resultsContainer) resultsContainer.style.display = 'none';
+    resultDiv.innerHTML = `<div class="alert alert-warning border-0 small my-3"><i class="fa-solid fa-triangle-exclamation me-1"></i> ${err.message}</div>`;
   }
 }
 
-function renderTrackingView(booking) {
-  const container = document.getElementById('trackResultsContainer');
-  if (!container) return;
+function renderTrackingView(b) {
+  const container = document.getElementById('trackingResult');
+  container.innerHTML = ''; // Clear spinner
 
-  document.getElementById('trackDisplayId').innerText = booking.id;
-  document.getElementById('trackCustName').innerText = booking.customer_name || booking.name || 'Customer';
-  document.getElementById('trackPickupText').innerText = booking.pickup_address || booking.pickup;
-  document.getElementById('trackDropText').innerText = booking.drop_address || booking.drop;
-  document.getElementById('trackDateText').innerText = booking.shifting_date || booking.date;
-  document.getElementById('trackDistanceText').innerText = `${booking.distance_km || booking.distanceKm || 25} KM`;
-  document.getElementById('trackAmountText').innerText = `₹${(booking.total_amount || 0).toLocaleString('en-IN')}`;
+  const statusHierarchy = ['received', 'reviewing', 'confirmed', 'driver_assigned', 'in_transit', 'delivered'];
+  const currentIdx = statusHierarchy.indexOf(b.status || 'received');
 
-  // Status Stepper Highlighting
-  const statuses = ['received', 'reviewing', 'confirmed', 'driver_assigned', 'in_transit', 'delivered'];
-  const curStatus = (booking.status || 'received').toLowerCase();
-  const curIdx = statuses.indexOf(curStatus) === -1 ? 0 : statuses.indexOf(curStatus);
+  const statusLabels = {
+    'received': 'Order Received',
+    'reviewing': 'Under Review',
+    'confirmed': 'Slot Confirmed',
+    'driver_assigned': 'Driver Assigned',
+    'in_transit': 'Goods In Transit',
+    'delivered': 'Delivered & Shifted'
+  };
 
-  statuses.forEach((st, idx) => {
-    const node = document.getElementById(`stepNode_${st}`);
-    if (node) {
-      node.classList.remove('active', 'completed');
-      if (idx < curIdx) node.classList.add('completed');
-      else if (idx === curIdx) node.classList.add('active');
+  document.getElementById('trackModalBookingId').innerText = b.id;
+  document.getElementById('trackCurrentStatusBadge').innerText = statusLabels[b.status] || b.status;
+
+  // Stepper UI
+  for (let i = 1; i <= 4; i++) {
+    const stepEl = document.getElementById(`trackStep${i}`);
+    if (!stepEl) continue;
+    
+    if (i <= currentIdx + 1) {
+      stepEl.classList.add('active');
+    } else {
+      stepEl.classList.remove('active');
     }
-  });
+  }
 
-  // Assigned Driver Card
-  const driverCard = document.getElementById('trackDriverCard');
-  if (booking.assigned_driver_name) {
+  // Update Route / Date
+  document.getElementById('trackRouteText').innerText = `${b.pickup_address || 'Jaipur'} ➔ ${b.drop_address || 'Delhi'}`;
+  document.getElementById('trackDateText').innerText = b.shifting_date || 'Upcoming';
+
+  // Driver Card
+  const driverCard = document.getElementById('assignedDriverCard');
+  if (b.assigned_driver_name) {
     driverCard.style.display = 'flex';
-    document.getElementById('trackDriverName').innerText = booking.assigned_driver_name;
-    document.getElementById('trackVehicleNo').innerText = booking.assigned_vehicle_no || 'RJ-14 Assigned';
-    document.getElementById('trackDriverPhone').innerText = booking.assigned_driver_phone || '-';
-    document.getElementById('trackCallDriverBtn').href = `tel:${booking.assigned_driver_phone || ''}`;
+    document.getElementById('driverName').innerText = b.assigned_driver_name;
+    document.getElementById('driverVehicle').innerText = b.assigned_vehicle_no || 'Tata Ace';
+    document.getElementById('driverPhoneCall').href = `tel:+91${b.assigned_driver_phone || '7296831460'}`;
   } else {
     driverCard.style.display = 'none';
   }
@@ -1361,24 +1382,49 @@ function openFeedbackModalFromTracking() {
    ========================================================================== */
 
 function previewCurrentInvoice() {
-  const custName = document.getElementById('custName')?.value.trim() || 'Valued Customer';
-  const custPhone = document.getElementById('custPhone')?.value.trim() || '9876543210';
+  const custName = document.getElementById('custName')?.value.trim();
+  const custPhone = document.getElementById('custPhone')?.value.trim();
   const custEmail = document.getElementById('custEmail')?.value.trim() || 'customer@example.com';
-  const pickup = document.getElementById('pickupCity')?.value.trim() || 'Jaipur';
-  const drop = document.getElementById('dropCity')?.value.trim() || 'Delhi';
-  const dist = parseFloat(document.getElementById('distanceKm')?.value || 25);
-  const date = document.getElementById('shiftingDate')?.value || 'Upcoming';
+  const pickup = document.getElementById('pickupCity')?.value.trim();
+  const drop = document.getElementById('dropCity')?.value.trim();
+  const dist = parseFloat(document.getElementById('distanceKm')?.value || 0);
+  const date = document.getElementById('shiftingDate')?.value;
+
+  if (!pickup || !drop || !date || dist <= 0) {
+    alert('⚠️ Incomplete Details:\nPlease fill Pickup, Drop, Distance, and Moving Date in Step 1 first.');
+    return;
+  }
+
+  if (!selectedVehicleType || !selectedHouseSize) {
+    alert('⚠️ Incomplete Details:\nPlease select your Transport Vehicle and House Size in Step 2 first.');
+    return;
+  }
+
+  if (!custName || custName.length < 2) {
+    alert('⚠️ Please enter your Full Name in Step 5 before previewing the invoice.');
+    document.getElementById('custName')?.focus();
+    return;
+  }
+
+  const cleanPhone = custPhone ? custPhone.replace(/\D/g, '') : '';
+  if (cleanPhone.length < 10) {
+    alert('⚠️ Please enter your 10-digit WhatsApp Mobile Number in Step 5 before previewing the invoice.');
+    document.getElementById('custPhone')?.focus();
+    return;
+  }
+
+  const totalVal = parseFloat(document.getElementById('priceTotal')?.innerText.replace(/[^\d.]/g, '')) || 0;
 
   const mockBooking = {
     id: `EST-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
     customer_name: custName,
-    customer_phone: custPhone,
+    customer_phone: cleanPhone,
     customer_email: custEmail,
     pickup_address: pickup,
     drop_address: drop,
     distance_km: dist,
     shifting_date: date,
-    total_amount: parseFloat(document.getElementById('priceTotal')?.innerText.replace(/[^\d.]/g, '')) || 5700
+    total_amount: totalVal
   };
 
   renderTaxInvoice(mockBooking);

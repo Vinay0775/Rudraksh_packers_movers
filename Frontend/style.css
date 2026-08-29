@@ -1907,18 +1907,22 @@ body {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm 10mm;
+    margin: 5mm 8mm;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box !important;
   }
 
   /* 1. Hide everything on the webpage */
-  body, html {
+  html, body {
     background: #ffffff !important;
-    color: #000000 !important;
+    color: #0f172a !important;
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
-    height: auto !important;
-    overflow: visible !important;
+    height: 100% !important;
+    overflow: hidden !important;
   }
 
   body > *:not(#invoiceModal) {
@@ -1937,8 +1941,8 @@ body {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
-    background: transparent !important;
-    overflow: visible !important;
+    background: #ffffff !important;
+    overflow: hidden !important;
   }
 
   #invoiceModal * {
@@ -1960,7 +1964,7 @@ body {
   .modal-content {
     border: none !important;
     box-shadow: none !important;
-    background: transparent !important;
+    background: #ffffff !important;
     border-radius: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -1979,96 +1983,102 @@ body {
   .modal-body {
     padding: 0 !important;
     margin: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
   }
 
-  /* 3. Perfect Compact 1-Page A4 Invoice Container */
+  /* 3. Ultra-Crisp Guaranteed Single Page A4 Container */
   .invoice-container {
-    border: 1.5px solid #334155 !important;
-    border-radius: 8px !important;
-    padding: 16px 20px !important;
+    border: 1.5px solid #1e293b !important;
+    border-radius: 6px !important;
+    padding: 10px 14px !important;
     margin: 0 auto !important;
     width: 100% !important;
     max-width: 100% !important;
+    max-height: 275mm !important;
     background: #ffffff !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    font-size: 11px !important;
-    line-height: 1.35 !important;
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+    font-size: 10px !important;
+    line-height: 1.25 !important;
   }
 
   .invoice-header {
     border-bottom: 1.5px solid #cbd5e1 !important;
-    padding-bottom: 10px !important;
-    margin-bottom: 12px !important;
+    padding-bottom: 6px !important;
+    margin-bottom: 8px !important;
   }
 
   .invoice-header .brand-title-text {
-    font-size: 1.3rem !important;
-    color: #f97316 !important;
+    font-size: 1.15rem !important;
+    color: #ea580c !important;
     font-weight: 800 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
   .invoice-header h4 {
-    font-size: 1.15rem !important;
-    margin-bottom: 2px !important;
+    font-size: 1.05rem !important;
+    margin-bottom: 1px !important;
   }
 
   .invoice-container .row {
-    margin-bottom: 8px !important;
+    margin-bottom: 4px !important;
   }
 
   .invoice-container .bg-light {
     background-color: #f8fafc !important;
-    border: 1px solid #e2e8f0 !important;
-    padding: 10px 14px !important;
-    margin-bottom: 12px !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 10px !important;
+    margin-bottom: 8px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
   .table {
-    margin-bottom: 10px !important;
+    margin-bottom: 6px !important;
     border-color: #cbd5e1 !important;
-    font-size: 11px !important;
+    font-size: 9.5px !important;
   }
 
   .invoice-table th {
     background-color: #f1f5f9 !important;
     color: #0f172a !important;
-    padding: 6px 10px !important;
+    padding: 4px 6px !important;
+    font-size: 9px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
   .invoice-table td {
-    padding: 5px 10px !important;
+    padding: 3.5px 6px !important;
     border-color: #e2e8f0 !important;
   }
 
   .table-dark {
-    background-color: #1e293b !important;
+    background-color: #0f172a !important;
     color: #ffffff !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
   .invoice-qr-box {
-    width: 60px !important;
-    height: 60px !important;
-    padding: 2px !important;
+    width: 46px !important;
+    height: 46px !important;
+    padding: 1px !important;
   }
 
   .text-warning {
-    color: #eab308 !important;
+    color: #d97706 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
   .badge {
-    border: 1px solid #cbd5e1 !important;
+    border: 1px solid #94a3b8 !important;
+    padding: 2px 5px !important;
+    font-size: 8.5px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
