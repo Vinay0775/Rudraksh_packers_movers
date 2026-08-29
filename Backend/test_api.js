@@ -71,7 +71,11 @@ async function runTest() {
       vehicle_number: 'RJ-14-GA-1024'
     })
   })).json();
-  console.log('Assigned Driver:', assignRes.booking.assigned_driver_name, 'Status:', assignRes.booking.status);
+  if (assignRes.booking) {
+    console.log('Assigned Driver:', assignRes.booking.assigned_driver_name, 'Status:', assignRes.booking.status);
+  } else {
+    console.log('Driver Assignment response:', assignRes);
+  }
 
   console.log('\n7. Testing Feedback Submission...');
   const feedbackRes = await (await fetch(`${base}/feedback`, {

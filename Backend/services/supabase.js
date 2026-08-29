@@ -111,8 +111,9 @@ module.exports = {
 
   async assignDriverToBooking(id, driverInfo) {
     if (supabase) {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(driverInfo.driver_id || '');
       const updatePayload = {
-        assigned_driver_id: driverInfo.driver_id || null,
+        assigned_driver_id: isUuid ? driverInfo.driver_id : null,
         assigned_driver_name: driverInfo.driver_name,
         assigned_driver_phone: driverInfo.driver_phone,
         assigned_vehicle_no: driverInfo.vehicle_number,

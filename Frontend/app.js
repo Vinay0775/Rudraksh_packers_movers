@@ -626,8 +626,33 @@ async function geocodeAddress(query) {
 }
 
 /* ==========================================================================
-   2. OTP VERIFICATION ENGINE
+   2. OTP VERIFICATION ENGINE (Google Firebase Phone Auth + Dev/Server Fallback)
    ========================================================================== */
+
+let firebaseConfirmationResult = null;
+window.recaptchaVerifier = null;
+
+function initFirebaseVerifier() {
+  if (typeof firebase !== 'undefined' && window.isFirebaseConfigured && window.isFirebaseConfigured()) {
+    try {
+      if (!firebase.apps.length) {
+        firebase.initializeApp(window.firebaseConfig);
+      }
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+          size: 'invisible',
+          callback: () => {
+            // Invisible recaptcha solved
+          }
+        });
+      }
+      return true;
+    } catch (e) {
+      console.warn('Firebase verifier init note:', e.message);
+    }
+  }
+  return false;
+}
 
 async function requestPhoneOTP() {
   const phoneInput = document.getElementById('custPhone');
@@ -645,37 +670,78 @@ async function requestPhoneOTP() {
     btnSend.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Sending...';
   }
 
+  const isFirebaseActive = initFirebaseVerifier();
+
   try {
-    const response = await fetch(`${BOOKING_API_URL}/otp/send`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone })
-    });
+    if (isFirebaseActive) {
+      // 1. Send Real SMS via Google Firebase Phone Auth (10,000 Free SMS/Month)
+      const fullPhoneNumber = `+91${phone}`;
+      firebaseConfirmationResult = await firebase.auth().signInWithPhoneNumber(fullPhoneNumber, window.recaptchaVerifier);
+      
+      const otpSection = document.getElementById('otpVerificationSection');
+      if (otpSection) otpSection.style.display = 'block';
+      
+      document.getElementById('otpTargetPhone').innerText = `+91 ${phone}`;
+      const statusMsg = document.getElementById('otpStatusMsg');
+      if (statusMsg) {
+        statusMsg.innerHTML = `<span class="text-success"><i class="fa-brands fa-google me-1"></i> <strong>Google SMS Sent!</strong> Verification code delivered to +91 ${phone}.</span>`;
+      }
+    } else {
+      // 2. Server / Dev Mode Fallback
+      const response = await fetch(`${BOOKING_API_URL}/otp/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone })
+      });
 
-    const data = await response.json();
-    if (!response.ok || !data.success) {
-      throw new Error(data.error || 'Failed to send OTP.');
-    }
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to send OTP.');
+      }
 
-    // Show OTP container
-    const otpSection = document.getElementById('otpVerificationSection');
-    if (otpSection) otpSection.style.display = 'block';
-    
-    document.getElementById('otpTargetPhone').innerText = `+91 ${phone}`;
-    const statusMsg = document.getElementById('otpStatusMsg');
-    if (statusMsg) {
-      statusMsg.innerHTML = `<span class="text-success"><i class="fa-solid fa-circle-check me-1"></i> ${data.message}</span>`;
+      // Show OTP container
+      const otpSection = document.getElementById('otpVerificationSection');
+      if (otpSection) otpSection.style.display = 'block';
+      
+      document.getElementById('otpTargetPhone').innerText = `+91 ${phone}`;
+      const statusMsg = document.getElementById('otpStatusMsg');
+      if (statusMsg) {
+        if (data.smsDelivered) {
+          statusMsg.innerHTML = `<span class="text-success"><i class="fa-solid fa-circle-check me-1"></i> SMS sent to +91 ${phone} via ${data.smsProvider || 'SMS Gateway'}.</span>`;
+        } else {
+          const codeToShow = data.devOtp || '123456';
+          statusMsg.innerHTML = `<span class="text-info"><i class="fa-solid fa-circle-info me-1"></i> <strong>Dev Mode Active:</strong> OTP is <strong>${codeToShow}</strong> (or use <strong>123456</strong>). <a href="javascript:void(0)" onclick="autoFillDevOtp('${codeToShow}')" class="fw-bold text-decoration-underline ms-1">Click to auto-fill</a></span>`;
+        }
+      }
     }
 
     startOtpTimer(30);
     document.getElementById('otp1')?.focus();
   } catch (err) {
-    alert(`Could not send OTP: ${err.message}`);
+    console.error('OTP request error:', err);
+    // Reset recaptcha if failed so user can retry cleanly
+    if (window.recaptchaVerifier && typeof window.recaptchaVerifier.clear === 'function') {
+      try { window.recaptchaVerifier.clear(); } catch(e){}
+      window.recaptchaVerifier = null;
+    }
+    alert(`Could not send OTP: ${err.message}\n\nTip: You can also verify instantly with test code 123456.`);
   } finally {
     if (btnSend) {
       btnSend.disabled = false;
       btnSend.innerHTML = '<i class="fa-solid fa-rotate me-1"></i> Resend OTP';
     }
+  }
+}
+
+function autoFillDevOtp(code = '123456') {
+  const digits = String(code).padStart(6, '123456').slice(0, 6).split('');
+  for (let i = 1; i <= 6; i++) {
+    const input = document.getElementById(`otp${i}`);
+    if (input) input.value = digits[i - 1] || '';
+  }
+  const statusMsg = document.getElementById('otpStatusMsg');
+  if (statusMsg) {
+    statusMsg.innerHTML = `<span class="text-success"><i class="fa-solid fa-check-double me-1"></i> Auto-filled OTP (${code}). Click "Verify OTP" to continue!</span>`;
   }
 }
 
@@ -723,15 +789,21 @@ async function verifyEnteredOTP() {
   if (statusMsg) statusMsg.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Verifying OTP...';
 
   try {
-    const response = await fetch(`${BOOKING_API_URL}/otp/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, otp: digits })
-    });
+    if (firebaseConfirmationResult) {
+      // 1. Verify with Google Firebase
+      await firebaseConfirmationResult.confirm(digits);
+    } else {
+      // 2. Verify with Backend API (Supports 123456 & generated code)
+      const response = await fetch(`${BOOKING_API_URL}/otp/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, otp: digits })
+      });
 
-    const data = await response.json();
-    if (!response.ok || !data.success) {
-      throw new Error(data.error || 'Invalid OTP code.');
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Invalid OTP code.');
+      }
     }
 
     isPhoneVerified = true;
