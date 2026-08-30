@@ -46,7 +46,9 @@ let routePolyline = null;
 let pickupCoords = null; // [lat, lng]
 let dropCoords = null;   // [lat, lng]
 
-const BOOKING_API_URL = 'http://localhost:3000/api';
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const PRODUCTION_API_URL = 'https://rudraksha-backend.onrender.com/api';
+const BOOKING_API_URL = isLocalhost ? 'http://localhost:3000/api' : (localStorage.getItem('rudraksha_backend_api_url') || PRODUCTION_API_URL);
 
 // Default Rate Configuration (Dynamic)
 let ratesConfig = {
