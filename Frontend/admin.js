@@ -1,5 +1,5 @@
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const PRODUCTION_API_URL = 'https://rudraksha-backend.onrender.com/api';
+const PRODUCTION_API_URL = 'https://rudraksha-packers-movers.onrender.com/api';
 const API_BASE = isLocalhost ? 'http://localhost:3000/api' : (localStorage.getItem('rudraksha_backend_api_url') || PRODUCTION_API_URL);
 const AUTH_TOKEN_KEY = 'rudraksha_admin_auth_token';
 const DEFAULT_MASTER_PASS = 'rudraksha@admin2026';
