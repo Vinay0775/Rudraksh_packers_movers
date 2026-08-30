@@ -175,7 +175,7 @@ function logoutAdmin() {
    2. DYNAMIC TAB NAVIGATION & SEARCH
    ========================================================================== */
 function switchAdminTab(tabName) {
-  const tabs = ['dashboard', 'bookings', 'fleet', 'rates', 'coupons', 'theme'];
+  const tabs = ['dashboard', 'bookings', 'fleet', 'rates', 'coupons', 'theme', 'parcels'];
 
   tabs.forEach((t) => {
     const dockBtn = document.getElementById(`dock-${t}`);
@@ -229,7 +229,7 @@ function handleGlobalSearch(query) {
   if (['fleet', 'vehicle', 'truck', 'driver'].includes(q)) switchAdminTab('fleet');
   else if (['rate', 'price', 'tariff', 'floor'].includes(q)) switchAdminTab('rates');
   else if (['coupon', 'promo', 'discount'].includes(q)) switchAdminTab('coupons');
-  else if (['theme', 'color', 'brand', 'contact'].includes(q)) switchAdminTab('theme');
+  else if (['theme', 'color', 'brand', 'contact'].includes(q)) switchAdminTab('theme'); else if (['parcel', 'parcels', 'package', 'consignment'].includes(q)) switchAdminTab('parcels');
 }
 
 /* ==========================================================================
