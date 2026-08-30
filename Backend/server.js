@@ -285,6 +285,217 @@ app.post('/api/bookings/:id/assign', async (req, res, next) => {
 });
 
 /* ==========================================================================
+   PARCEL DELIVERY ENDPOINTS (Porter-Style Logistics)
+   ========================================================================== */
+
+// 1. Get Parcel Rates Configuration
+app.get('/api/parcels/rates', async (req, res, next) => {
+  try {
+    const config = await db.getConfig();
+    res.json({ parcelRates: config.parcelRates || {} });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 2. Get All Parcels (Admin)
+app.get('/api/parcels', async (req, res, next) => {
+  try {
+    const parcels = await db.getParcels();
+    const { status, search } = req.query;
+    let filtered = parcels;
+    if (status && status !== 'all') {
+      filtered = filtered.filter(p => (p.booking_status || p.status) === status);
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.parcel_id?.toLowerCase().includes(q) ||
+        p.sender_name?.toLowerCase().includes(q) ||
+        p.receiver_name?.toLowerCase().includes(q) ||
+        p.sender_phone?.includes(q) ||
+        p.receiver_phone?.includes(q)
+      );
+    }
+    res.json({ parcels: filtered });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 3. Track Parcel by ID or Phone (Public)
+app.get('/api/parcels/track/:idOrPhone', async (req, res, next) => {
+  try {
+    const parcel = await db.getParcelByIdOrPhone(req.params.idOrPhone);
+    if (!parcel) {
+      return res.status(404).json({ error: 'No active parcel found matching this ID or Phone number.' });
+    }
+    res.json({ parcel });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 4. Create Parcel Booking
+app.post('/api/parcels', async (req, res, next) => {
+  try {
+    const body = req.body;
+    const senderName = body.sender_name || body.senderName;
+    const senderPhone = String(body.sender_phone || body.senderPhone || '').replace(/\D/g, '');
+    const receiverName = body.receiver_name || body.receiverName;
+    const receiverPhone = String(body.receiver_phone || body.receiverPhone || '').replace(/\D/g, '');
+    const pickupAddress = body.pickup_address || body.pickupAddress;
+    const dropAddress = body.drop_address || body.dropAddress;
+
+    if (!senderName || !senderPhone || !receiverName || !receiverPhone || !pickupAddress || !dropAddress) {
+      return res.status(400).json({ error: 'Please provide sender name & phone, receiver name & phone, and pickup & drop addresses.' });
+    }
+
+    const parcelId = body.parcel_id || `RP-PCL-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+    const pickupOtp = body.pickup_otp || String(Math.floor(1000 + Math.random() * 9000));
+    const deliveryOtp = body.delivery_otp || String(Math.floor(1000 + Math.random() * 9000));
+
+    const parcelPayload = {
+      id: parcelId,
+      parcel_id: parcelId,
+      sender_name: senderName,
+      sender_phone: senderPhone,
+      receiver_name: receiverName,
+      receiver_phone: receiverPhone,
+      pickup_address: pickupAddress,
+      pickup_lat: body.pickup_lat || null,
+      pickup_lng: body.pickup_lng || null,
+      drop_address: dropAddress,
+      drop_lat: body.drop_lat || null,
+      drop_lng: body.drop_lng || null,
+      distance_km: Number(body.distance_km || body.distance || 5),
+      estimated_time: body.estimated_time || '35-45 min',
+      
+      parcel_type: body.parcel_type || 'Package',
+      weight_category: body.weight_category || body.weight || '1_5kg',
+      package_size: body.package_size || 'Small',
+      dimensions: body.dimensions || { length: 0, width: 0, height: 0 },
+      vehicle_type: body.vehicle_type || 'bike',
+      
+      base_fare: Number(body.base_fare || 40),
+      distance_fare: Number(body.distance_fare || 25),
+      weight_fare: Number(body.weight_fare || 15),
+      vehicle_fare: Number(body.vehicle_fare || 0),
+      handling_fee: Number(body.handling_fee || 10),
+      addons_fee: Number(body.addons_fee || 0),
+      addons: body.addons || [],
+      discount: Number(body.discount || 0),
+      tax: Number(body.tax || 18),
+      total_amount: Number(body.total_amount || 108),
+      
+      payment_method: body.payment_method || 'pay_at_pickup',
+      payment_status: body.payment_status || 'pending',
+      booking_status: 'searching_driver',
+      status: 'searching_driver',
+      
+      driver_id: null,
+      assigned_driver_name: null,
+      assigned_driver_phone: null,
+      assigned_vehicle_no: null,
+      assigned_vehicle_type: null,
+      
+      pickup_otp: pickupOtp,
+      pickup_otp_verified: false,
+      delivery_otp: deliveryOtp,
+      delivery_otp_verified: false,
+      
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const savedParcel = await db.createParcel(parcelPayload);
+
+    // Send Telegram alert
+    const alertMsg = `📦 *NEW PARCEL DELIVERY ORDER* 🛵\n` +
+                     `━━━━━━━━━━━━━━━━━━━━\n` +
+                     `🆔 *Parcel ID:* \`${savedParcel.parcel_id}\`\n` +
+                     `👤 *Sender:* ${savedParcel.sender_name} (+91 ${savedParcel.sender_phone})\n` +
+                     `🎯 *Receiver:* ${savedParcel.receiver_name} (+91 ${savedParcel.receiver_phone})\n` +
+                     `📍 *From:* ${savedParcel.pickup_address}\n` +
+                     `🏁 *To:* ${savedParcel.drop_address}\n` +
+                     `⚖️ *Parcel:* ${savedParcel.parcel_type} (${savedParcel.weight_category})\n` +
+                     `🛵 *Vehicle:* ${savedParcel.vehicle_type.toUpperCase()}\n` +
+                     `💰 *Fare:* ₹${savedParcel.total_amount}\n` +
+                     `🔑 *Pickup OTP:* ${savedParcel.pickup_otp} | *Delivery OTP:* ${savedParcel.delivery_otp}\n` +
+                     `━━━━━━━━━━━━━━━━━━━━`;
+    telegram.sendTelegramMessage(alertMsg).catch(console.error);
+
+    res.status(201).json({ parcel: savedParcel });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 5. Assign Driver to Parcel
+app.post('/api/parcels/:id/assign', async (req, res, next) => {
+  try {
+    const { driver_id, driver_name, driver_phone, vehicle_number, vehicle_type } = req.body;
+    if (!driver_name || !driver_phone) {
+      return res.status(400).json({ error: 'Please provide driver name and phone.' });
+    }
+
+    const updated = await db.assignParcelDriver(req.params.id, {
+      driver_id,
+      driver_name,
+      driver_phone,
+      vehicle_number,
+      vehicle_type
+    });
+
+    if (!updated) return res.status(404).json({ error: 'Parcel not found' });
+    res.json({ parcel: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 6. Update Parcel Status
+app.patch('/api/parcels/:id/status', async (req, res, next) => {
+  try {
+    const { status, notes, updated_by } = req.body;
+    const allowed = ['searching_driver', 'driver_assigned', 'reached_pickup', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled'];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ error: `Invalid status. Allowed: ${allowed.join(', ')}` });
+    }
+
+    const updated = await db.updateParcelStatus(req.params.id, status, updated_by || 'admin', notes || '');
+    if (!updated) return res.status(404).json({ error: 'Parcel not found' });
+    res.json({ parcel: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 7. Verify Pickup OTP (Driver reaches sender)
+app.post('/api/parcels/:id/verify-pickup-otp', async (req, res, next) => {
+  try {
+    const { otp } = req.body;
+    if (!otp) return res.status(400).json({ error: 'OTP is required' });
+    const updated = await db.verifyParcelOtp(req.params.id, 'pickup', otp);
+    res.json({ success: true, parcel: updated, message: 'Pickup OTP verified! Parcel marked as Picked Up.' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// 8. Verify Delivery OTP (Driver reaches receiver)
+app.post('/api/parcels/:id/verify-delivery-otp', async (req, res, next) => {
+  try {
+    const { otp } = req.body;
+    if (!otp) return res.status(400).json({ error: 'OTP is required' });
+    const updated = await db.verifyParcelOtp(req.params.id, 'delivery', otp);
+    res.json({ success: true, parcel: updated, message: 'Delivery OTP verified! Parcel marked as Delivered.' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+/* ==========================================================================
    DRIVERS & FLEET ENDPOINTS
    ========================================================================== */
 app.get('/api/drivers', async (req, res, next) => {

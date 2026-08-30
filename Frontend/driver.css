@@ -1,0 +1,186 @@
+/* ==========================================================================
+   DRIVER MOBILE APP STYLING | RUDRAKSHA LOGISTICS FLEET
+   ========================================================================== */
+
+:root {
+  --driver-bg: #0D0D10;
+  --driver-surface: #17171B;
+  --driver-card: #1F1F24;
+  --driver-primary: #D0FD38;
+  --driver-orange: #f97316;
+  --driver-border: rgba(255, 255, 255, 0.08);
+  --driver-text: #FFFFFF;
+  --driver-muted: #8E8E98;
+}
+
+body.driver-body {
+  background-color: var(--driver-bg);
+  color: var(--driver-text);
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 0;
+  padding-bottom: 90px;
+}
+
+.driver-navbar {
+  background: rgba(23, 23, 27, 0.85);
+  border-bottom: 1px solid var(--driver-border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 12px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.driver-profile-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--driver-border);
+  border-radius: 50px;
+  padding: 4px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.driver-duty-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+  padding: 6px 14px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.driver-feed-card {
+  background: var(--driver-surface);
+  border: 1px solid var(--driver-border);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.driver-feed-card.urgent {
+  border-color: var(--driver-orange);
+}
+
+.driver-feed-card.active-trip {
+  border-color: var(--driver-primary);
+}
+
+.trip-fare-badge {
+  background: rgba(208, 253, 56, 0.15);
+  border: 1px solid var(--driver-primary);
+  color: var(--driver-primary);
+  font-weight: 800;
+  font-size: 1.15rem;
+  padding: 4px 12px;
+  border-radius: 10px;
+}
+
+.route-step-indicator {
+  display: flex;
+  gap: 14px;
+  position: relative;
+  padding: 8px 0;
+}
+
+.route-step-indicator .step-line {
+  position: absolute;
+  left: 11px;
+  top: 30px;
+  bottom: 12px;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.route-step-indicator .step-icon-pickup {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.route-step-indicator .step-icon-drop {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--driver-orange);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.btn-driver-accept {
+  background: var(--driver-primary);
+  color: #000000;
+  font-weight: 800;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 20px;
+  font-size: 1rem;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-driver-accept:hover {
+  background: #bbf224;
+  transform: translateY(-2px);
+}
+
+.btn-driver-reject {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--driver-muted);
+  font-weight: 700;
+  border: 1px solid var(--driver-border);
+  border-radius: 14px;
+  padding: 12px 20px;
+  font-size: 0.95rem;
+  width: 100%;
+  cursor: pointer;
+}
+
+.btn-driver-nav {
+  background: #2563eb;
+  color: #FFFFFF;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.otp-input-field {
+  background: #111114;
+  border: 2px solid var(--driver-primary);
+  color: var(--driver-primary);
+  font-family: monospace;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 6px;
+  text-align: center;
+  border-radius: 14px;
+  padding: 8px 14px;
+  width: 100%;
+  outline: none;
+}

@@ -66,18 +66,63 @@ async function fetchBookingAndTrack(query) {
   try {
     let booking = null;
 
-    // 1. Try Backend API
-    try {
-      const res = await fetch(`${API_BASE}/bookings/track/${encodeURIComponent(query)}`);
-      if (res.ok) {
-        const data = await res.json();
-        booking = data.booking;
-      }
-    } catch (apiErr) {
-      console.warn('Backend track API offline, checking local cache...', apiErr);
+    // 0. If query looks like a parcel ID or parcel search, query parcel API first
+    if (query.toUpperCase().includes('PCL') || query.startsWith('RP-')) {
+      try {
+        const pRes = await fetch(`${API_BASE}/parcels/track/${encodeURIComponent(query)}`);
+        if (pRes.ok) {
+          const pData = await pRes.json();
+          if (pData.parcel) {
+            booking = {
+              ...pData.parcel,
+              id: pData.parcel.parcel_id,
+              customer_name: pData.parcel.sender_name,
+              customer_phone: pData.parcel.sender_phone,
+              isParcel: true
+            };
+          }
+        }
+      } catch {}
     }
 
-    // 2. Fallback to local storage if API didn't find or offline
+    // 1. Try Relocation Backend API
+    if (!booking) {
+      try {
+        const res = await fetch(`${API_BASE}/bookings/track/${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = await res.json();
+          booking = data.booking;
+        }
+      } catch (apiErr) {
+        console.warn('Backend track API offline, checking local cache...', apiErr);
+      }
+    }
+
+    // 2. Fallback to local storage (both bookings & parcels)
+    if (!booking) {
+      const parcelHistory = localStorage.getItem('rudraksha_parcels_history');
+      if (parcelHistory) {
+        const pList = JSON.parse(parcelHistory);
+        const cleanQ = query.trim().toLowerCase();
+        const phoneClean = cleanQ.replace(/\D/g, '');
+        const pMatch = pList.find(p =>
+          (p.parcel_id && p.parcel_id.toLowerCase().includes(cleanQ)) ||
+          (p.id && p.id.toLowerCase().includes(cleanQ)) ||
+          (phoneClean && p.sender_phone && p.sender_phone.replace(/\D/g, '') === phoneClean) ||
+          (phoneClean && p.receiver_phone && p.receiver_phone.replace(/\D/g, '') === phoneClean)
+        );
+        if (pMatch) {
+          booking = {
+            ...pMatch,
+            id: pMatch.parcel_id || pMatch.id,
+            customer_name: pMatch.sender_name,
+            customer_phone: pMatch.sender_phone,
+            isParcel: true
+          };
+        }
+      }
+    }
+
     if (!booking) {
       const localHistory = localStorage.getItem('rudraksha_bookings_history');
       if (localHistory) {
@@ -164,11 +209,15 @@ function renderTrackingDashboard(b) {
   // Status mapping
   const statusConfig = {
     'received': { heading: 'Booking Received & Logged', sub: 'Our team is preparing your relocation dispatch', pill: '📥 Order Received', icon: 'fa-inbox' },
+    'searching_driver': { heading: 'Searching Nearby Rider', sub: 'Broadcasting delivery job to nearby verified drivers', pill: '📡 Searching Driver', icon: 'fa-tower-broadcast' },
     'reviewing': { heading: 'Cargo Inventory Verified', sub: 'Packaging checklist and cargo clearance approved', pill: '🔍 Verified & Confirmed', icon: 'fa-clipboard-check' },
     'confirmed': { heading: 'Relocation Confirmed', sub: 'Vehicle and driver scheduled for transit', pill: '✅ Booking Confirmed', icon: 'fa-circle-check' },
-    'driver_assigned': { heading: 'Driver & Vehicle Assigned', sub: 'Driver is moving to your pickup location', pill: '🚚 Driver Assigned', icon: 'fa-id-badge' },
+    'driver_assigned': { heading: 'Driver Assigned & Moving', sub: 'Assigned rider is en route to pickup address', pill: '🛵 Driver Assigned', icon: 'fa-id-badge' },
+    'reached_pickup': { heading: 'Driver Reached Pickup', sub: 'Driver arrived at pickup. Please verify with Pickup OTP.', pill: '📍 Reached Pickup', icon: 'fa-location-dot' },
+    'picked_up': { heading: 'Parcel Picked Up', sub: 'Pickup OTP verified. Shipment loaded for transit.', pill: '📦 Picked Up', icon: 'fa-box' },
     'in_transit': { heading: 'Shipment In Transit (On Road)', sub: 'Moving safely towards destination on schedule', pill: '🛣️ In Transit (Live GPS)', icon: 'fa-truck-fast' },
-    'delivered': { heading: 'Safely Delivered & Completed', sub: 'Goods unloaded and inspected at destination', pill: '🏁 Delivered', icon: 'fa-flag-checkered' },
+    'out_for_delivery': { heading: 'Out For Delivery', sub: 'Driver is near drop location. Prepare Delivery OTP.', pill: '🚀 Out For Delivery', icon: 'fa-paper-plane' },
+    'delivered': { heading: 'Safely Delivered & Completed', sub: 'Delivery OTP verified. Goods safely handed over.', pill: '🏁 Delivered', icon: 'fa-flag-checkered' },
     'cancelled': { heading: 'Booking Cancelled', sub: 'This relocation order has been cancelled', pill: '❌ Cancelled', icon: 'fa-ban' }
   };
 
@@ -250,10 +299,10 @@ function updateTimelineMilestones(status) {
 
   // Status index mapping
   let activeIdx = 0;
-  if (status === 'received') activeIdx = 0;
+  if (status === 'received' || status === 'searching_driver') activeIdx = 0;
   else if (status === 'reviewing' || status === 'confirmed') activeIdx = 1;
-  else if (status === 'driver_assigned') activeIdx = 2;
-  else if (status === 'in_transit') activeIdx = 3;
+  else if (status === 'driver_assigned' || status === 'reached_pickup') activeIdx = 2;
+  else if (status === 'picked_up' || status === 'in_transit' || status === 'out_for_delivery') activeIdx = 3;
   else if (status === 'delivered') activeIdx = 4;
 
   steps.forEach((stepKey, idx) => {

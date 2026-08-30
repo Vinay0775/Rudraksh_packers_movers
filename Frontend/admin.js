@@ -1107,6 +1107,301 @@ async function refreshAdminAll() {
   await loadCompanyBranding();
   await loadDriversFromBackend();
   await loadBookingsFromBackend();
+  await loadAdminParcels();
   loadAdminThemeSettings();
   updateDashboardMetrics();
 }
+
+/* ==========================================================================
+   11. PARCEL DELIVERY MANAGEMENT (Porter-Style Hub Controller)
+   ========================================================================== */
+let allAdminParcels = [];
+let currentParcelFilter = 'all';
+
+async function loadAdminParcels() {
+  try {
+    const res = await fetch(`${API_BASE}/parcels`, {
+      headers: getAuthHeaders()
+    });
+    if (res.ok) {
+      const data = await res.json();
+      allAdminParcels = data.parcels || [];
+    }
+  } catch (err) {
+    const saved = localStorage.getItem('rudraksha_parcels_history');
+    allAdminParcels = saved ? JSON.parse(saved) : [];
+  }
+
+  updateParcelMetrics();
+  renderParcelsTable();
+}
+
+function updateParcelMetrics() {
+  const total = allAdminParcels.length;
+  const active = allAdminParcels.filter(p => ['searching_driver', 'driver_assigned', 'reached_pickup', 'picked_up', 'in_transit', 'out_for_delivery'].includes(p.booking_status || p.status)).length;
+  const pending = allAdminParcels.filter(p => (p.booking_status || p.status) === 'searching_driver').length;
+  const revenue = allAdminParcels.reduce((acc, p) => acc + (Number(p.total_amount) || 0), 0);
+
+  if (document.getElementById('pclTotalCount')) document.getElementById('pclTotalCount').innerText = total;
+  if (document.getElementById('pclActiveCount')) document.getElementById('pclActiveCount').innerText = active;
+  if (document.getElementById('pclPendingCount')) document.getElementById('pclPendingCount').innerText = pending;
+  if (document.getElementById('pclRevenueTotal')) document.getElementById('pclRevenueTotal').innerText = `₹${revenue.toLocaleString('en-IN')}`;
+}
+
+function filterParcelsTable(status, btnEl) {
+  currentParcelFilter = status;
+  document.querySelectorAll('#parcelFilterPills button').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+
+  if (status === 'all') {
+    renderParcelsTable(allAdminParcels);
+  } else {
+    const filtered = allAdminParcels.filter(p => (p.booking_status || p.status) === status);
+    renderParcelsTable(filtered);
+  }
+}
+
+function searchParcelsTable(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) {
+    filterParcelsTable(currentParcelFilter);
+    return;
+  }
+  const filtered = allAdminParcels.filter(p =>
+    p.parcel_id?.toLowerCase().includes(q) ||
+    p.sender_name?.toLowerCase().includes(q) ||
+    p.receiver_name?.toLowerCase().includes(q) ||
+    p.sender_phone?.includes(q) ||
+    p.receiver_phone?.includes(q)
+  );
+  renderParcelsTable(filtered);
+}
+
+function renderParcelsTable(list = allAdminParcels) {
+  const tbody = document.getElementById('parcelsTableBody');
+  if (!tbody) return;
+
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted"><i class="fa-solid fa-box-open me-2"></i>No parcel deliveries found.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map(p => {
+    const pId = p.parcel_id || p.id || 'RP-PCL-XXXX';
+    const sName = p.sender_name || 'Sender';
+    const sPhone = p.sender_phone || '-';
+    const rName = p.receiver_name || 'Receiver';
+    const rPhone = p.receiver_phone || '-';
+    const pickup = p.pickup_address || '-';
+    const drop = p.drop_address || '-';
+    const dist = p.distance_km || 5;
+    const type = p.parcel_type || 'Package';
+    const veh = (p.vehicle_type || 'bike').toUpperCase();
+    const amount = `₹${p.total_amount || 0}`;
+    const status = p.booking_status || p.status || 'searching_driver';
+    const dPhone = p.assigned_driver_phone || '9876543210';
+    const dName = p.assigned_driver_name || 'Assigned Driver';
+
+    const driverDisplay = p.assigned_driver_name
+      ? `<div><strong class="text-white small">👨‍✈️ ${p.assigned_driver_name}</strong><br><span class="small text-muted">+91 ${dPhone}</span></div>`
+      : `<button class="btn btn-sm btn-outline-warning rounded-pill py-0 px-2" onclick="openAssignParcelDriverModal('${pId}')"><i class="fa-solid fa-plus me-1"></i>Assign Driver</button>`;
+
+    const statusBadgeClass = {
+      'searching_driver': 'bg-warning text-dark',
+      'confirmed': 'bg-primary text-white',
+      'driver_assigned': 'bg-info text-dark',
+      'reached_pickup': 'bg-warning text-dark',
+      'picked_up': 'bg-info text-dark',
+      'in_transit': 'bg-primary text-white',
+      'out_for_delivery': 'bg-warning text-dark',
+      'delivered': 'bg-success text-white',
+      'cancelled': 'bg-danger text-white'
+    }[status] || 'bg-secondary text-white';
+
+    const statusLabels = {
+      'searching_driver': '🟡 Booking Request Sent',
+      'confirmed': '🔵 Confirmed',
+      'driver_assigned': '🟣 Driver Assigned',
+      'reached_pickup': '🟠 Reached Pickup',
+      'picked_up': '📦 Parcel Picked Up',
+      'in_transit': '🚚 In Transit',
+      'out_for_delivery': '🛵 Out for Delivery',
+      'delivered': '🟢 Delivered',
+      'cancelled': '🔴 Cancelled'
+    };
+
+    // 1. WhatsApp Customer Message
+    const custWaMsg = `Hello ${sName}, this is Rudraksha Packers & Movers. Your parcel booking ${pId} has been received. Our team is checking availability and will confirm the final fare shortly.`;
+
+    // 2. WhatsApp Driver Dispatch Message
+    const driverWaMsg = 
+`📦 *NEW PARCEL DELIVERY*
+━━━━━━━━━━━━━━━━━━━━
+🆔 *Parcel ID:* ${pId}
+📍 *Pickup:* ${pickup}
+📍 *Drop:* ${drop}
+📦 *Parcel:* ${type} – ${p.weight_category || ''}
+🛵 *Vehicle:* ${veh}
+👤 *Customer:* ${sName}
+📞 *Customer Phone:* ${sPhone}
+💰 *Estimated Fare:* ${amount}
+
+━━━━━━━━━━━━━━━━━━━━
+*DRIVER ACTION*
+Reply with:
+*ACCEPT*
+or
+*REJECT*`;
+
+    return `
+      <tr class="cyber-booking-row border-bottom border-secondary border-opacity-10">
+        <td>
+          <strong class="text-orange" style="font-size: 0.9rem;">${pId}</strong>
+          <div class="small text-muted" style="font-size: 0.7rem;">${p.created_at ? new Date(p.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Just now'}</div>
+        </td>
+        <td>
+          <div class="fw-bold text-white small">${sName}</div>
+          <div class="small text-muted"><a href="tel:${sPhone}" class="text-decoration-none text-muted"><i class="fa-solid fa-phone text-success me-1"></i>+91 ${sPhone}</a></div>
+        </td>
+        <td>
+          <div class="fw-bold text-white small">${rName}</div>
+          <div class="small text-muted"><a href="tel:${rPhone}" class="text-decoration-none text-muted"><i class="fa-solid fa-phone text-success me-1"></i>+91 ${rPhone}</a></div>
+        </td>
+        <td>
+          <div class="small text-white text-truncate" style="max-width: 130px;" title="${pickup}">${pickup.split(',')[0]}</div>
+          <div class="small text-muted text-truncate" style="max-width: 130px;" title="${drop}">➔ ${drop.split(',')[0]}</div>
+          <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.68rem;">${dist} KM</span>
+        </td>
+        <td>
+          <span class="badge bg-dark border border-secondary text-white small">${type}</span>
+          <div class="small text-orange mt-1 fw-bold">${veh}</div>
+        </td>
+        <td>
+          <strong class="text-success">${amount}</strong>
+          <div class="small text-muted" style="font-size: 0.68rem;">${(p.payment_method || 'Cash')}</div>
+        </td>
+        <td>
+          <span class="badge ${statusBadgeClass} rounded-pill py-1 px-2 small">${statusLabels[status] || status}</span>
+        </td>
+        <td>${driverDisplay}</td>
+        <td>
+          <div class="d-flex gap-1 align-items-center">
+            <select class="form-select form-select-sm bg-dark text-white border-secondary py-0" style="font-size: 0.72rem; width: 125px;" onchange="quickUpdateParcelStatus('${pId}', this.value)">
+              <option value="searching_driver" ${status==='searching_driver'?'selected':''}>🟡 Request Sent</option>
+              <option value="confirmed" ${status==='confirmed'?'selected':''}>🔵 Confirmed</option>
+              <option value="driver_assigned" ${status==='driver_assigned'?'selected':''}>🟣 Driver Assigned</option>
+              <option value="reached_pickup" ${status==='reached_pickup'?'selected':''}>🟠 Reached Pickup</option>
+              <option value="picked_up" ${status==='picked_up'?'selected':''}>📦 Picked Up</option>
+              <option value="in_transit" ${status==='in_transit'?'selected':''}>🚚 In Transit</option>
+              <option value="out_for_delivery" ${status==='out_for_delivery'?'selected':''}>🛵 Out Delivery</option>
+              <option value="delivered" ${status==='delivered'?'selected':''}>🟢 Delivered</option>
+              <option value="cancelled" ${status==='cancelled'?'selected':''}>🔴 Cancelled</option>
+            </select>
+            <a href="https://wa.me/91${sPhone}?text=${encodeURIComponent(custWaMsg)}" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2" title="📲 WhatsApp Customer">
+              <i class="fa-brands fa-whatsapp"></i> <span class="d-none d-xl-inline" style="font-size: 0.7rem;">Customer</span>
+            </a>
+            <a href="https://wa.me/91${dPhone}?text=${encodeURIComponent(driverWaMsg)}" target="_blank" class="btn btn-sm btn-outline-warning py-0 px-2" title="📲 Send to Driver">
+              <i class="fa-solid fa-paper-plane"></i> <span class="d-none d-xl-inline" style="font-size: 0.7rem;">Driver</span>
+            </a>
+            <a href="track.html?id=${pId}" target="_blank" class="btn btn-sm btn-outline-info py-0 px-2" title="View Tracking Page">
+              <i class="fa-solid fa-magnifying-glass-location"></i>
+            </a>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openAssignParcelDriverModal(parcelId) {
+  const parcel = allAdminParcels.find(p => (p.parcel_id === parcelId || p.id === parcelId));
+  if (!parcel) return;
+
+  document.getElementById('assignParcelId').value = parcelId;
+  document.getElementById('assignParcelDisplayId').innerText = parcelId;
+  document.getElementById('assignParcelSender').innerText = parcel.sender_name || 'Sender';
+  document.getElementById('assignParcelReceiver').innerText = parcel.receiver_name || 'Receiver';
+
+  const select = document.getElementById('assignParcelDriverSelect');
+  if (select) {
+    if (adminDrivers.length > 0) {
+      select.innerHTML = adminDrivers.map(d => `
+        <option value="${d.id}">${d.driver_name} - ${d.vehicle_type} (${d.vehicle_number}) • Phone: ${d.phone}</option>
+      `).join('');
+    } else {
+      select.innerHTML = `
+        <option value="drv-101">Rajesh Kumar - Tata Ace (RJ-14-GA-1024)</option>
+        <option value="drv-102">Vikram Singh - Hero Splendor (RJ-14-MB-2244)</option>
+        <option value="drv-103">Ramesh Meena - Bajaj Auto (RJ-14-TA-9988)</option>
+      `;
+    }
+  }
+
+  const modal = new bootstrap.Modal(document.getElementById('assignParcelDriverModal'));
+  modal.show();
+}
+
+async function submitParcelDriverAssignment() {
+  const parcelId = document.getElementById('assignParcelId')?.value;
+  const select = document.getElementById('assignParcelDriverSelect');
+  const selectedDriverId = select?.value;
+
+  let driver = adminDrivers.find(d => d.id === selectedDriverId) || {
+    id: selectedDriverId || 'drv-101',
+    driver_name: select?.options[select.selectedIndex]?.text?.split('-')[0]?.trim() || 'Rajesh Kumar',
+    phone: '9876543210',
+    vehicle_number: 'RJ-14-GA-1024',
+    vehicle_type: 'Tata Ace'
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/parcels/${parcelId}/assign`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        driver_id: driver.id,
+        driver_name: driver.driver_name,
+        driver_phone: driver.phone,
+        vehicle_number: driver.vehicle_number,
+        vehicle_type: driver.vehicle_type
+      })
+    });
+
+    if (res.ok) {
+      showAdminToast(`Driver "${driver.driver_name}" assigned to parcel ${parcelId}!`);
+      const modalEl = document.getElementById('assignParcelDriverModal');
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+      await loadAdminParcels();
+    } else {
+      throw new Error('Assignment failed');
+    }
+  } catch (err) {
+    showAdminToast(`Assigned rider locally to ${parcelId}`);
+    const modalEl = document.getElementById('assignParcelDriverModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+    await loadAdminParcels();
+  }
+}
+
+async function quickUpdateParcelStatus(parcelId, newStatus) {
+  try {
+    const res = await fetch(`${API_BASE}/parcels/${parcelId}/status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status: newStatus, updated_by: 'Admin' })
+    });
+
+    if (res.ok) {
+      showAdminToast(`Parcel ${parcelId} status updated to "${newStatus.toUpperCase()}"`);
+      await loadAdminParcels();
+    }
+  } catch (err) {
+    showAdminToast(`Updated parcel ${parcelId} status locally to ${newStatus}`);
+    const p = allAdminParcels.find(x => x.parcel_id === parcelId || x.id === parcelId);
+    if (p) p.booking_status = newStatus;
+    renderParcelsTable();
+  }
+}
+

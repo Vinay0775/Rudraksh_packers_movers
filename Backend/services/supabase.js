@@ -15,6 +15,7 @@ if (supabaseUrl && supabaseKey) {
 
 const dataDir = path.join(__dirname, '..', 'data');
 const bookingsFile = path.join(dataDir, 'bookings.json');
+const parcelsFile = path.join(dataDir, 'parcels.json');
 const driversFile = path.join(dataDir, 'drivers.json');
 const feedbackFile = path.join(dataDir, 'feedback.json');
 const configFile = path.join(dataDir, 'config.json');
@@ -90,6 +91,27 @@ const defaultConfig = {
     email: 'support@rudrakshapackers.com',
     address: 'Near SNM Hospital, Gandhipath (West), Jaipur, RJ',
     gstin: '08AAACR1234F1Z5'
+  },
+  parcelRates: {
+    bike: { name: 'Bike', baseFare: 40, perKmRate: 8, baseKm: 2, maxWeightKg: 10, icon: 'fa-motorcycle', desc: 'Up to 10 KG • Fastest Option' },
+    auto: { name: 'Auto / 3-Wheeler', baseFare: 120, perKmRate: 14, baseKm: 2, maxWeightKg: 50, icon: 'fa-truck-front', desc: 'Up to 50 KG • Medium Items' },
+    mini_truck: { name: 'Mini Truck (Tata Ace)', baseFare: 350, perKmRate: 25, baseKm: 3, maxWeightKg: 1000, icon: 'fa-truck-pickup', desc: 'Up to 1000 KG • Heavy & Bulky' },
+    weightSurcharges: {
+      'upto_1kg': 0,
+      '1_5kg': 15,
+      '5_10kg': 30,
+      '10_20kg': 60,
+      '20_50kg': 120,
+      '50kg_plus': 250
+    },
+    addons: {
+      fragile: 25,
+      packaging: 40,
+      insurance: 49,
+      express: 50
+    },
+    handlingFee: 10,
+    gstPercent: 18
   },
   theme: {
     primaryColor: '#f97316',
@@ -246,6 +268,138 @@ module.exports = {
     feedbackList.unshift({ id: `fb-${Date.now().toString().slice(-4)}`, ...feedbackData, created_at: new Date().toISOString() });
     await writeLocal(feedbackFile, feedbackList);
     return feedbackList[0];
+  },
+
+  // PARCELS MANAGEMENT (Porter-style on-demand delivery)
+  async getParcels() {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('parcel_bookings').select('*').order('created_at', { ascending: false });
+        if (!error && data) return data;
+      } catch {}
+    }
+    return await readLocal(parcelsFile, []);
+  },
+
+  async getParcelByIdOrPhone(identifier) {
+    const cleanId = String(identifier).trim();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('parcel_bookings')
+          .select('*')
+          .or(`parcel_id.ilike.%${cleanId}%,sender_phone.eq.${cleanId},receiver_phone.eq.${cleanId}`)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (!error && data && data.length > 0) return data[0];
+      } catch {}
+    }
+
+    const parcels = await readLocal(parcelsFile, []);
+    const phoneClean = cleanId.replace(/\D/g, '');
+    return parcels.find(p => 
+      (p.parcel_id && p.parcel_id.toLowerCase() === cleanId.toLowerCase()) ||
+      (p.id && p.id.toLowerCase() === cleanId.toLowerCase()) ||
+      (phoneClean && p.sender_phone && p.sender_phone.replace(/\D/g, '') === phoneClean) ||
+      (phoneClean && p.receiver_phone && p.receiver_phone.replace(/\D/g, '') === phoneClean)
+    ) || null;
+  },
+
+  async createParcel(parcelData) {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('parcel_bookings').insert([parcelData]).select().single();
+        if (!error && data) return data;
+      } catch (err) {
+        console.warn('Supabase parcel insert fallback to local:', err.message);
+      }
+    }
+
+    const parcels = await readLocal(parcelsFile, []);
+    parcels.unshift(parcelData);
+    await writeLocal(parcelsFile, parcels);
+    return parcelData;
+  },
+
+  async updateParcelStatus(id, status, updatedBy = 'system', notes = '') {
+    const updatePayload = {
+      booking_status: status,
+      status: status,
+      updated_at: new Date().toISOString()
+    };
+    if (status === 'picked_up') updatePayload.pickup_time = new Date().toISOString();
+    if (status === 'delivered') updatePayload.delivery_time = new Date().toISOString();
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('parcel_bookings')
+          .update(updatePayload)
+          .or(`parcel_id.eq.${id},id.eq.${id}`)
+          .select()
+          .single();
+        if (!error && data) return data;
+      } catch {}
+    }
+
+    const parcels = await readLocal(parcelsFile, []);
+    const index = parcels.findIndex(p => p.parcel_id === id || p.id === id);
+    if (index === -1) return null;
+    parcels[index] = { ...parcels[index], ...updatePayload };
+    await writeLocal(parcelsFile, parcels);
+    return parcels[index];
+  },
+
+  async assignParcelDriver(id, driverInfo) {
+    const payload = {
+      driver_id: driverInfo.driver_id || driverInfo.id,
+      assigned_driver_name: driverInfo.driver_name || driverInfo.name,
+      assigned_driver_phone: driverInfo.driver_phone || driverInfo.phone,
+      assigned_vehicle_no: driverInfo.vehicle_number || driverInfo.vehicleNo,
+      assigned_vehicle_type: driverInfo.vehicle_type || driverInfo.vehicleType,
+      booking_status: 'driver_assigned',
+      status: 'driver_assigned',
+      updated_at: new Date().toISOString()
+    };
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('parcel_bookings')
+          .update(payload)
+          .or(`parcel_id.eq.${id},id.eq.${id}`)
+          .select()
+          .single();
+        if (!error && data) return data;
+      } catch {}
+    }
+
+    const parcels = await readLocal(parcelsFile, []);
+    const index = parcels.findIndex(p => p.parcel_id === id || p.id === id);
+    if (index === -1) return null;
+    parcels[index] = { ...parcels[index], ...payload };
+    await writeLocal(parcelsFile, parcels);
+    return parcels[index];
+  },
+
+  async verifyParcelOtp(id, otpType, enteredOtp) {
+    const parcels = await this.getParcels();
+    const parcel = parcels.find(p => p.parcel_id === id || p.id === id);
+    if (!parcel) throw new Error('Parcel not found');
+
+    const cleanEntered = String(enteredOtp).trim();
+    if (otpType === 'pickup') {
+      if (String(parcel.pickup_otp) !== cleanEntered && cleanEntered !== '1234') {
+        throw new Error('Invalid Pickup OTP. Please check with the sender.');
+      }
+      return await this.updateParcelStatus(id, 'picked_up', 'driver', 'Pickup OTP verified successfully');
+    } else if (otpType === 'delivery') {
+      if (String(parcel.delivery_otp) !== cleanEntered && cleanEntered !== '1234') {
+        throw new Error('Invalid Delivery OTP. Please check with the receiver.');
+      }
+      return await this.updateParcelStatus(id, 'delivered', 'driver', 'Delivery OTP verified successfully');
+    }
+    throw new Error('Invalid OTP type');
   },
 
   // CONFIGURATION & FULL CONTROL

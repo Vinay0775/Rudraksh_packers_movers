@@ -1,0 +1,393 @@
+/* ==========================================================================
+   PORTER-STYLE PARCEL DELIVERY SYSTEM DESIGN | RUDRAKSHA LOGISTICS
+   ========================================================================== */
+
+/* 1. HERO SERVICE SWITCHER PILLS */
+.hero-service-switcher {
+  display: inline-flex;
+  background: rgba(13, 13, 15, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50px;
+  padding: 6px;
+  margin-bottom: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  max-width: 100%;
+}
+
+.service-tab-btn {
+  background: transparent;
+  border: none;
+  color: #9E9EA7;
+  padding: 10px 24px;
+  border-radius: 40px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.service-tab-btn .tab-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+
+.service-tab-btn .tab-sub {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #6C6C75;
+  margin-top: 2px;
+}
+
+.service-tab-btn.active {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #FFFFFF;
+  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
+}
+
+.service-tab-btn.active .tab-sub {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.service-tab-btn:hover:not(.active) {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* 2. PARCEL BOOKING CONTAINER */
+.parcel-booking-section {
+  padding: 40px 0 60px 0;
+  background: #0B0B0E;
+  color: #FFFFFF;
+}
+
+.parcel-wizard-card {
+  background: #151518;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  position: relative;
+}
+
+.parcel-card-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 18px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.parcel-step-pill {
+  background: rgba(249, 115, 22, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  color: #f97316;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 50px;
+  text-transform: uppercase;
+}
+
+/* Location Inputs with Route Line */
+.parcel-locations-box {
+  background: #101013;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.parcel-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #19191D;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 10px 14px;
+  transition: all 0.2s ease;
+}
+
+.parcel-input-group:focus-within {
+  border-color: #f97316;
+  box-shadow: 0 0 15px rgba(249, 115, 22, 0.25);
+}
+
+.parcel-input-group .icon-pin-pickup {
+  color: #22c55e;
+  font-size: 1.1rem;
+  margin-right: 12px;
+}
+
+.parcel-input-group .icon-pin-drop {
+  color: #f97316;
+  font-size: 1.1rem;
+  margin-right: 12px;
+}
+
+.parcel-input-field {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #FFFFFF;
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.parcel-input-field::placeholder {
+  color: #5C5C66;
+  font-size: 0.88rem;
+}
+
+.btn-gps-detect {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f97316;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.btn-gps-detect:hover {
+  background: #f97316;
+  color: #FFFFFF;
+}
+
+/* Route Distance Pill */
+.parcel-distance-pill {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #86efac;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 50px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Parcel Selection Chips Grid */
+.parcel-type-chips,
+.parcel-weight-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.parcel-chip-btn {
+  background: #19191D;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #9E9EA7;
+  border-radius: 14px;
+  padding: 12px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.parcel-chip-btn i {
+  font-size: 1.2rem;
+  color: #f97316;
+}
+
+.parcel-chip-btn.active {
+  background: rgba(249, 115, 22, 0.15);
+  border-color: #f97316;
+  color: #FFFFFF;
+  box-shadow: 0 0 15px rgba(249, 115, 22, 0.3);
+}
+
+/* Vehicle Selection Cards (Porter Style) */
+.parcel-vehicles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.parcel-veh-card {
+  background: #19191D;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 18px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.parcel-veh-card.recommended {
+  border-color: #D0FD38;
+}
+
+.parcel-veh-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(208, 253, 56, 0.15);
+  border: 1px solid #D0FD38;
+  color: #D0FD38;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 50px;
+  text-transform: uppercase;
+}
+
+.parcel-veh-card.active {
+  background: rgba(249, 115, 22, 0.12);
+  border-color: #f97316;
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
+}
+
+.parcel-veh-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(249, 115, 22, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f97316;
+  font-size: 1.3rem;
+  margin-bottom: 12px;
+}
+
+.parcel-veh-card.active .parcel-veh-icon {
+  background: #f97316;
+  color: #FFFFFF;
+}
+
+/* Sender & Receiver Card */
+.parcel-party-card {
+  background: #101013;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+/* Dynamic Live Fare Calculator Panel */
+.parcel-fare-card {
+  background: #18181C;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  position: sticky;
+  top: 100px;
+}
+
+.parcel-fare-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.88rem;
+  color: #9E9EA7;
+  padding: 6px 0;
+}
+
+.parcel-fare-row.total-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 14px;
+  margin-top: 10px;
+  color: #FFFFFF;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.parcel-fare-row.total-row .total-amount {
+  color: #f97316;
+  font-size: 1.4rem;
+}
+
+.btn-book-parcel {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 50px;
+  padding: 16px 28px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  width: 100%;
+  cursor: pointer;
+  box-shadow: 0 6px 25px rgba(249, 115, 22, 0.45);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.btn-book-parcel:hover {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  box-shadow: 0 8px 30px rgba(249, 115, 22, 0.6);
+  transform: translateY(-2px);
+}
+
+/* OTP Pill Display */
+.otp-pill {
+  background: #111113;
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  color: #f97316;
+  font-family: monospace;
+  font-weight: 800;
+  font-size: 1.2rem;
+  padding: 6px 14px;
+  border-radius: 8px;
+  letter-spacing: 2px;
+  display: inline-block;
+}
+
+/* Responsive Media Queries */
+@media (max-width: 768px) {
+  .hero-service-switcher {
+    width: 100%;
+    border-radius: 18px;
+  }
+  .service-tab-btn {
+    flex: 1;
+    padding: 8px 12px;
+  }
+  .service-tab-btn .tab-title {
+    font-size: 0.88rem;
+  }
+  .service-tab-btn .tab-sub {
+    font-size: 0.62rem;
+  }
+  .parcel-wizard-card {
+    padding: 20px 16px;
+    border-radius: 18px;
+  }
+  .parcel-type-chips,
+  .parcel-weight-chips {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .parcel-vehicles-grid {
+    grid-template-columns: 1fr;
+  }
+}

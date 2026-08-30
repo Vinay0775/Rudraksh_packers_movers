@@ -23,6 +23,7 @@
 
   <!-- Master Stylesheet -->
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="parcel.css">
 
   <!-- Leaflet CSS & JS (Free OpenStreetMap & Route Engine) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -87,9 +88,23 @@
     <video class="hero-background-video" autoplay muted loop playsinline webkit-playsinline preload="auto" poster="rudraksha_truck_hero.jpg">
       <source src="hero-background-clip.mp4" type="video/mp4">
     </video>
-    <div class="container">
-      <h1 class="display-5 fw-extrabold">India's Relocation Portal</h1>
-      <p class="lead">Compare top verified packers and movers and save up to 30% on overall moving costs.</p>
+    <div class="container text-center">
+      <!-- 0. HERO SERVICE SWITCHER (Packers & Movers vs Send a Parcel) -->
+      <div class="d-flex justify-content-center mb-3">
+        <div class="hero-service-switcher">
+          <button type="button" class="service-tab-btn active" id="tabPackers" onclick="switchMainService('packers')">
+            <span class="tab-title"><i class="fa-solid fa-house-chimney"></i> Packers & Movers</span>
+            <span class="tab-sub">Move your Home or Office</span>
+          </button>
+          <button type="button" class="service-tab-btn" id="tabParcel" onclick="switchMainService('parcel')">
+            <span class="tab-title"><i class="fa-solid fa-box-open"></i> Send a Parcel</span>
+            <span class="tab-sub">Send a parcel anywhere</span>
+          </button>
+        </div>
+      </div>
+
+      <h1 class="display-5 fw-extrabold" id="heroMainTitle">Move Anything. Send Anything. Anywhere.</h1>
+      <p class="lead" id="heroMainSub">Professional relocation and on-demand parcel delivery from one trusted platform.</p>
 
       <!-- 4 Feature Cards Grid -->
       <div class="row g-4 mt-2">
@@ -345,309 +360,924 @@
     </div>
   </section>
 
-  <!-- 4. COST CALCULATOR & MULTI-STEP BOOKING WIZARD -->
-  <section class="py-5" id="calculator">
-    <div class="container">
-      <div class="text-center mb-4">
-        <h2 class="fw-bold text-secondary-custom mb-1">Instant Moving Cost Calculator</h2>
-        <p class="text-muted">Get exact transparent estimates and book directly over WhatsApp</p>
-      </div>
+  <!-- 4. COST CALCULATOR & MULTI-STEP BOOKING WIZARD (PACKERS & MOVERS FLOW) -->
+  <div id="packers-flow-container">
+    <section class="py-5" id="calculator">
+      <div class="container">
+        <div class="text-center mb-4">
+          <h2 class="fw-bold text-secondary-custom mb-1">Instant Moving Cost Calculator</h2>
+          <p class="text-muted">Get exact transparent estimates and book directly over WhatsApp</p>
+        </div>
 
-      <div class="row g-4">
-        <!-- Left Column: Multi-Step Booking Wizard -->
-        <div class="col-lg-8">
-          
-          <!-- Stepper Progress Tracker -->
-          <div class="stepper-wrapper">
-            <div class="stepper-progress-bar" id="stepperProgressBar"></div>
-            <div class="step-node active" data-step="1">
-              <div class="circle"><i class="fa-solid fa-map-location-dot"></i></div>
-              <div class="label">Route</div>
+        <div class="row g-4">
+          <!-- Left Column: Multi-Step Booking Wizard -->
+          <div class="col-lg-8">
+            
+            <!-- Stepper Progress Tracker -->
+            <div class="stepper-wrapper">
+              <div class="stepper-progress-bar" id="stepperProgressBar"></div>
+              <div class="step-node active" data-step="1">
+                <div class="circle"><i class="fa-solid fa-map-location-dot"></i></div>
+                <div class="label">Route</div>
+              </div>
+              <div class="step-node" data-step="2">
+                <div class="circle"><i class="fa-solid fa-boxes-packing"></i></div>
+                <div class="label">Inventory</div>
+              </div>
+              <div class="step-node" data-step="3">
+                <div class="circle"><i class="fa-solid fa-building"></i></div>
+                <div class="label">Floors & Lift</div>
+              </div>
+              <div class="step-node" data-step="4">
+                <div class="circle"><i class="fa-solid fa-shield-halved"></i></div>
+                <div class="label">Add-ons</div>
+              </div>
+              <div class="step-node" data-step="5">
+                <div class="circle"><i class="fa-solid fa-receipt"></i></div>
+                <div class="label">Checkout</div>
+              </div>
             </div>
-            <div class="step-node" data-step="2">
-              <div class="circle"><i class="fa-solid fa-boxes-packing"></i></div>
-              <div class="label">Inventory</div>
-            </div>
-            <div class="step-node" data-step="3">
-              <div class="circle"><i class="fa-solid fa-building"></i></div>
-              <div class="label">Floors & Lift</div>
-            </div>
-            <div class="step-node" data-step="4">
-              <div class="circle"><i class="fa-solid fa-shield-halved"></i></div>
-              <div class="label">Add-ons</div>
-            </div>
-            <div class="step-node" data-step="5">
-              <div class="circle"><i class="fa-solid fa-receipt"></i></div>
-              <div class="label">Checkout</div>
+
+            <!-- Wizard Card Form -->
+            <div class="custom-card">
+              <form id="bookingWizardForm" onsubmit="event.preventDefault();">
+
+                <!-- STEP 1: Locations & Schedule -->
+                <div class="wizard-step-content active" id="step1">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                      <h4 class="fw-bold mb-1 text-secondary-custom"><i class="fa-solid fa-location-dot text-primary-custom me-2"></i>Step 1: Route & Distance</h4>
+                      <p class="text-muted small mb-0">Enter pickup and drop locations. Road distance calculates automatically.</p>
+                    </div>
+                  </div>
+
+                  <div class="row g-3">
+                    <!-- Pickup Input with Autocomplete & Chips -->
+                    <div class="col-md-6">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-semibold mb-0">Pickup Address / Area</label>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold shadow-xs" id="btnUsePreciseLocation" onclick="useCurrentLocation()">
+                          <i class="fa-solid fa-location-crosshairs me-1"></i> Detect GPS
+                        </button>
+                      </div>
+                      <div class="location-input-wrap">
+                        <input type="text" class="form-control form-control-lg" id="pickupCity" placeholder="Type colony, area or city (e.g. Sirsi Road, Jaipur)" autocomplete="off" required>
+                        <div class="autocomplete-dropdown" id="pickupSuggestions"></div>
+                      </div>
+                      <!-- Quick Local Chips -->
+                      <div class="quick-location-chips">
+                        <span class="small text-muted align-self-center me-1" style="font-size: 0.75rem;">Quick:</span>
+                        <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Sirsi Road, Jaipur')">📍 Sirsi Road</button>
+                        <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Vaishali Nagar, Jaipur')">📍 Vaishali Nagar</button>
+                        <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Mansarovar, Jaipur')">📍 Mansarovar</button>
+                        <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Malviya Nagar, Jaipur')">📍 Malviya Nagar</button>
+                        <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Ajmer Road, Jaipur')">📍 Ajmer Road</button>
+                      </div>
+                    </div>
+
+                    <!-- Drop Input with Autocomplete & Chips -->
+                    <div class="col-md-6">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-semibold mb-0">Drop Address / City</label>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold shadow-xs" onclick="calculateOSRMRoute()">
+                          <i class="fa-solid fa-route text-primary-custom me-1"></i> Find Route
+                        </button>
+                      </div>
+                      <div class="location-input-wrap">
+                        <input type="text" class="form-control form-control-lg" id="dropCity" placeholder="Type destination area or city (e.g. Noida, Delhi NCR)" autocomplete="off" required>
+                        <div class="autocomplete-dropdown" id="dropSuggestions"></div>
+                      </div>
+                      <!-- Quick Drop Chips -->
+                      <div class="quick-location-chips">
+                        <span class="small text-muted align-self-center me-1" style="font-size: 0.75rem;">Quick:</span>
+                        <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Mansarovar, Jaipur')">🏁 Mansarovar</button>
+                        <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Jagatpura, Jaipur')">🏁 Jagatpura</button>
+                        <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Gurugram, Delhi NCR')">🏁 Gurgaon</button>
+                        <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Noida, Delhi NCR')">🏁 Noida</button>
+                        <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Mumbai, Maharashtra')">🏁 Mumbai</button>
+                      </div>
+                    </div>
+
+                    <!-- Interactive OpenStreetMap Preview with Click-To-Set Guidance -->
+                    <div class="col-12">
+                      <div id="routeMap"></div>
+                      <div class="map-helper-tip">
+                        <span><i class="fa-solid fa-hand-pointer text-primary-custom me-1"></i> <strong>Pro Tip:</strong> Click anywhere on the map or drag the 📍 marker to pinpoint your exact street or house!</span>
+                        <span class="badge bg-light text-secondary border">Interactive Map</span>
+                      </div>
+                    </div>
+
+                    <!-- Distance & Route Stats Alert -->
+                    <div class="col-12">
+                      <div class="alert alert-info py-2 px-3 small rounded-3 d-flex justify-content-between align-items-center mb-0" id="routeStatsAlert">
+                        <div>
+                          <i class="fa-solid fa-route text-primary-custom me-1"></i> <strong>Estimated Road Distance:</strong> <span id="routeDistanceDisplay">25 KM (Local Jaipur)</span>
+                        </div>
+                        <span class="badge bg-primary-custom text-white" id="routeTimeDisplay">~45 Mins Drive</span>
+                      </div>
+                    </div>
+
+                    <!-- Moving Schedule Date & Time Slot -->
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold">Preferred Shifting Date <span class="text-danger">*</span></label>
+                      <input type="date" class="form-control form-control-lg" id="shiftingDate" required>
+                    </div>
+
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold">Preferred Time Slot</label>
+                      <select class="form-select form-select-lg" id="shiftingTimeSlot">
+                        <option value="morning" selected>Morning Slot (07:00 AM - 11:00 AM) - Best for Traffic</option>
+                        <option value="afternoon">Afternoon Slot (12:00 PM - 04:00 PM)</option>
+                        <option value="evening">Evening Slot (05:00 PM - 09:00 PM)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Step 1 Navigation Buttons -->
+                  <div class="d-flex justify-content-end mt-4 pt-3 border-top">
+                    <button type="button" class="btn btn-primary-custom px-4 py-2" onclick="validateAndGoStep(2)">
+                      Next: Inventory Items <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- STEP 2: Inventory & Vehicles -->
+                <div class="wizard-step-content" id="step2">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                      <h4 class="fw-bold mb-1 text-secondary-custom"><i class="fa-solid fa-truck-front text-primary-custom me-2"></i>Step 2: Vehicle & Cargo Size</h4>
+                      <p class="text-muted small mb-0">Select your transport vehicle and house size to calibrate capacity.</p>
+                    </div>
+                  </div>
+
+                  <!-- 1. Vehicle Selection Cards -->
+                  <div class="mb-4">
+                    <label class="form-label fw-semibold text-secondary-custom mb-2">
+                      <i class="fa-solid fa-truck-moving text-primary-custom me-1"></i> Dedicated Transport Vehicle <span class="text-danger">*</span>
+                    </label>
+                    <div class="row g-2" id="vehicleSelectionGrid">
+                      <div class="col-6 col-md-4 col-lg-2.4">
+                        <div class="vehicle-select-card active" data-vehicle="mini_truck" onclick="selectVehicleType('mini_truck')">
+                          <div class="vehicle-icon-wrap"><i class="fa-solid fa-truck-pickup"></i></div>
+                          <h6 class="vehicle-name">Tata Ace / Mini</h6>
+                          <span class="vehicle-cap">1.5 Ton • 1 RK/Studio</span>
+                          <div class="vehicle-price-tag">Base ₹2,500</div>
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4 col-lg-2.4">
+                        <div class="vehicle-select-card" data-vehicle="tempo_14ft" onclick="selectVehicleType('tempo_14ft')">
+                          <div class="vehicle-icon-wrap"><i class="fa-solid fa-truck"></i></div>
+                          <h6 class="vehicle-name">14ft Tempo / Eicher</h6>
+                          <span class="vehicle-cap">3.5 Ton • 1-2 BHK</span>
+                          <div class="vehicle-price-tag">Base ₹3,500</div>
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4 col-lg-2.4">
+                        <div class="vehicle-select-card" data-vehicle="truck_19ft" onclick="selectVehicleType('truck_19ft')">
+                          <div class="vehicle-icon-wrap"><i class="fa-solid fa-truck-moving"></i></div>
+                          <h6 class="vehicle-name">19ft Container Truck</h6>
+                          <span class="vehicle-cap">7.0 Ton • 3+ BHK</span>
+                          <div class="vehicle-price-tag">Base ₹5,500</div>
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4 col-lg-2.4">
+                        <div class="vehicle-select-card" data-vehicle="bike" onclick="selectVehicleType('bike')">
+                          <div class="vehicle-icon-wrap"><i class="fa-solid fa-motorcycle"></i></div>
+                          <h6 class="vehicle-name">Bike Carrier</h6>
+                          <span class="vehicle-cap">Ramp & Chock Secured</span>
+                          <div class="vehicle-price-tag">Base ₹1,500</div>
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4 col-lg-2.4">
+                        <div class="vehicle-select-card" data-vehicle="car" onclick="selectVehicleType('car')">
+                          <div class="vehicle-icon-wrap"><i class="fa-solid fa-car-side"></i></div>
+                          <h6 class="vehicle-name">Closed Car Carrier</h6>
+                          <span class="vehicle-cap">Hydraulic Platform</span>
+                          <div class="vehicle-price-tag">Base ₹4,500</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 2. House Size Selection Cards -->
+                  <div class="mb-4" id="houseSizeSelectionWrap">
+                    <label class="form-label fw-semibold text-secondary-custom mb-2">
+                      <i class="fa-solid fa-house-chimney text-primary-custom me-1"></i> House / Cargo Size <span class="text-danger">*</span>
+                    </label>
+                    <div class="row g-2">
+                      <div class="col-6 col-md-4 col-lg-2.4">
+                        <div class="house-size-card" data-size="1rk" onclick="selectHouseSize('1rk')">
+                          <i class="fa-solid fa-door-open"></i>
+                          <h6>1 RK</h6>
+                          <span class="badge bg-secondary-subtle text-dark">Studio</span>
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4 col-lg-2.4">
+                        <div class="house-size-card" data-size="1bhk" onclick="selectHouseSize('1bhk')">
+                          <i class="fa-solid fa-bed"></i>
+                          <h6>1 BHK</h6>
+                          <span class="badge bg-secondary-subtle text-dark">Standard</span>
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4 col-lg-2.4">
+                        <div class="house-size-card" data-size="2bhk" onclick="selectHouseSize('2bhk')">
+                          <i class="fa-solid fa-house-chimney"></i>
+                          <h6>2 BHK</h6>
+                          <span class="badge bg-secondary-subtle text-dark">Popular</span>
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4 col-lg-2.4">
+                        <div class="house-size-card" data-size="3bhk" onclick="selectHouseSize('3bhk')">
+                          <i class="fa-solid fa-building"></i>
+                          <h6>3 BHK</h6>
+                          <span class="badge bg-secondary-subtle text-dark">Family</span>
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4 col-lg-2.4">
+                        <div class="house-size-card" data-size="villa" onclick="selectHouseSize('villa')">
+                          <i class="fa-solid fa-warehouse"></i>
+                          <h6>4+ BHK / Villa</h6>
+                          <span class="badge bg-secondary-subtle text-dark">Large</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 3. Key Item Breakdown Counters -->
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary-custom mb-2">
+                      <i class="fa-solid fa-boxes-stacked text-primary-custom me-1"></i> Key Household Items Quantity
+                    </label>
+                    <div class="row g-2">
+                      <div class="col-6 col-md-4">
+                        <div class="item-counter-box">
+                          <span>🛋️ Sofa Set</span>
+                          <div class="counter-ctrl">
+                            <button type="button" class="counter-btn" onclick="updateItemCount('sofa', -1)">-</button>
+                            <span class="counter-val" id="count-sofa">0</span>
+                            <button type="button" class="counter-btn" onclick="updateItemCount('sofa', 1)">+</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4">
+                        <div class="item-counter-box">
+                          <span>🛏️ Bed / Cot</span>
+                          <div class="counter-ctrl">
+                            <button type="button" class="counter-btn" onclick="updateItemCount('bed', -1)">-</button>
+                            <span class="counter-val" id="count-bed">0</span>
+                            <button type="button" class="counter-btn" onclick="updateItemCount('bed', 1)">+</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4">
+                        <div class="item-counter-box">
+                          <span>🪑 Dining Set</span>
+                          <div class="counter-ctrl">
+                            <button type="button" class="counter-btn" onclick="updateItemCount('dining', -1)">-</button>
+                            <span class="counter-val" id="count-dining">0</span>
+                            <button type="button" class="counter-btn" onclick="updateItemCount('dining', 1)">+</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4">
+                        <div class="item-counter-box">
+                          <span>🧊 Refrigerator</span>
+                          <div class="counter-ctrl">
+                            <button type="button" class="counter-btn" onclick="updateItemCount('fridge', -1)">-</button>
+                            <span class="counter-val" id="count-fridge">0</span>
+                            <button type="button" class="counter-btn" onclick="updateItemCount('fridge', 1)">+</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4">
+                        <div class="item-counter-box">
+                          <span>🧺 Washing Machine</span>
+                          <div class="counter-ctrl">
+                            <button type="button" class="counter-btn" onclick="updateItemCount('washing', -1)">-</button>
+                            <span class="counter-val" id="count-washing">0</span>
+                            <button type="button" class="counter-btn" onclick="updateItemCount('washing', 1)">+</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4">
+                        <div class="item-counter-box">
+                          <span>📦 Carton Boxes</span>
+                          <div class="counter-ctrl">
+                            <button type="button" class="counter-btn" onclick="updateItemCount('boxes', -1)">-</button>
+                            <span class="counter-val" id="count-boxes">0</span>
+                            <button type="button" class="counter-btn" onclick="updateItemCount('boxes', 1)">+</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Step 2 Navigation Buttons -->
+                  <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                    <button type="button" class="btn btn-outline-secondary px-4 py-2" onclick="goToStep(1)">
+                      <i class="fa-solid fa-arrow-left me-1"></i> Back
+                    </button>
+                    <button type="button" class="btn btn-primary-custom px-4 py-2" onclick="validateAndGoStep(3)">
+                      Next: Floors & Elevator <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- STEP 3: Floors & Elevator -->
+                <div class="wizard-step-content" id="step3">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                      <h4 class="fw-bold mb-1 text-secondary-custom"><i class="fa-solid fa-stairs text-primary-custom me-2"></i>Step 3: Floor & Lift Access</h4>
+                      <p class="text-muted small mb-0">Help us calculate labor & handling surcharges accurately.</p>
+                    </div>
+                  </div>
+
+                  <div class="row g-4">
+                    <!-- Pickup Floor -->
+                    <div class="col-md-6">
+                      <div class="p-3 border rounded-3 bg-light">
+                        <h6 class="fw-bold text-secondary-custom mb-3"><i class="fa-solid fa-arrow-up-from-bracket text-primary-custom me-1"></i> Pickup Location Access</h6>
+                        
+                        <div class="mb-3">
+                          <label class="form-label small fw-semibold">Floor Number</label>
+                          <select class="form-select" id="pickupFloor" onchange="calculatePrice()">
+                            <option value="0">Ground Floor (0)</option>
+                            <option value="1">1st Floor</option>
+                            <option value="2">2nd Floor</option>
+                            <option value="3">3rd Floor</option>
+                            <option value="4">4th Floor</option>
+                            <option value="5">5th Floor or Higher</option>
+                          </select>
+                        </div>
+
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="pickupLift" checked onchange="calculatePrice()">
+                          <label class="form-check-label fw-semibold" for="pickupLift">Service Lift / Elevator Available</label>
+                        </div>
+                        <div class="small text-muted mt-1">If no lift, ₹300 per floor labor surcharge applies.</div>
+                      </div>
+                    </div>
+
+                    <!-- Drop Floor -->
+                    <div class="col-md-6">
+                      <div class="p-3 border rounded-3 bg-light">
+                        <h6 class="fw-bold text-secondary-custom mb-3"><i class="fa-solid fa-arrow-down-to-bracket text-primary-custom me-1"></i> Drop Location Access</h6>
+                        
+                        <div class="mb-3">
+                          <label class="form-label small fw-semibold">Floor Number</label>
+                          <select class="form-select" id="dropFloor" onchange="calculatePrice()">
+                            <option value="0">Ground Floor (0)</option>
+                            <option value="1">1st Floor</option>
+                            <option value="2">2nd Floor</option>
+                            <option value="3">3rd Floor</option>
+                            <option value="4">4th Floor</option>
+                            <option value="5">5th Floor or Higher</option>
+                          </select>
+                        </div>
+
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="dropLift" checked onchange="calculatePrice()">
+                          <label class="form-check-label fw-semibold" for="dropLift">Service Lift / Elevator Available</label>
+                        </div>
+                        <div class="small text-muted mt-1">If no lift, ₹300 per floor labor surcharge applies.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Step 3 Navigation Buttons -->
+                  <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                    <button type="button" class="btn btn-outline-secondary px-4 py-2" onclick="goToStep(2)">
+                      <i class="fa-solid fa-arrow-left me-1"></i> Back
+                    </button>
+                    <button type="button" class="btn btn-primary-custom px-4 py-2" onclick="validateAndGoStep(4)">
+                      Next: Add-on Protection <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- STEP 4: Add-ons & Customer Details -->
+                <div class="wizard-step-content" id="step4">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                      <h4 class="fw-bold mb-1 text-secondary-custom"><i class="fa-solid fa-shield-halved text-primary-custom me-2"></i>Step 4: Protection & Contact</h4>
+                      <p class="text-muted small mb-0">Choose add-on services and enter your contact details to lock booking.</p>
+                    </div>
+                  </div>
+
+                  <!-- Optional Add-on Cards -->
+                  <div class="row g-2 mb-4">
+                    <div class="col-md-4">
+                      <div class="p-3 border rounded-3 bg-light">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="addonBubblePacking" onchange="calculatePrice()">
+                          <label class="form-check-label fw-bold text-secondary-custom" for="addonBubblePacking">
+                            🫧 Multi-layer Bubble Packing
+                          </label>
+                        </div>
+                        <div class="small text-muted mt-1">Special protection for glassware, TV, and electronics (+₹1,500).</div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="p-3 border rounded-3 bg-light">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="addonUnpacking" onchange="calculatePrice()">
+                          <label class="form-check-label fw-bold text-secondary-custom" for="addonUnpacking">
+                            📦 Unpacking & Rearranging
+                          </label>
+                        </div>
+                        <div class="small text-muted mt-1">Crew unpacks & arranges furniture in new house (+₹1,200).</div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="p-3 border rounded-3 bg-light">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="addonInsurance" onchange="calculatePrice()">
+                          <label class="form-check-label fw-bold text-secondary-custom" for="addonInsurance">
+                            🛡️ 100% Transit Insurance
+                          </label>
+                        </div>
+                        <div class="small text-muted mt-1">Zero-depreciation cargo safety guarantee (+₹999).</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Contact Form -->
+                  <div class="p-3 border rounded-3 bg-light mb-3">
+                    <h6 class="fw-bold text-secondary-custom mb-3"><i class="fa-solid fa-address-card text-primary-custom me-1"></i> Customer Information</h6>
+                    
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label class="form-label fw-semibold">Your Full Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="custName" placeholder="e.g. Ramesh Kumar" required>
+                      </div>
+                      
+                      <div class="col-md-6">
+                        <label class="form-label fw-semibold">WhatsApp Mobile Number <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                          <span class="input-group-text bg-white">+91</span>
+                          <input type="tel" class="form-control" id="custPhone" placeholder="10-digit mobile number" maxlength="10" required>
+                        </div>
+                      </div>
+
+                      <div class="col-md-6">
+                        <label class="form-label fw-semibold">Email Address (Optional)</label>
+                        <input type="email" class="form-control" id="custEmail" placeholder="yourname@gmail.com">
+                      </div>
+
+                      <div class="col-md-6">
+                        <label class="form-label fw-semibold">Promo / Coupon Code</label>
+                        <div class="input-group">
+                          <input type="text" class="form-control text-uppercase" id="couponCodeInput" placeholder="Try: FIRST500">
+                          <button class="btn btn-outline-primary fw-semibold" type="button" onclick="applyCouponCode()">Apply</button>
+                        </div>
+                        <div id="couponStatusMsg" class="small fw-semibold mt-1"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Payment Options -->
+                  <div class="p-3 border rounded-3 bg-light mb-3">
+                    <h6 class="fw-bold text-secondary-custom mb-2"><i class="fa-solid fa-credit-card text-primary-custom me-1"></i> Payment Options</h6>
+                    <div class="d-flex gap-3 flex-wrap">
+                      <label class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="paymentMode" id="payCod" value="cod" checked>
+                        <span class="form-check-label fw-semibold">Pay on Delivery (0 Advance)</span>
+                      </label>
+                      <label class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="paymentMode" id="payAdvance" value="upi_advance">
+                        <span class="form-check-label fw-semibold">Token Advance 10% (Instant UPI Lock)</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Step 4 Navigation Buttons -->
+                  <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                    <button type="button" class="btn btn-outline-secondary px-4 py-2" onclick="goToStep(3)">
+                      <i class="fa-solid fa-arrow-left me-1"></i> Back
+                    </button>
+                    <div class="d-flex gap-2">
+                      <button type="button" class="btn btn-outline-primary px-3 py-2 fw-semibold" onclick="handlePreviewInvoiceClick()">
+                        <i class="fa-solid fa-print me-1"></i> Preview Invoice
+                      </button>
+                      <button type="button" class="btn btn-primary-custom px-4 py-2 fw-bold" id="btnFinalBookNow" onclick="handleBookRelocationSubmit()">
+                        <i class="fa-solid fa-circle-check me-1"></i> Book Now & Confirm
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+              </form>
             </div>
           </div>
 
-          <!-- Wizard Card Form -->
-          <div class="custom-card">
-            <form id="bookingWizardForm" onsubmit="event.preventDefault();">
+          <!-- Right Column: Live Dynamic Cost Breakdown Card -->
+          <div class="col-lg-4">
+            <div class="cost-summary-card">
+              <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                <h5 class="fw-bold text-secondary-custom mb-0"><i class="fa-solid fa-calculator text-primary-custom me-1"></i> Quote Summary</h5>
+                <span class="badge bg-success text-white">Live Rate</span>
+              </div>
 
-              <!-- STEP 1: Locations & Schedule -->
-              <div class="wizard-step-content active" id="step1">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+              <!-- Selected Vehicle Mini Badge -->
+              <div class="p-2 bg-light rounded-3 d-flex align-items-center justify-content-between mb-3 border">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="fa-solid fa-truck text-primary-custom fs-5"></i>
                   <div>
-                    <h4 class="fw-bold mb-1 text-secondary-custom"><i class="fa-solid fa-location-dot text-primary-custom me-2"></i>Step 1: Route & Distance</h4>
-                    <p class="text-muted small mb-0">Enter pickup and drop locations. Road distance calculates automatically.</p>
+                    <div class="fw-bold small" id="summaryVehicleName">Tata Ace / Mini</div>
+                    <div class="text-muted" style="font-size: 0.75rem;" id="summaryHouseType">1 BHK Moving</div>
                   </div>
                 </div>
+                <span class="badge bg-primary-custom text-white" id="summaryDistanceBadge">25 KM</span>
+              </div>
 
+              <!-- Line Items Breakdown -->
+              <div class="summary-line-item">
+                <span>Base Moving Charge:</span>
+                <span class="fw-semibold" id="priceBase">₹2,500</span>
+              </div>
+              <div class="summary-line-item">
+                <span>Distance Charge:</span>
+                <span class="fw-semibold" id="priceDistance">₹1,000</span>
+              </div>
+              <div class="summary-line-item">
+                <span>House Size & Items:</span>
+                <span class="fw-semibold" id="priceItems">₹1,000</span>
+              </div>
+              <div class="summary-line-item">
+                <span>Floor / Labor Handling:</span>
+                <span class="fw-semibold" id="priceFloor">₹0</span>
+              </div>
+              <div class="summary-line-item">
+                <span>Add-on Protection:</span>
+                <span class="fw-semibold" id="priceAddons">₹0</span>
+              </div>
+              <div class="summary-line-item text-success" id="discountLineWrap" style="display: none;">
+                <span>Coupon Discount:</span>
+                <span class="fw-semibold" id="priceDiscount">-₹500</span>
+              </div>
+
+              <!-- Total Row -->
+              <div class="summary-total-row">
+                <span>ESTIMATED TOTAL:</span>
+                <span class="summary-total-amount" id="priceTotal">₹4,500</span>
+              </div>
+
+              <div class="p-2 bg-light rounded text-center small text-muted border">
+                <i class="fa-solid fa-shield-cat text-primary-custom me-1"></i> Inclusive of Packing Material, Labor & Transport.
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <!-- ==========================================================================
+       100% FREE WHATSAPP-FIRST PARCEL DELIVERY SECTION (MVP)
+       ========================================================================== -->
+  <div id="parcel-flow-container" class="d-none">
+    <section class="parcel-booking-section" id="parcel-booking">
+      <div class="container">
+        <div class="text-center mb-4">
+          <span class="parcel-step-pill mb-2"><i class="fa-solid fa-box text-warning me-1"></i> Send a Parcel</span>
+          <h2 class="fw-bold text-white mb-1">Send your parcel quickly and easily</h2>
+          <p class="text-muted small">Enter pickup and delivery details, calculate your estimated fare and send your booking request directly on WhatsApp.</p>
+        </div>
+
+        <div class="row g-4">
+          <!-- Left Column: Free Parcel Form (Col 8) -->
+          <div class="col-lg-8">
+            <div class="parcel-wizard-card">
+              
+              <!-- 1. Pickup & Drop Locations -->
+              <div class="parcel-card-header">
+                <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-location-dot text-orange me-2"></i>1. Pickup & Delivery Details</h5>
+                <span class="parcel-step-pill">Locations</span>
+              </div>
+
+              <div class="parcel-locations-box">
                 <div class="row g-3">
-                  <!-- Pickup Input with Autocomplete & Chips -->
+                  <!-- Pickup -->
                   <div class="col-md-6">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                      <label class="form-label fw-semibold mb-0">Pickup Address / Area</label>
-                      <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold shadow-xs" id="btnUsePreciseLocation" onclick="useCurrentLocation()">
-                        <i class="fa-solid fa-location-crosshairs me-1"></i> Detect GPS
+                      <label class="small text-muted fw-bold">Pickup Location</label>
+                      <button type="button" class="btn-gps-detect" id="btnDetectGps" onclick="useNativeLocationForPickup()">
+                        <i class="fa-solid fa-location-crosshairs me-1"></i> Use My Location
                       </button>
                     </div>
-                    <div class="location-input-wrap">
-                      <input type="text" class="form-control form-control-lg" id="pickupCity" placeholder="Type colony, area or city (e.g. Sirsi Road, Jaipur)" autocomplete="off" required>
-                      <div class="autocomplete-dropdown" id="pickupSuggestions"></div>
-                    </div>
-                    <!-- Quick Local Chips -->
-                    <div class="quick-location-chips">
-                      <span class="small text-muted align-self-center me-1" style="font-size: 0.75rem;">Quick:</span>
-                      <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Sirsi Road, Jaipur')">📍 Sirsi Road</button>
-                      <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Vaishali Nagar, Jaipur')">📍 Vaishali Nagar</button>
-                      <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Mansarovar, Jaipur')">📍 Mansarovar</button>
-                      <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Malviya Nagar, Jaipur')">📍 Malviya Nagar</button>
-                      <button type="button" class="chip-btn" onclick="selectQuickArea('pickup', 'Ajmer Road, Jaipur')">📍 Ajmer Road</button>
+                    <div class="parcel-input-group">
+                      <i class="fa-solid fa-circle-dot icon-pin-pickup"></i>
+                      <input type="text" class="parcel-input-field" id="pclPickupInput" placeholder="Enter pickup address / area (e.g. Mansarovar, Jaipur)" required>
                     </div>
                   </div>
 
-                  <!-- Drop Input with Autocomplete & Chips -->
+                  <!-- Drop -->
                   <div class="col-md-6">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                      <label class="form-label fw-semibold mb-0">Drop Address / City</label>
-                      <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold shadow-xs" onclick="calculateOSRMRoute()">
-                        <i class="fa-solid fa-route text-primary-custom me-1"></i> Find Route
+                      <label class="small text-muted fw-bold">Drop Location</label>
+                      <button type="button" class="btn-gps-detect" onclick="recalculateDistance(); calculateFreeParcelFare();">
+                        <i class="fa-solid fa-calculator me-1"></i> Estimate Distance
                       </button>
                     </div>
-                    <div class="location-input-wrap">
-                      <input type="text" class="form-control form-control-lg" id="dropCity" placeholder="Type destination area or city (e.g. Noida, Delhi NCR)" autocomplete="off" required>
-                      <div class="autocomplete-dropdown" id="dropSuggestions"></div>
+                    <div class="parcel-input-group">
+                      <i class="fa-solid fa-location-dot icon-pin-drop"></i>
+                      <input type="text" class="parcel-input-field" id="pclDropInput" placeholder="Enter drop address / area (e.g. Vaishali Nagar, Jaipur)" required>
                     </div>
-                    <!-- Quick Drop Chips -->
-                    <div class="quick-location-chips">
-                      <span class="small text-muted align-self-center me-1" style="font-size: 0.75rem;">Quick:</span>
-                      <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Mansarovar, Jaipur')">🏁 Mansarovar</button>
-                      <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Jagatpura, Jaipur')">🏁 Jagatpura</button>
-                      <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Gurugram, Delhi NCR')">🏁 Gurgaon</button>
-                      <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Noida, Delhi NCR')">🏁 Noida</button>
-                      <button type="button" class="chip-btn" onclick="selectQuickArea('drop', 'Mumbai, Maharashtra')">🏁 Mumbai</button>
-                    </div>
-                  </div>
-
-                  <!-- Interactive OpenStreetMap Preview with Click-To-Set Guidance -->
-                  <div class="col-12">
-                    <div id="routeMap"></div>
-                    <div class="map-helper-tip">
-                      <span><i class="fa-solid fa-hand-pointer text-primary-custom me-1"></i> <strong>Pro Tip:</strong> Click anywhere on the map or drag the 📍 marker to pinpoint your exact street or house!</span>
-                      <span class="badge bg-light text-secondary border">Interactive Map</span>
-                    </div>
-                    <div class="route-info-badge mt-2">
-                      <span id="routeMapStatus"><i class="fa-solid fa-map-pin text-primary-custom me-1"></i> Map ready. Type address or click on map to set location.</span>
-                      <span id="routeDistanceCalculated" class="badge bg-primary-subtle text-primary-custom px-2 py-1">25 KM (Est.)</span>
-                    </div>
-                  </div>
-
-                  <div class="col-md-6">
-                    <label class="form-label fw-semibold">Moving Distance (in KM)</label>
-                    <div class="input-group input-group-lg">
-                      <input type="number" class="form-control" id="distanceKm" min="1" max="3000" value="25" required>
-                      <span class="input-group-text">KM</span>
-                    </div>
-                  </div>
-
-                  <div class="col-md-6">
-                    <label class="form-label fw-semibold">Preferred Shifting Date</label>
-                    <input type="date" class="form-control form-control-lg" id="shiftingDate" required>
                   </div>
                 </div>
 
-                <!-- Quick Presets -->
-                <div class="mt-3 p-2 px-3 bg-light rounded-3 border d-flex align-items-center justify-content-between flex-wrap gap-2">
-                  <span class="small text-muted fw-semibold">Distance Presets:</span>
-                  <div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill me-1" onclick="setDistance(15)">Local (15 KM)</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill me-1" onclick="setDistance(50)">Suburban (50 KM)</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="setDistance(250)">Intercity (250 KM)</button>
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 pt-2 border-top border-secondary border-opacity-25">
+                  <div id="pclDistanceDisplay" class="parcel-distance-pill">
+                    <i class="fa-solid fa-route me-1"></i> Estimated Distance: <strong>8.4 KM</strong>
+                    <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size: 0.7rem;">To be confirmed by Rudraksha team</span>
+                  </div>
+                  <span class="small text-muted"><i class="fa-solid fa-circle-info text-warning me-1"></i> Straight-line distance estimate</span>
+                </div>
+              </div>
+
+              <!-- 2. What are you sending? (Parcel Details) -->
+              <div class="parcel-card-header">
+                <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-box-open text-orange me-2"></i>2. What are you sending?</h5>
+                <span class="parcel-step-pill">Parcel Details</span>
+              </div>
+
+              <div class="mb-4">
+                <label class="small text-muted fw-bold mb-2">Parcel Type</label>
+                <div class="parcel-type-chips">
+                  <div class="parcel-chip-btn active" onclick="selectParcelType('Small Package', this)">
+                    <i class="fa-solid fa-box"></i>
+                    <span>📦 Small Package</span>
+                  </div>
+                  <div class="parcel-chip-btn" onclick="selectParcelType('Documents', this)">
+                    <i class="fa-solid fa-file-lines"></i>
+                    <span>📄 Documents</span>
+                  </div>
+                  <div class="parcel-chip-btn" onclick="selectParcelType('Clothes', this)">
+                    <i class="fa-solid fa-shirt"></i>
+                    <span>👕 Clothes</span>
+                  </div>
+                  <div class="parcel-chip-btn" onclick="selectParcelType('Electronics', this)">
+                    <i class="fa-solid fa-laptop"></i>
+                    <span>📱 Electronics</span>
+                  </div>
+                  <div class="parcel-chip-btn" onclick="selectParcelType('Food / Other', this)">
+                    <i class="fa-solid fa-bowl-food"></i>
+                    <span>🍱 Food / Other</span>
+                  </div>
+                  <div class="parcel-chip-btn" onclick="selectParcelType('Large Item', this)">
+                    <i class="fa-solid fa-couch"></i>
+                    <span>🪑 Large Item</span>
+                  </div>
+                  <div class="parcel-chip-btn" onclick="selectParcelType('Other', this)">
+                    <i class="fa-solid fa-box-archive"></i>
+                    <span>📦 Other</span>
+                  </div>
+                </div>
+
+                <label class="small text-muted fw-bold mb-2">Approximate Weight</label>
+                <div class="parcel-weight-chips">
+                  <div class="parcel-chip-btn" onclick="selectParcelWeight('upto_1kg', 'Up to 1 KG', this)">
+                    <i class="fa-solid fa-feather"></i>
+                    <span>Up to 1 KG</span>
+                  </div>
+                  <div class="parcel-chip-btn active" onclick="selectParcelWeight('1_5kg', '1–5 KG', this)">
+                    <i class="fa-solid fa-weight-hanging"></i>
+                    <span>1–5 KG</span>
+                  </div>
+                  <div class="parcel-chip-btn" onclick="selectParcelWeight('5_10kg', '5–10 KG', this)">
+                    <i class="fa-solid fa-weight-scale"></i>
+                    <span>5–10 KG</span>
+                  </div>
+                  <div class="parcel-chip-btn" onclick="selectParcelWeight('10_20kg', '10–20 KG', this)">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <span>10–20 KG</span>
+                  </div>
+                  <div class="parcel-chip-btn" onclick="selectParcelWeight('20_50kg', '20–50 KG', this)">
+                    <i class="fa-solid fa-dolly"></i>
+                    <span>20–50 KG</span>
+                  </div>
+                  <div class="parcel-chip-btn" onclick="selectParcelWeight('50kg_plus', '50 KG+', this)">
+                    <i class="fa-solid fa-truck-ramp-box"></i>
+                    <span>50 KG+</span>
+                  </div>
+                </div>
+
+                <label class="small text-muted fw-bold mb-2">Package Size</label>
+                <div class="parcel-size-chips d-flex gap-2 mb-3">
+                  <div class="parcel-chip-btn active flex-fill" onclick="selectParcelSize('Small', this)">
+                    <i class="fa-solid fa-cube"></i> <span>Small</span>
+                  </div>
+                  <div class="parcel-chip-btn flex-fill" onclick="selectParcelSize('Medium', this)">
+                    <i class="fa-solid fa-cubes"></i> <span>Medium</span>
+                  </div>
+                  <div class="parcel-chip-btn flex-fill" onclick="selectParcelSize('Large', this)">
+                    <i class="fa-solid fa-cubes-stacked"></i> <span>Large</span>
+                  </div>
+                  <div class="parcel-chip-btn flex-fill" onclick="selectParcelSize('Custom', this)">
+                    <i class="fa-solid fa-ruler-combined"></i> <span>Custom</span>
+                  </div>
+                </div>
+
+                <!-- Custom Dimensions Input Row -->
+                <div id="pclCustomDimBox" class="row g-2 d-none p-3 bg-dark bg-opacity-50 rounded-3 mb-3 border border-secondary border-opacity-25">
+                  <div class="col-4">
+                    <label class="small text-muted">Length (cm)</label>
+                    <input type="number" class="form-control form-control-sm bg-dark text-white border-secondary" id="pclDimL" placeholder="Length">
+                  </div>
+                  <div class="col-4">
+                    <label class="small text-muted">Width (cm)</label>
+                    <input type="number" class="form-control form-control-sm bg-dark text-white border-secondary" id="pclDimW" placeholder="Width">
+                  </div>
+                  <div class="col-4">
+                    <label class="small text-muted">Height (cm)</label>
+                    <input type="number" class="form-control form-control-sm bg-dark text-white border-secondary" id="pclDimH" placeholder="Height">
                   </div>
                 </div>
               </div>
 
-              <!-- STEP 2: Vehicle Selection, House Size & Inventory -->
-              <div class="wizard-step-content" id="step2">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                  <div>
-                    <h4 class="fw-bold mb-1 text-secondary-custom"><i class="fa-solid fa-truck-moving text-primary-custom me-2"></i>Step 2: Vehicle & Goods Inventory</h4>
-                    <p class="text-muted small mb-0">Select your preferred transport vehicle and house size / inventory volume.</p>
+              <!-- 3. Choose Delivery Vehicle -->
+              <div class="parcel-card-header">
+                <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-motorcycle text-orange me-2"></i>3. Choose Delivery Vehicle</h5>
+                <span class="parcel-step-pill">Vehicle</span>
+              </div>
+
+              <div class="parcel-vehicles-grid">
+                <!-- Bike -->
+                <div class="parcel-veh-card active recommended" id="veh-card-bike" onclick="manuallySelectParcelVehicle('bike')">
+                  <div class="parcel-veh-badge" style="display: block;">RECOMMENDED</div>
+                  <div class="parcel-veh-icon"><i class="fa-solid fa-motorcycle"></i></div>
+                  <h6 class="fw-bold text-white mb-1">🛵 Bike</h6>
+                  <div class="small text-muted mb-2">For small/lightweight parcels</div>
+                  <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25">
+                    <span class="small text-muted">Vehicle Charge:</span>
+                    <strong class="text-orange">₹0 (Base)</strong>
                   </div>
                 </div>
 
-                <!-- 1. Dedicated Vehicle Selection Cards -->
-                <div class="mb-4">
-                  <label class="form-label fw-semibold text-secondary-custom mb-2">
-                    <i class="fa-solid fa-truck-front text-primary-custom me-1"></i> Choose Dedicated Transport Vehicle <span class="text-danger">*</span>
-                  </label>
-                  <div class="row g-2" id="vehicleCardsContainer">
-                    <div class="col-6 col-md-4 col-lg-2.4">
-                      <div class="vehicle-select-card" data-vehicle="mini_truck" onclick="selectVehicleType('mini_truck')">
-                        <div class="vehicle-icon-wrap"><i class="fa-solid fa-truck-pickup"></i></div>
-                        <h6 class="vehicle-name">Tata Ace / Mini</h6>
-                        <span class="vehicle-cap">1.5 Ton • 1 RK/Studio</span>
-                        <div class="vehicle-price-tag">Base ₹2,500</div>
-                      </div>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-2.4">
-                      <div class="vehicle-select-card" data-vehicle="tempo_14ft" onclick="selectVehicleType('tempo_14ft')">
-                        <div class="vehicle-icon-wrap"><i class="fa-solid fa-truck"></i></div>
-                        <h6 class="vehicle-name">14ft Tempo / Eicher</h6>
-                        <span class="vehicle-cap">3.5 Ton • 1-2 BHK</span>
-                        <div class="vehicle-price-tag">Base ₹3,500</div>
-                      </div>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-2.4">
-                      <div class="vehicle-select-card" data-vehicle="truck_19ft" onclick="selectVehicleType('truck_19ft')">
-                        <div class="vehicle-icon-wrap"><i class="fa-solid fa-truck-moving"></i></div>
-                        <h6 class="vehicle-name">19ft Container Truck</h6>
-                        <span class="vehicle-cap">7.0 Ton • 3+ BHK</span>
-                        <div class="vehicle-price-tag">Base ₹5,500</div>
-                      </div>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-2.4">
-                      <div class="vehicle-select-card" data-vehicle="bike" onclick="selectVehicleType('bike')">
-                        <div class="vehicle-icon-wrap"><i class="fa-solid fa-motorcycle"></i></div>
-                        <h6 class="vehicle-name">Bike Carrier</h6>
-                        <span class="vehicle-cap">Ramp & Chock Secured</span>
-                        <div class="vehicle-price-tag">Base ₹1,500</div>
-                      </div>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-2.4">
-                      <div class="vehicle-select-card" data-vehicle="car" onclick="selectVehicleType('car')">
-                        <div class="vehicle-icon-wrap"><i class="fa-solid fa-car-side"></i></div>
-                        <h6 class="vehicle-name">Closed Car Carrier</h6>
-                        <span class="vehicle-cap">Hydraulic Platform</span>
-                        <div class="vehicle-price-tag">Base ₹4,500</div>
-                      </div>
-                    </div>
+                <!-- Auto / 3-Wheeler -->
+                <div class="parcel-veh-card" id="veh-card-auto" onclick="manuallySelectParcelVehicle('auto')">
+                  <div class="parcel-veh-badge" style="display: none;">RECOMMENDED</div>
+                  <div class="parcel-veh-icon"><i class="fa-solid fa-truck-front"></i></div>
+                  <h6 class="fw-bold text-white mb-1">🛺 Auto</h6>
+                  <div class="small text-muted mb-2">For medium parcels</div>
+                  <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25">
+                    <span class="small text-muted">Vehicle Charge:</span>
+                    <strong class="text-orange">+₹50</strong>
                   </div>
                 </div>
 
-                <!-- 2. House Size Selection Cards -->
-                <div class="mb-4" id="houseSizeSelectionWrap">
-                  <label class="form-label fw-semibold text-secondary-custom mb-2">
-                    <i class="fa-solid fa-house-chimney text-primary-custom me-1"></i> House / Cargo Size <span class="text-danger">*</span>
-                  </label>
-                  <div class="row g-2">
-                    <div class="col-6 col-md-4 col-lg-2.4">
-                      <div class="house-size-card" data-size="1rk" onclick="selectHouseSize('1rk')">
-                        <i class="fa-solid fa-door-open"></i>
-                        <h6>1 RK</h6>
-                        <span class="badge bg-secondary-subtle text-dark">Studio</span>
+                <!-- Mini Truck -->
+                <div class="parcel-veh-card" id="veh-card-mini_truck" onclick="manuallySelectParcelVehicle('mini_truck')">
+                  <div class="parcel-veh-badge" style="display: none;">RECOMMENDED</div>
+                  <div class="parcel-veh-icon"><i class="fa-solid fa-truck-pickup"></i></div>
+                  <h6 class="fw-bold text-white mb-1">🚚 Mini Truck</h6>
+                  <div class="small text-muted mb-2">For large/heavy parcels</div>
+                  <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25">
+                    <span class="small text-muted">Vehicle Charge:</span>
+                    <strong class="text-orange">+₹150</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 4. Sender & Receiver Information -->
+              <div class="parcel-card-header">
+                <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-user-group text-orange me-2"></i>4. Contact Details</h5>
+                <span class="parcel-step-pill">Contacts</span>
+              </div>
+
+              <div class="row g-3 mb-4">
+                <!-- Sender Details -->
+                <div class="col-md-6">
+                  <div class="parcel-party-card">
+                    <div class="small fw-bold text-orange text-uppercase mb-3"><i class="fa-solid fa-user-arrow-up me-1"></i> SENDER INFORMATION (PICKUP)</div>
+                    <div class="mb-3">
+                      <label class="small text-muted mb-1">Full Name <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" id="pclSenderName" placeholder="e.g. Rahul Sharma" required>
+                    </div>
+                    <div class="mb-3">
+                      <label class="small text-muted mb-1">Mobile Number <span class="text-danger">*</span></label>
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-secondary border-secondary text-white">+91</span>
+                        <input type="tel" class="form-control bg-dark text-white border-secondary" id="pclSenderPhone" placeholder="10-digit mobile" maxlength="10" required>
                       </div>
                     </div>
-                    <div class="col-6 col-md-4 col-lg-2.4">
-                      <div class="house-size-card" data-size="1bhk" onclick="selectHouseSize('1bhk')">
-                        <i class="fa-solid fa-bed"></i>
-                        <h6>1 BHK</h6>
-                        <span class="badge bg-secondary-subtle text-dark">Standard</span>
-                      </div>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-2.4">
-                      <div class="house-size-card" data-size="2bhk" onclick="selectHouseSize('2bhk')">
-                        <i class="fa-solid fa-house-chimney"></i>
-                        <h6>2 BHK</h6>
-                        <span class="badge bg-secondary-subtle text-dark">Popular</span>
-                      </div>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-2.4">
-                      <div class="house-size-card" data-size="3bhk" onclick="selectHouseSize('3bhk')">
-                        <i class="fa-solid fa-building"></i>
-                        <h6>3 BHK</h6>
-                        <span class="badge bg-secondary-subtle text-dark">Family</span>
-                      </div>
-                    </div>
-                    <div class="col-6 col-md-4 col-lg-2.4">
-                      <div class="house-size-card" data-size="villa" onclick="selectHouseSize('villa')">
-                        <i class="fa-solid fa-warehouse"></i>
-                        <h6>4+ BHK / Villa</h6>
-                        <span class="badge bg-secondary-subtle text-dark">Large</span>
-                      </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="pclSameSenderCheck" checked style="accent-color: #f97316;">
+                      <label class="form-check-label small text-muted" for="pclSameSenderCheck">Same as pickup customer</label>
                     </div>
                   </div>
                 </div>
 
-                <!-- Item Category Breakdown List -->
-                <h6 class="fw-bold mb-3 border-bottom pb-2">Item Breakdown & Quantity Adjuster <span class="text-muted fw-normal small">(Optional - Adjust as per your home)</span></h6>
-                
-                <div class="row">
-                  <div class="col-md-6">
-                    <div class="item-counter-row">
-                      <div class="item-info">
-                        <div class="item-icon"><i class="fa-solid fa-couch"></i></div>
-                        <div>
-                          <div class="fw-semibold">Sofa Set / Recliner</div>
-                          <div class="small text-muted">3-seater / 5-seater</div>
-                        </div>
-                      </div>
-                      <div class="counter-controls">
-                        <button type="button" class="qty-btn" onclick="updateItemQty('sofa', -1)">-</button>
-                        <span class="qty-val" id="qty_sofa">0</span>
-                        <button type="button" class="qty-btn" onclick="updateItemQty('sofa', 1)">+</button>
+                <!-- Receiver Details -->
+                <div class="col-md-6">
+                  <div class="parcel-party-card">
+                    <div class="small fw-bold text-success text-uppercase mb-3"><i class="fa-solid fa-user-check me-1"></i> RECEIVER INFORMATION (DELIVERY)</div>
+                    <div class="mb-3">
+                      <label class="small text-muted mb-1">Receiver Name <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" id="pclReceiverName" placeholder="e.g. Amit Sharma" required>
+                    </div>
+                    <div class="mb-3">
+                      <label class="small text-muted mb-1">Receiver Mobile Number <span class="text-danger">*</span></label>
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-secondary border-secondary text-white">+91</span>
+                        <input type="tel" class="form-control bg-dark text-white border-secondary" id="pclReceiverPhone" placeholder="10-digit mobile" maxlength="10" required>
                       </div>
                     </div>
-
-                    <div class="item-counter-row">
-                      <div class="item-info">
-                        <div class="item-icon"><i class="fa-solid fa-bed"></i></div>
-                        <div>
-                          <div class="fw-semibold">Double Bed / Cot</div>
-                          <div class="small text-muted">King/Queen size</div>
-                        </div>
-                      </div>
-                      <div class="counter-controls">
-                        <button type="button" class="qty-btn" onclick="updateItemQty('bed', -1)">-</button>
-                        <span class="qty-val" id="qty_bed">0</span>
-                        <button type="button" class="qty-btn" onclick="updateItemQty('bed', 1)">+</button>
-                      </div>
-                    </div>
-
-                    <div class="item-counter-row">
-                      <div class="item-info">
-                        <div class="item-icon"><i class="fa-solid fa-mattress-pillow"></i></div>
-                        <div>
-                          <div class="fw-semibold">Dining Table & Chairs</div>
-                          <div class="small text-muted">4/6 seater set</div>
-                        </div>
-                      </div>
-                      <div class="counter-controls">
-                        <button type="button" class="qty-btn" onclick="updateItemQty('dining', -1)">-</button>
-                        <span class="qty-val" id="qty_dining">0</span>
-                        <button type="button" class="qty-btn" onclick="updateItemQty('dining', 1)">+</button>
-                      </div>
+                    <div class="small text-muted mt-2">
+                      <i class="fa-solid fa-bell text-warning me-1"></i> Receiver will be contacted by the delivery person.
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  <div class="col-md-6">
-                    <div class="item-counter-row">
-                      <div class="item-info">
-                        <div class="item-icon"><i class="fa-solid fa-snowflake"></i></div>
-                        <div>
-                          <div class="fw-semibold">Refrigerator</div>
-                          <div class="small text-muted">Single/Double door</div>
-                        </div>
-                      </div>
-                      <div class="counter-controls">
-                        <button type="button" class="qty-btn" onclick="updateItemQty('fridge', -1)">-</button>
-                        <span class="qty-val" id="qty_fridge">0</span>
-                        <button type="button" class="qty-btn" onclick="updateItemQty('fridge', 1)">+</button>
-                      </div>
-                    </div>
+              <!-- 5. Optional Services -->
+              <div class="parcel-party-card mb-2">
+                <div class="small fw-bold text-white text-uppercase mb-2"><i class="fa-solid fa-shield-halved text-warning me-1"></i> Optional Services</div>
+                <div class="row g-2">
+                  <div class="col-sm-4">
+                    <label class="d-flex align-items-center gap-2 small text-muted cursor-pointer">
+                      <input type="checkbox" onchange="toggleParcelAddon('fragile', this)" style="accent-color: #f97316;"> Fragile Handling (+₹25)
+                    </label>
+                  </div>
+                  <div class="col-sm-4">
+                    <label class="d-flex align-items-center gap-2 small text-muted cursor-pointer">
+                      <input type="checkbox" onchange="toggleParcelAddon('packaging', this)" style="accent-color: #f97316;"> Extra Packaging (+₹40)
+                    </label>
+                  </div>
+                  <div class="col-sm-4">
+                    <label class="d-flex align-items-center gap-2 small text-muted cursor-pointer">
+                      <input type="checkbox" onchange="toggleParcelAddon('insurance', this)" style="accent-color: #f97316;"> Insurance (+₹49)
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Right Column: Free Fare Summary & WhatsApp CTA (Col 4) -->
+          <div class="col-lg-4">
+            <div class="parcel-fare-card">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-receipt text-orange me-2"></i>Estimated Fare</h5>
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small">Transparent</span>
+              </div>
+
+              <div class="parcel-fare-row">
+                <span>Base Fare:</span>
+                <strong class="text-white" id="pclFareBase">₹40</strong>
+              </div>
+              <div class="parcel-fare-row">
+                <span>Distance Charge:</span>
+                <strong class="text-white" id="pclFareDistance">₹80</strong>
+              </div>
+              <div class="parcel-fare-row">
+                <span>Weight Charge:</span>
+                <strong class="text-white" id="pclFareWeight">₹20</strong>
+              </div>
+              <div class="parcel-fare-row">
+                <span>Vehicle Charge:</span>
+                <strong class="text-white" id="pclFareVehicle">₹0</strong>
+              </div>
+              <div class="parcel-fare-row">
+                <span>Handling:</span>
+                <strong class="text-white" id="pclFareHandling">₹10</strong>
+              </div>
+              <div class="parcel-fare-row">
+                <span>Optional Add-ons:</span>
+                <strong class="text-white" id="pclFareAddons">₹0</strong>
+              </div>
+
+              <div class="parcel-fare-row total-row border-top border-secondary border-opacity-25 pt-3 mt-2">
+                <span>ESTIMATED TOTAL:</span>
+                <span class="total-amount" id="pclFareTotal">₹150</span>
+              </div>
+
+              <div class="p-2 bg-dark bg-opacity-75 rounded text-center small text-muted mt-3 border border-secondary border-opacity-25">
+                <i class="fa-solid fa-circle-info text-warning me-1"></i> <em>Final fare may vary after distance and parcel verification.</em>
+              </div>
+
+              <!-- Payment Options -->
+              <div class="mt-3">
+                <label class="small text-muted fw-bold mb-1">Payment Method</label>
+                <select class="form-select form-select-sm bg-dark text-white border-secondary" id="pclPaymentOption">
+                  <option value="Cash" selected>💵 Cash</option>
+                  <option value="UPI Direct">⚡ UPI Direct</option>
+                  <option value="Pay at Delivery">📦 Pay at Delivery</option>
+                </select>
+              </div>
+
+              <!-- Main WhatsApp Booking CTA -->
+              <button type="button" class="btn-book-parcel" id="btnRequestParcel" onclick="handleRequestParcelDelivery()">
+                <i class="fa-brands fa-whatsapp fa-xl me-1"></i> <span id="btnBookParcelTotal">Request Parcel Delivery – ₹150</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
 
                     <div class="item-counter-row">
                       <div class="item-info">
@@ -1710,6 +2340,67 @@
     </div>
   </div>
 
+  <!-- ==========================================================================
+       6. PARCEL BOOKING REQUEST PREPARED MODAL (100% FREE WHATSAPP MVP)
+       ========================================================================== -->
+  <div class="modal fade" id="parcelRequestPreparedModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content text-white" style="background: #151518; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px;">
+        <div class="modal-body p-4 text-center">
+          <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(34, 197, 94, 0.15); border: 2px solid #22c55e; display: inline-flex; align-items: center; justify-content: center; color: #22c55e; font-size: 2rem;" class="mb-3">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+          <h4 class="fw-bold text-white mb-1">Booking Request Prepared</h4>
+          <p class="text-muted small mb-3">Your parcel booking details have been prepared in WhatsApp.</p>
+
+          <div class="p-3 rounded-3 mb-3 text-start" style="background: #1D1D22; border: 1px solid rgba(255, 255, 255, 0.08);">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="small text-muted">Parcel ID:</span>
+              <div class="d-flex align-items-center gap-2">
+                <strong class="text-orange" id="pclModalBookingId" style="font-size: 1.05rem;">RP-PCL-000123</strong>
+                <button type="button" class="btn btn-sm btn-outline-light py-0 px-2 rounded-pill" onclick="copyParcelBookingId()" title="Copy Booking ID" style="font-size: 0.72rem;">
+                  <i class="fa-solid fa-copy me-1"></i> Copy
+                </button>
+              </div>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span class="small text-muted">Sender:</span>
+              <span class="small text-white" id="pclModalSender">-</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span class="small text-muted">Receiver:</span>
+              <span class="small text-white" id="pclModalReceiver">-</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span class="small text-muted">Route:</span>
+              <span class="small text-white text-truncate" style="max-width: 200px;" id="pclModalRoute">-</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25">
+              <span class="small text-muted">Estimated Fare:</span>
+              <strong class="text-success" id="pclModalFare">₹150</strong>
+            </div>
+          </div>
+
+          <div class="p-2 bg-dark bg-opacity-75 rounded text-center small text-muted mb-3 border border-secondary border-opacity-25">
+            <i class="fa-brands fa-whatsapp text-success me-1"></i> Rudraksha team will confirm your booking on WhatsApp.
+          </div>
+
+          <div class="d-flex flex-column gap-2">
+            <a href="#" id="btnModalLaunchWhatsApp" target="_blank" class="btn btn-success fw-bold py-2 rounded-pill">
+              <i class="fa-brands fa-whatsapp fa-lg me-1"></i> Send Request on WhatsApp
+            </a>
+            <button type="button" class="btn btn-primary-custom fw-bold py-2 rounded-pill" id="btnModalTrackParcel">
+              <i class="fa-solid fa-satellite-dish me-1"></i> Track Parcel Status
+            </button>
+            <button type="button" class="btn btn-outline-secondary py-2 rounded-pill small" data-bs-dismiss="modal">
+              Done / Back to Home
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Bootstrap 5 JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -1718,12 +2409,16 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="firebase-config.js"></script>
 
-  <!-- Customer App JS -->
+  <!-- Customer Relocation App JS -->
   <script src="app.js"></script>
+
+  <!-- Porter-Style Parcel Delivery App JS -->
+  <script src="parcel.js"></script>
 
   <!-- Helper Script for Image Service Cards -->
   <script>
     function scrollToCalculatorWithService(serviceName) {
+      switchMainService('packers');
       const calcEl = document.getElementById('calculator');
       if (calcEl) {
         calcEl.scrollIntoView({ behavior: 'smooth' });
