@@ -8,7 +8,7 @@ let vehicleMarker = null;
 let routePolyline = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Check URL parameters for direct tracking link (e.g. track.html?id=RB-6DFFD540 or track.html?phone=8619384774)
+  // Check URL parameters for direct tracking link (e.g. track.html?id=RB-6DFFD540 or track.html?phone=9876543210)
   const urlParams = new URLSearchParams(window.location.search);
   const queryParam = urlParams.get('id') || urlParams.get('phone') || urlParams.get('ref') || urlParams.get('b');
 
@@ -91,12 +91,12 @@ async function fetchBookingAndTrack(query) {
     }
 
     // 3. Fallback Sample Demo Booking if user tests with sample ID
-    if (!booking && (query === 'RB-6DFFD540' || query === '8619384774')) {
+    if (!booking && query === 'RB-6DFFD540') {
       booking = {
         id: 'RB-6DFFD540',
-        customer_name: 'Vinay Kumar',
-        customer_phone: '8619384774',
-        customer_email: 'vinay@rudraksha.com',
+        customer_name: 'Customer Demo',
+        customer_phone: '9876543210',
+        customer_email: 'customer@rudraksha.com',
         pickup_address: 'Ajmer Road, Jaipur, Rajasthan',
         drop_address: 'Sector 54, Gurugram, Delhi NCR',
         distance_km: 274,
@@ -206,10 +206,37 @@ function renderTrackingDashboard(b) {
   // Map Route Names
   document.getElementById('mapPickupName').innerText = pickup.split(',')[0];
   document.getElementById('mapDropName').innerText = drop.split(',')[0];
-  document.getElementById('mapDistanceText').innerText = `Total Distance: ~${dist} KM • Live Real-time GPS Track`;
+  // Update UPI QR Code & Instant Payment Link
+  const upiQrImg = document.getElementById('trackUpiQrImg');
+  const btnPayUpiDirect = document.getElementById('btnPayUpiDirect');
+  const upiPayload = `upi://pay?pa=7296831460@upi&pn=Rudraksha%20Packers&am=500&cu=INR&tr=${bId}&tn=Booking%20Token%20${bId}`;
+  if (upiQrImg) {
+    upiQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiPayload)}`;
+  }
+  if (btnPayUpiDirect) {
+    btnPayUpiDirect.href = upiPayload;
+  }
 
   // Initialize and Render Map
   initLiveTrackMap(b, status);
+}
+
+function shareLiveTrackingWhatsApp() {
+  if (!currentBooking) return;
+  const b = currentBooking;
+  const bId = b.id || 'RB-XXXXXX';
+  const pickup = b.pickup_address || 'Jaipur';
+  const drop = b.drop_address || 'Delhi NCR';
+  const trackUrl = `${window.location.origin}${window.location.pathname}?id=${bId}`;
+
+  const msg = `🚚 *Rudraksha Packers & Movers - Live Shipment Tracking* 📍\n\n` +
+    `Track my shifting in real-time from *${pickup.split(',')[0]}* to *${drop.split(',')[0]}*:\n\n` +
+    `🔗 *Live GPS Tracking Link:*\n${trackUrl}\n\n` +
+    `Booking Ref: *${bId}*\n` +
+    `📞 24x7 Helpline: +91 72968 31460`;
+
+  const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+  window.open(waUrl, '_blank');
 }
 
 /* ==========================================================================

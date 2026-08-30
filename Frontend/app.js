@@ -1355,10 +1355,32 @@ function showBookingSuccessModal(bookingId, bookingData) {
   currentTrackedBooking = bookingData;
   document.getElementById('successBookingId').innerText = bookingId;
 
+  // 1. WhatsApp Confirmation Link
+  const trackUrl = `${window.location.origin}/Frontend/track.html?id=${bookingId}`;
+  const waMsg = `📦 *RUDRAKSHA PACKERS & MOVERS - BOOKING CONFIRMED* 🚚\n\n` +
+    `Dear *${bookingData.customer_name || 'Customer'}*,\n` +
+    `Your relocation booking *${bookingId}* is successfully registered!\n\n` +
+    `📍 *Pickup:* ${bookingData.pickup_address}\n` +
+    `🏁 *Drop:* ${bookingData.drop_address}\n` +
+    `📅 *Moving Date:* ${bookingData.shifting_date}\n` +
+    `🚛 *Vehicle:* ${bookingData.selected_vehicle || 'Dedicated Truck'}\n` +
+    `💰 *Total Amount:* ₹${Number(bookingData.total_amount || 0).toLocaleString('en-IN')}\n\n` +
+    `🗺️ *Live GPS Real-Time Track Link:*\n${trackUrl}\n\n` +
+    `📞 *24x7 Support:* +91 72968 31460\n` +
+    `_Thank you for choosing Rudraksha Packers & Movers!_`;
+
+  const waBtn = document.getElementById('successWhatsAppBtn');
+  if (waBtn) {
+    const custPhone = String(bookingData.customer_phone || '').replace(/\D/g, '');
+    waBtn.href = `https://wa.me/91${custPhone}?text=${encodeURIComponent(waMsg)}`;
+  }
+
+  // 2. Track Button
   document.getElementById('successTrackBtn').onclick = () => {
     window.location.href = `track.html?id=${bookingId}`;
   };
 
+  // 3. Invoice Button
   document.getElementById('successInvoiceBtn').onclick = () => {
     renderTaxInvoice(bookingData);
     const invModal = new bootstrap.Modal(document.getElementById('invoiceModal'));

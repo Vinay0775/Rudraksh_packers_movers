@@ -698,11 +698,36 @@ async function submitDriverAssignment() {
 
     if (!res.ok) throw new Error('Assignment failed');
 
-    statusMsg.innerHTML = '<span class="text-success"><i class="fa-solid fa-circle-check me-1"></i> Driver assigned successfully!</span>';
-    setTimeout(() => {
-      bootstrap.Modal.getInstance(document.getElementById('assignDriverModal'))?.hide();
-      loadBookingsFromBackend();
-    }, 1000);
+    const booking = adminBookings.find(b => b.id === bookingId);
+    const pickupEnc = encodeURIComponent(booking?.pickup_address || 'Jaipur');
+    const mapsNavUrl = `https://www.google.com/maps/dir/?api=1&destination=${pickupEnc}`;
+    const cleanDrvPhone = String(driver_phone || '').replace(/\D/g, '');
+
+    const driverMsg = `🚨 *NEW TRIP DISPATCH ORDER* 🚚\n*Rudraksha Packers & Movers*\n\n` +
+      `📋 *Booking ID:* ${bookingId}\n` +
+      `👤 *Customer:* ${booking?.customer_name || 'Customer'} (+91 ${booking?.customer_phone || ''})\n` +
+      `📍 *Pickup:* ${booking?.pickup_address || ''}\n` +
+      `🏁 *Drop:* ${booking?.drop_address || ''}\n` +
+      `📅 *Date:* ${booking?.shifting_date || 'Today'}\n` +
+      `🚛 *Vehicle:* ${vehicle_number}\n\n` +
+      `🗺️ *Google Maps Navigation to Pickup:*\n${mapsNavUrl}\n\n` +
+      `_Please contact customer 1 hour prior to arrival._`;
+
+    const waDriverUrl = `https://wa.me/91${cleanDrvPhone}?text=${encodeURIComponent(driverMsg)}`;
+
+    statusMsg.innerHTML = `
+      <div class="alert alert-success border-0 py-2 small mb-2" style="background: rgba(34, 197, 94, 0.15); color: #86efac;">
+        <i class="fa-solid fa-circle-check me-1"></i> Driver <strong>${driver_name}</strong> Assigned!
+      </div>
+      <a href="${waDriverUrl}" target="_blank" class="btn btn-success w-100 py-2 fw-bold shadow-sm mb-2">
+        <i class="fa-brands fa-whatsapp me-1"></i> Send Dispatch Slip to Driver on WhatsApp
+      </a>
+      <button type="button" class="btn btn-outline-secondary w-100 py-1 small" data-bs-dismiss="modal">
+        Done & Close
+      </button>
+    `;
+
+    loadBookingsFromBackend();
   } catch (err) {
     statusMsg.innerHTML = `<span class="text-danger">${err.message}</span>`;
   }

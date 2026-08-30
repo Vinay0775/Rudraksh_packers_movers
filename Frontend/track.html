@@ -81,11 +81,10 @@
         </form>
 
         <div class="tracker-samples-row">
-          <span class="text-muted small me-2">Quick Test:</span>
+          <span class="text-muted small me-2">Sample ID:</span>
           <div class="tracker-sample-chips" id="trackerSampleChips">
             <!-- Dynamically populated from latest bookings or sample -->
             <button type="button" class="sample-chip" onclick="quickFillTrack('RB-6DFFD540')">RB-6DFFD540</button>
-            <button type="button" class="sample-chip" onclick="quickFillTrack('8619384774')">8619384774</button>
           </div>
         </div>
       </div>
@@ -258,7 +257,7 @@
           </div>
 
           <!-- Driver Action Buttons -->
-          <div class="d-flex gap-2">
+          <div class="d-flex gap-2 mb-3">
             <a href="tel:9876543210" id="btnCallDriver" class="btn-tracker-call flex-fill">
               <i class="fa-solid fa-phone me-1"></i> Call Driver
             </a>
@@ -266,6 +265,29 @@
               <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp
             </a>
           </div>
+
+          <!-- Share Live Location on WhatsApp -->
+          <button type="button" class="btn-tracker-share w-100 py-2" onclick="shareLiveTrackingWhatsApp()">
+            <i class="fa-brands fa-whatsapp text-success me-1"></i> Share Live Track with Family
+          </button>
+        </div>
+
+        <!-- Advance Token Payment Card -->
+        <div class="tracker-help-card mb-4" id="trackerUpiCard">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold text-white mb-0"><i class="fa-solid fa-qrcode text-warning me-2"></i>Pay Booking Token</h6>
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small">Instant UPI</span>
+          </div>
+          <p class="small text-muted mb-3">Lock your relocation slot by paying a booking token of <strong class="text-white">₹500</strong>.</p>
+          
+          <div class="text-center p-3 rounded-3 bg-white mb-3" style="max-width: 170px; margin: 0 auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+            <img id="trackUpiQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi%3A%2F%2Fpay%3Fpa%3D7296831460%40upi%26pn%3DRudraksha%2520Packers%26am%3D500" alt="UPI QR Code" class="img-fluid rounded" style="width: 140px; height: 140px;">
+            <div class="small fw-bold text-dark mt-1" style="font-size: 0.68rem;">Scan with Any UPI App</div>
+          </div>
+
+          <a id="btnPayUpiDirect" href="upi://pay?pa=7296831460@upi&pn=Rudraksha%20Packers&am=500&cu=INR" class="btn btn-warning text-dark fw-bold w-100 py-2 rounded-pill shadow-sm">
+            <i class="fa-solid fa-bolt me-1"></i> Pay ₹500 via GPay / PhonePe / Paytm
+          </a>
         </div>
 
         <!-- Quick Help & Invoice Card -->
@@ -292,7 +314,7 @@
             </div>
             <div class="tracker-info-row">
               <span class="tracker-info-label">Contact Phone:</span>
-              <span class="tracker-info-val" id="summaryCustomerPhone">+91 8619384774</span>
+              <span class="tracker-info-val" id="summaryCustomerPhone">+91 98XXXXXX10</span>
             </div>
             <div class="tracker-info-row">
               <span class="tracker-info-label">Cargo & House Size:</span>

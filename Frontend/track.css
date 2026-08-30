@@ -703,6 +703,28 @@ body.tracker-body {
   transform: translateY(-2px);
 }
 
+.btn-tracker-share {
+  background: rgba(37, 211, 102, 0.12);
+  border: 1px solid rgba(37, 211, 102, 0.4);
+  color: #25D366;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: var(--transition-smooth);
+}
+
+.btn-tracker-share:hover {
+  background: #25D366;
+  color: #FFFFFF;
+  box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+  transform: translateY(-2px);
+}
+
 .tracker-help-card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
