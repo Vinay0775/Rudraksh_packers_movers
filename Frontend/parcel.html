@@ -60,10 +60,15 @@
 
       <!-- Action Buttons -->
       <div class="d-flex align-items-center gap-2">
+        <a href="driver.html"
+          class="btn btn-sm btn-warning rounded-pill px-3 py-1 fw-bold d-inline-flex align-items-center gap-1"
+          title="Driver / Rider Login Portal">
+          <i class="fa-solid fa-id-badge"></i> <span>Rider Login</span>
+        </a>
         <button type="button"
           class="btn btn-sm btn-outline-warning rounded-pill px-3 py-1 fw-bold d-none d-sm-inline-flex align-items-center gap-1"
           onclick="openRiderModal()">
-          <i class="fa-solid fa-motorcycle"></i> <span>Rider Partner</span>
+          <i class="fa-solid fa-motorcycle"></i> <span>Become a Rider</span>
         </button>
         <a href="tel:+917296831460" class="btn-brdg-phone">
           <i class="fa-solid fa-phone"></i> <span class="d-none d-sm-inline">+91 72968 31460</span>
@@ -942,6 +947,8 @@
         <a href="track.html">🔍 Track Booking</a>
         <span>•</span>
         <a href="#riderPartner" onclick="openRiderModal(); return false;">🛵 Partner Registration</a>
+        <span>•</span>
+        <a href="driver.html" class="text-warning fw-bold"><i class="fa-solid fa-id-badge me-1"></i> Rider Login</a>
       </div>
       <div class="small text-muted">
         24x7 Customer Helpline: <strong class="text-white">+91 72968 31460</strong> • 100% Free Transparent Dispatch
@@ -1006,33 +1013,46 @@
         return;
       }
 
-      // Format WhatsApp Message to Admin
-      let msg = `🏍️ *RUDRAKSHA EXPRESS - NEW RIDER PARTNER APPLICATION*\n`;
-      msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-      msg += `👤 *Partner Name:* ${name}\n`;
-      msg += `📱 *Mobile Number:* +91 ${phone}\n`;
-      msg += `📍 *Operating City:* ${city}\n`;
-      msg += `⏰ *Preferred Shift:* ${shift}\n`;
-      msg += `🛵 *Vehicle Type:* ${vehType}\n`;
-      msg += `🔢 *Vehicle Reg No:* ${vehNum}\n`;
-      msg += `🪪 *DL Number:* ${dlNum}\n`;
-      msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-      msg += `Please review my application and activate my driver ID. Thank you!`;
-
-      // Save locally as partner application
+      // Save directly into Admin Panel verification queue (Status: Pending)
       try {
         const existing = JSON.parse(localStorage.getItem('rudraksha_rider_applications') || '[]');
-        existing.push({ name, phone, city, shift, vehType, vehNum, dlNum, date: new Date().toISOString() });
+        // Check if already registered
+        const already = existing.find(a => a.phone === phone);
+        if (already) {
+          alert(`Application with phone number +91 ${phone} is already submitted (${already.status}). Our team will send your credentials via WhatsApp.`);
+          bootstrap.Modal.getInstance(document.getElementById('riderRegistrationModal'))?.hide();
+          return;
+        }
+
+        existing.unshift({
+          id: `app-${Date.now()}`,
+          name,
+          phone,
+          city,
+          shift,
+          vehType,
+          vehNum,
+          dlNum,
+          status: 'Pending',
+          date: new Date().toISOString()
+        });
         localStorage.setItem('rudraksha_rider_applications', JSON.stringify(existing));
       } catch (err) { }
 
-      // Open WhatsApp to official number
-      const waUrl = `https://wa.me/917296831460?text=${encodeURIComponent(msg)}`;
-      window.open(waUrl, '_blank');
-
       // Hide modal
       bootstrap.Modal.getInstance(document.getElementById('riderRegistrationModal'))?.hide();
-      alert('🎉 Partner application prepared! Please click "Send" on WhatsApp to complete verification.');
+
+      // Show celebratory confirmation dialogue
+      alert(
+`🎉 PARTNER APPLICATION SUBMITTED!
+
+Namaste ${name},
+Aapki rider partner application Rudraksha Admin Panel me bhej di gayi hai.
+
+Hamari verification team aapke driving license aur vehicle details check karke 15-30 minutes me aapke WhatsApp number (+91 ${phone}) par Login ID aur Password bhej degi.
+
+Dhanyawaad!`
+      );
     }
   </script>
 

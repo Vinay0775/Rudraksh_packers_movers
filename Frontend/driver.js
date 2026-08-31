@@ -23,9 +23,10 @@ let currentOtpParcelId = null;
 let feedAutoRefreshTimer = null;
 
 /* ==========================================================================
-   1. INIT
+   1. INIT & AUTHENTICATION
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
+  const isLoggedIn = checkDriverAuth();
   initDriverProfile();
   loadActiveTripFromStorage();
   loadDriverFeed();
@@ -33,8 +34,154 @@ document.addEventListener('DOMContentLoaded', () => {
   initOtpDigitInputs();
 
   // Auto-refresh job feed every 6 seconds
-  feedAutoRefreshTimer = setInterval(() => loadDriverFeed(false), 6000);
+  feedAutoRefreshTimer = setInterval(() => {
+    if (localStorage.getItem('rudraksha_driver_session')) {
+      loadDriverFeed(false);
+    }
+  }, 6000);
 });
+
+function checkDriverAuth() {
+  const session = localStorage.getItem('rudraksha_driver_session');
+  const loginOverlay = document.getElementById('driverLoginOverlay');
+
+  if (session) {
+    try {
+      currentDriver = JSON.parse(session);
+      if (loginOverlay) loginOverlay.style.display = 'none';
+      return true;
+    } catch {}
+  }
+
+  // Not logged in -> Show login overlay
+  if (loginOverlay) {
+    loginOverlay.style.display = 'flex';
+  }
+  return false;
+}
+
+function submitDriverLogin() {
+  const phoneInput = document.getElementById('loginDriverPhone')?.value.trim().replace(/\D/g, '');
+  const pinInput = document.getElementById('loginDriverPin')?.value.trim();
+  const errorEl = document.getElementById('loginErrorMsg');
+
+  if (!phoneInput || phoneInput.length < 10) {
+    if (errorEl) {
+      errorEl.innerText = 'Please enter a valid 10-digit mobile number.';
+      errorEl.style.display = 'block';
+    }
+    return;
+  }
+  if (!pinInput || pinInput.length < 4) {
+    if (errorEl) {
+      errorEl.innerText = 'Please enter your 4-digit security PIN.';
+      errorEl.style.display = 'block';
+    }
+    return;
+  }
+
+  // Check in approved drivers registry
+  const approvedDrivers = JSON.parse(localStorage.getItem('rudraksha_approved_drivers') || '[]');
+  const riderApps = JSON.parse(localStorage.getItem('rudraksha_rider_applications') || '[]');
+  const matchedApp = riderApps.find(a => (a.phone || '').replace(/\D/g, '') === phoneInput);
+
+  let matchedDriver = approvedDrivers.find(d => (d.driver_phone || '').replace(/\D/g, '') === phoneInput);
+
+  // Auto-sync if rider application was marked Approved in admin panel
+  if (!matchedDriver && matchedApp && matchedApp.status === 'Approved') {
+    matchedDriver = {
+      id: matchedApp.driverId || `RDR-${phoneInput.slice(-4)}`,
+      driver_name: matchedApp.name,
+      driver_phone: matchedApp.phone,
+      vehicle_number: matchedApp.vehNum,
+      vehicle_type: matchedApp.vehType,
+      pin: matchedApp.pin || '1234',
+      status: 'Active',
+      onDuty: true
+    };
+    approvedDrivers.push(matchedDriver);
+    localStorage.setItem('rudraksha_approved_drivers', JSON.stringify(approvedDrivers));
+  }
+
+  // Universal Default Fleet Demo Account (Rajesh Kumar - 7296831460 / PIN: 1234)
+  if (!matchedDriver && phoneInput === '7296831460') {
+    matchedDriver = {
+      id: 'drv-101',
+      driver_name: 'Rajesh Kumar',
+      driver_phone: '7296831460',
+      vehicle_number: 'RJ-14-GA-1024',
+      vehicle_type: 'Tata Ace / Bike Courier',
+      pin: '1234',
+      status: 'Active',
+      onDuty: true
+    };
+  }
+
+  // Validation
+  if (!matchedDriver) {
+    if (matchedApp && matchedApp.status === 'Pending') {
+      if (errorEl) {
+        errorEl.innerText = `⏳ Your application is currently PENDING verification by Admin. You will receive your PIN on WhatsApp once approved.`;
+        errorEl.style.display = 'block';
+      }
+      return;
+    }
+    if (errorEl) {
+      errorEl.innerText = `❌ No active delivery partner found for +91 ${phoneInput}. Please register as a rider partner first.`;
+      errorEl.style.display = 'block';
+    }
+    return;
+  }
+
+  // Verify PIN (accept correct PIN or master fallback 1234)
+  if (matchedDriver.pin && matchedDriver.pin !== pinInput && pinInput !== '1234') {
+    if (errorEl) {
+      errorEl.innerText = '❌ Incorrect security PIN. Please check the PIN sent to your WhatsApp.';
+      errorEl.style.display = 'block';
+    }
+    return;
+  }
+
+  // Login successful
+  currentDriver = matchedDriver;
+  localStorage.setItem('rudraksha_driver_session', JSON.stringify(currentDriver));
+  localStorage.setItem('rudraksha_current_driver', JSON.stringify(currentDriver));
+
+  // Hide login overlay with animation
+  const loginOverlay = document.getElementById('driverLoginOverlay');
+  if (loginOverlay) {
+    loginOverlay.style.transition = 'all 0.3s ease';
+    loginOverlay.style.opacity = '0';
+    setTimeout(() => {
+      loginOverlay.style.display = 'none';
+      loginOverlay.style.opacity = '1';
+    }, 300);
+  }
+
+  // Refresh views
+  renderNavProfile();
+  updateDriverStatsDisplay();
+  renderDriverProfileView();
+  loadActiveTripFromStorage();
+  loadDriverFeed(true);
+
+  showToast(`🎉 Login successful! Welcome back, ${currentDriver.driver_name}!`, 'success');
+}
+
+function logoutDriver() {
+  if (!confirm(`Are you sure you want to log out from ${currentDriver.driver_name}'s account?`)) return;
+
+  localStorage.removeItem('rudraksha_driver_session');
+  const loginOverlay = document.getElementById('driverLoginOverlay');
+  if (loginOverlay) {
+    loginOverlay.style.display = 'flex';
+    const pin = document.getElementById('loginDriverPin');
+    if (pin) pin.value = '';
+    const err = document.getElementById('loginErrorMsg');
+    if (err) err.style.display = 'none';
+  }
+  showToast('You have been logged out from your driver account.', 'info');
+}
 
 /* ==========================================================================
    2. RIDER PROFILE & DATA ISOLATION
@@ -46,6 +193,9 @@ function initDriverProfile() {
   }
   renderNavProfile();
   updateDriverStatsDisplay();
+
+  const logPhone = document.getElementById('logoutPhoneLabel');
+  if (logPhone) logPhone.innerText = `+91 ${currentDriver.driver_phone}`;
 }
 
 function renderNavProfile() {

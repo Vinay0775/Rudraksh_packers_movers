@@ -1379,13 +1379,17 @@ function renderRiderApplicationsTable() {
 
   tbody.innerHTML = allRiderApplications.map((app, idx) => {
     const status = app.status || 'Pending';
-    const statusBadge = status === 'Approved' ? 'bg-success text-white' : 'bg-warning text-dark';
-    const waMsg = `Hello ${app.name}, this is Rudraksha Express Logistics. We have reviewed your rider application (${app.vehType} - ${app.vehNum}). Welcome to our fleet team!`;
+    const statusBadge = {
+      'Approved': 'bg-success text-white',
+      'Pending': 'bg-warning text-dark',
+      'Rejected': 'bg-danger text-white'
+    }[status] || 'bg-secondary text-white';
 
     return `
       <tr class="border-bottom border-secondary border-opacity-10">
         <td>
           <strong class="text-white small">${app.name}</strong>
+          ${app.driverId ? `<div style="font-size:0.68rem;color:#f97316;font-family:monospace;font-weight:700;">ID: ${app.driverId}</div>` : ''}
         </td>
         <td>
           <div class="small text-muted"><a href="tel:${app.phone}" class="text-decoration-none text-muted"><i class="fa-solid fa-phone text-success me-1"></i>+91 ${app.phone}</a></div>
@@ -1397,16 +1401,29 @@ function renderRiderApplicationsTable() {
         <td><span class="small text-muted">${app.dlNum}</span></td>
         <td><span class="small text-muted" style="font-size: 0.72rem;">${new Date(app.date).toLocaleDateString('en-IN')}</span></td>
         <td>
-          <div class="d-flex align-items-center gap-1">
+          <div class="d-flex align-items-center gap-1 flex-wrap">
             <span class="badge ${statusBadge} py-1 px-2 small">${status}</span>
             ${status === 'Pending' ? `
-              <button class="btn btn-sm btn-outline-success py-0 px-2" style="font-size: 0.72rem;" onclick="approveRiderPartner(${idx})" title="Approve Rider">
-                <i class="fa-solid fa-check"></i> Approve
+              <button class="btn btn-sm btn-outline-success py-0 px-2 fw-bold" style="font-size: 0.72rem;" onclick="approveRiderPartner(${idx})" title="Approve and Send Password on WhatsApp">
+                <i class="fa-solid fa-check me-1"></i> Approve & Send PIN
+              </button>
+              <button class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size: 0.72rem;" onclick="rejectRiderPartner(${idx})" title="Reject Application">
+                <i class="fa-solid fa-xmark"></i>
               </button>
             ` : ''}
-            <a href="https://wa.me/91${app.phone}?text=${encodeURIComponent(waMsg)}" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2" title="WhatsApp Rider">
-              <i class="fa-brands fa-whatsapp"></i>
-            </a>
+            ${status === 'Approved' ? `
+              <button class="btn btn-sm btn-outline-success py-0 px-2" style="font-size: 0.72rem;" onclick="approveRiderPartner(${idx})" title="Resend WhatsApp Password">
+                <i class="fa-brands fa-whatsapp me-1"></i> Send PIN
+              </button>
+              <button class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.72rem;" onclick="rejectRiderPartner(${idx})" title="Deactivate Rider">
+                <i class="fa-solid fa-ban"></i>
+              </button>
+            ` : ''}
+            ${status === 'Rejected' ? `
+              <button class="btn btn-sm btn-outline-warning py-0 px-2" style="font-size: 0.72rem;" onclick="approveRiderPartner(${idx})" title="Re-approve Rider">
+                <i class="fa-solid fa-rotate-left me-1"></i> Re-approve
+              </button>
+            ` : ''}
           </div>
         </td>
       </tr>
@@ -1415,13 +1432,84 @@ function renderRiderApplicationsTable() {
 }
 
 function approveRiderPartner(idx) {
-  if (allRiderApplications[idx]) {
-    allRiderApplications[idx].status = 'Approved';
-    localStorage.setItem('rudraksha_rider_applications', JSON.stringify(allRiderApplications));
-    showAdminToast(`Driver partner "${allRiderApplications[idx].name}" approved!`);
-    renderRiderApplicationsTable();
-    updateParcelMetrics();
+  if (!allRiderApplications[idx]) return;
+  const app = allRiderApplications[idx];
+
+  // Generate unique Driver ID and 4-digit PIN
+  const driverId = app.driverId || `RDR-${app.phone.slice(-4)}`;
+  const driverPin = app.pin || String(Math.floor(1000 + Math.random() * 9000));
+  app.driverId = driverId;
+  app.pin = driverPin;
+  app.status = 'Approved';
+  app.approved_at = new Date().toISOString();
+
+  // 1. Save to applications
+  localStorage.setItem('rudraksha_rider_applications', JSON.stringify(allRiderApplications));
+
+  // 2. Save into approved drivers authentication registry
+  const approvedDrivers = JSON.parse(localStorage.getItem('rudraksha_approved_drivers') || '[]');
+  const existingIdx = approvedDrivers.findIndex(d => d.driver_phone === app.phone);
+  const driverObj = {
+    id: driverId,
+    driver_name: app.name,
+    driver_phone: app.phone,
+    vehicle_number: app.vehNum,
+    vehicle_type: app.vehType,
+    pin: driverPin,
+    status: 'Active',
+    onDuty: true,
+    approved_at: new Date().toISOString()
+  };
+
+  if (existingIdx >= 0) {
+    approvedDrivers[existingIdx] = driverObj;
+  } else {
+    approvedDrivers.push(driverObj);
   }
+  localStorage.setItem('rudraksha_approved_drivers', JSON.stringify(approvedDrivers));
+
+  // 3. Format WhatsApp Credentials Message to Driver
+  const portalUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}driver.html`;
+  const waMsg = 
+`🎉 *CONGRATULATIONS! RUDRAKSHA DELIVERY PARTNER APPROVED*
+━━━━━━━━━━━━━━━━━━━━
+Namaste *${app.name}*,
+Aapka Rudraksha Express Delivery Partner account approve aur activate ho gaya hai!
+
+📲 *Aapke Login Credentials:*
+• Login Mobile Number: *${app.phone}*
+• Security PIN / Password: *${driverPin}*
+• Driver Partner ID: *${driverId}*
+• Registered Vehicle: *${app.vehType} (${app.vehNum})*
+
+👉 *Tap to Login to Your Driver Dashboard:*
+${portalUrl}
+━━━━━━━━━━━━━━━━━━━━
+_Login karke apni duty 'ON' karein aur city delivery orders accept karna shuru karein. Welcome to the fleet!_`;
+
+  const waUrl = `https://wa.me/91${app.phone}?text=${encodeURIComponent(waMsg)}`;
+  window.open(waUrl, '_blank');
+
+  showAdminToast(`🎉 Driver "${app.name}" approved! WhatsApp credentials dispatched.`, 'success');
+  renderRiderApplicationsTable();
+  updateParcelMetrics();
+}
+
+function rejectRiderPartner(idx) {
+  if (!allRiderApplications[idx]) return;
+  const app = allRiderApplications[idx];
+
+  app.status = 'Rejected';
+  localStorage.setItem('rudraksha_rider_applications', JSON.stringify(allRiderApplications));
+
+  // Remove from approved drivers registry
+  const approvedDrivers = JSON.parse(localStorage.getItem('rudraksha_approved_drivers') || '[]');
+  const filtered = approvedDrivers.filter(d => d.driver_phone !== app.phone);
+  localStorage.setItem('rudraksha_approved_drivers', JSON.stringify(filtered));
+
+  showAdminToast(`Rider application for "${app.name}" marked as Rejected.`, 'info');
+  renderRiderApplicationsTable();
+  updateParcelMetrics();
 }
 
 function updateParcelMetrics() {
