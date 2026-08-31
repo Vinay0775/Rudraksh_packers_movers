@@ -96,18 +96,25 @@
       <div class="d-flex justify-content-center mb-3">
         <div class="hero-service-switcher">
           <a href="#calculator" class="service-tab-btn active" id="tabPackers" style="text-decoration: none;">
-            <span class="tab-title"><i class="fa-solid fa-house-chimney"></i> Packers & Movers</span>
+            <span class="tab-title"><i class="fa-solid fa-house-chimney"></i> Packers &amp; Movers</span>
             <span class="tab-sub">Move your Home or Office</span>
           </a>
           <a href="parcel.html" target="_blank" class="service-tab-btn" id="tabParcel" style="text-decoration: none;" title="Open on-demand parcel delivery in a new window">
             <span class="tab-title"><i class="fa-solid fa-box-open"></i> Send a Parcel <i class="fa-solid fa-arrow-up-right-from-square ms-1" style="font-size: 0.72rem;"></i></span>
-            <span class="tab-sub">Send a parcel anywhere</span>
+            <span class="tab-sub">Hyperlocal &amp; City Courier</span>
           </a>
         </div>
       </div>
 
-      <h1 class="display-5 fw-extrabold" id="heroMainTitle">Move Anything. Send Anything. Anywhere.</h1>
-      <p class="lead" id="heroMainSub">Professional relocation and on-demand parcel delivery from one trusted platform.</p>
+      <h1 class="display-5 fw-extrabold" id="heroMainTitle"><span class="hero-highlight-gradient">Move Anything.</span> Send Anything. Anywhere.</h1>
+      <p class="lead" id="heroMainSub">India's most trusted door-to-door relocation and instant parcel delivery portal.</p>
+
+      <!-- Trust Badges Bar -->
+      <div class="hero-trust-bar">
+        <span class="hero-trust-pill"><i class="fa-solid fa-star"></i> 4.9/5 Rating (15,000+ Moves)</span>
+        <span class="hero-trust-pill"><i class="fa-solid fa-shield-halved"></i> 100% Free Transparent Quotes</span>
+        <span class="hero-trust-pill"><i class="fa-solid fa-bolt"></i> Verified Drivers &amp; Crew</span>
+      </div>
 
       <!-- 4 Feature Cards Grid -->
       <div class="row g-4 mt-2">
@@ -873,47 +880,59 @@
 
           <!-- Right Column: Live Dynamic Cost Breakdown Card -->
           <div class="col-lg-4">
-            <div class="cost-summary-card">
-              <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-                <h5 class="fw-bold text-secondary-custom mb-0"><i class="fa-solid fa-calculator text-primary-custom me-1"></i> Quote Summary</h5>
-                <span class="badge bg-success text-white">Live Rate</span>
-              </div>
-
-              <!-- Selected Vehicle Mini Badge -->
-              <div class="p-2 bg-light rounded-3 d-flex align-items-center justify-content-between mb-3 border">
-                <div class="d-flex align-items-center gap-2">
-                  <i class="fa-solid fa-truck text-primary-custom fs-5"></i>
-                  <div>
-                    <div class="fw-bold small" id="summaryVehicleName">Tata Ace / Mini</div>
-                    <div class="text-muted" style="font-size: 0.75rem;" id="summaryHouseType">1 BHK Moving</div>
-                  </div>
+            <div class="cost-summary-card" id="quoteSummaryCard">
+              <div class="cost-summary-header">
+                <div>
+                  <h5 class="fw-bold mb-0 text-secondary-custom">
+                    <i class="fa-solid fa-receipt text-primary-custom"></i> Live Fare Summary
+                  </h5>
+                  <span class="small text-muted" style="font-size: 0.76rem;">Instant transparent price breakdown</span>
                 </div>
-                <span class="badge bg-primary-custom text-white" id="summaryDistanceBadge">25 KM</span>
+                <span class="badge bg-success text-white px-2 py-1"><i class="fa-solid fa-bolt me-1"></i> Live</span>
               </div>
 
-              <!-- Line Items Breakdown -->
+              <!-- Selected Route & Vehicle Pill -->
+              <div class="summary-route-badge">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-truck text-primary-custom fs-5"></i>
+                    <div>
+                      <div class="fw-bold small" id="summaryVehicleName">Tata Ace / Mini</div>
+                      <div class="text-muted" style="font-size: 0.75rem;" id="summaryHouseType">1 BHK Moving</div>
+                    </div>
+                  </div>
+                  <span class="badge bg-primary-custom text-white" id="summaryDistanceBadge">25 KM</span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between small text-muted pt-1 border-top" style="font-size: 0.74rem;">
+                  <span><i class="fa-solid fa-location-dot text-primary-custom me-1"></i> <span id="sumPickup">Sirsi Road, Jaipur</span></span>
+                  <span>➔</span>
+                  <span><i class="fa-solid fa-flag-checkered text-success me-1"></i> <span id="sumDrop">Mansarovar, Jaipur</span></span>
+                </div>
+              </div>
+
+              <!-- Line Items Breakdown with Icons -->
               <div class="summary-line-item">
-                <span>Base Moving Charge:</span>
+                <span><i class="fa-solid fa-truck-moving text-primary-custom"></i> Base Vehicle &amp; Freight:</span>
                 <span class="fw-semibold" id="priceBase">₹2,500</span>
               </div>
               <div class="summary-line-item">
-                <span>Distance Charge:</span>
+                <span><i class="fa-solid fa-road text-primary-custom"></i> Distance Toll &amp; Fuel:</span>
                 <span class="fw-semibold" id="priceDistance">₹1,000</span>
               </div>
               <div class="summary-line-item">
-                <span>House Size & Items:</span>
+                <span><i class="fa-solid fa-boxes-stacked text-primary-custom"></i> Cargo Size &amp; Items:</span>
                 <span class="fw-semibold" id="priceItems">₹1,000</span>
               </div>
               <div class="summary-line-item">
-                <span>Floor / Labor Handling:</span>
+                <span><i class="fa-solid fa-stairs text-primary-custom"></i> Floor &amp; Labor Handling:</span>
                 <span class="fw-semibold" id="priceFloor">₹0</span>
               </div>
               <div class="summary-line-item">
-                <span>Add-on Protection:</span>
+                <span><i class="fa-solid fa-shield-halved text-primary-custom"></i> Add-on Protection:</span>
                 <span class="fw-semibold" id="priceAddons">₹0</span>
               </div>
               <div class="summary-line-item text-success" id="discountLineWrap" style="display: none;">
-                <span>Coupon Discount:</span>
+                <span><i class="fa-solid fa-tag text-success"></i> Coupon Discount:</span>
                 <span class="fw-semibold" id="priceDiscount">-₹500</span>
               </div>
 
@@ -923,14 +942,26 @@
                 <span class="summary-total-amount" id="priceTotal">₹4,500</span>
               </div>
 
-              <div class="p-2 bg-light rounded text-center small text-muted border">
-                <i class="fa-solid fa-shield-cat text-primary-custom me-1"></i> Inclusive of Packing Material, Labor & Transport.
+              <div class="summary-guarantee-note">
+                <i class="fa-solid fa-shield-cat text-primary-custom me-1"></i> <strong>Transparent Pricing Guarantee:</strong> Inclusive of Standard Packing, Professional Loading &amp; Safe Transport.
               </div>
             </div>
           </div>
         </div>
 
+      </div>
     </section>
+  </div>
+
+  <!-- Mobile Sticky Floating Live Price Bar (Visible only on screens < 992px) -->
+  <div class="mobile-floating-price-bar d-lg-none" id="mobileFloatingPriceBar">
+    <div class="mobile-price-info">
+      <span class="mobile-price-label">Live Estimate</span>
+      <span class="mobile-price-amount" id="mobilePriceTotalDisplay">₹4,500</span>
+    </div>
+    <button type="button" class="btn-mobile-breakdown" onclick="scrollToQuoteSummary()">
+      <span>Breakdown</span> <i class="fa-solid fa-angle-up"></i>
+    </button>
   </div>
 
   <!-- 5. HOW IT WORKS SECTION -->

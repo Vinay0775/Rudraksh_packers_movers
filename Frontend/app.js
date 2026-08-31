@@ -1266,6 +1266,10 @@ function recalculateTotal() {
   const elTotal = document.getElementById('priceTotal');
   if (elTotal) elTotal.innerText = `₹${finalTotal.toLocaleString('en-IN')}`;
 
+  // Sync Mobile Floating Price Bar
+  const elMobileTotal = document.getElementById('mobilePriceTotalDisplay');
+  if (elMobileTotal) elMobileTotal.innerText = `₹${finalTotal.toLocaleString('en-IN')}`;
+
   // Mini summary card badge updates
   const sumVeh = document.getElementById('summaryVehicleName');
   if (sumVeh) sumVeh.innerText = veh.name;
@@ -1283,9 +1287,18 @@ function recalculateTotal() {
   if (sumDistKm) sumDistKm.innerText = distKm;
 }
 
+function scrollToQuoteSummary() {
+  const summaryEl = document.getElementById('quoteSummaryCard');
+  if (summaryEl) {
+    summaryEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    summaryEl.classList.add('animate-shake');
+    setTimeout(() => summaryEl.classList.remove('animate-shake'), 700);
+  }
+}
+
 function updateSummaryTexts() {
-  const pickup = document.getElementById('pickupCity')?.value.trim() || 'Not set';
-  const drop = document.getElementById('dropCity')?.value.trim() || 'Not set';
+  const pickup = document.getElementById('pickupCity')?.value.trim() || 'Sirsi Road, Jaipur';
+  const drop = document.getElementById('dropCity')?.value.trim() || 'Mansarovar, Jaipur';
   const dist = document.getElementById('distanceKm')?.value || 25;
   const date = document.getElementById('shiftingDate')?.value || 'Upcoming';
   const veh = selectedVehicleType ? vehicleConfig[selectedVehicleType] : null;

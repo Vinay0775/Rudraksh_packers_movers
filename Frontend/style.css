@@ -213,7 +213,7 @@ body {
   isolation: isolate;
   overflow: hidden;
   background: #081d34;
-  padding: 78px 0 65px;
+  padding: 60px 0 55px;
   text-align: center;
   min-height: 480px;
 }
@@ -226,6 +226,7 @@ body {
   object-fit: cover;
   z-index: 0;
   pointer-events: none;
+  filter: brightness(0.7) contrast(1.1);
 }
 
 .portal-hero::after {
@@ -233,7 +234,7 @@ body {
   position: absolute;
   z-index: 1;
   inset: 0;
-  background: linear-gradient(180deg, rgba(8, 29, 52, 0.76) 0%, rgba(8, 29, 52, 0.44) 45%, rgba(8, 29, 52, 0.78) 100%);
+  background: linear-gradient(180deg, rgba(8, 29, 52, 0.88) 0%, rgba(8, 29, 52, 0.65) 50%, rgba(8, 29, 52, 0.92) 100%);
   pointer-events: none;
 }
 
@@ -242,163 +243,261 @@ body {
   z-index: 2;
 }
 
-.portal-hero h1 {
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: #ffffff;
-  margin-bottom: 12px;
+/* ==========================================================================
+   0. MODERN GLASSMORPHISM HERO SERVICE SWITCHER
+   ========================================================================== */
+.hero-service-switcher {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 6px;
+  border-radius: 60px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35), 0 0 20px rgba(249, 115, 22, 0.15);
+  gap: 6px;
+  max-width: 100%;
+  transition: all 0.3s ease;
+  animation: switcherFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.portal-hero p {
-  color: rgba(255, 255, 255, 0.86);
-  max-width: 700px;
-  margin: 0 auto 35px;
-  font-size: 1.05rem;
+@keyframes switcherFadeIn {
+  from { opacity: 0; transform: translateY(-12px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.service-tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 24px;
+  border-radius: 50px;
+  text-decoration: none !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: rgba(255, 255, 255, 0.85) !important;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.service-tab-btn .tab-title {
+  font-weight: 700;
+  font-size: 0.96rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.service-tab-btn .tab-sub {
+  font-size: 0.72rem;
+  font-weight: 500;
+  opacity: 0.75;
+  margin-top: 2px;
+  line-height: 1;
+}
+
+/* Active Service Tab State (Vibrant Amber / Orange Glow) */
+.service-tab-btn.active {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.45);
+  transform: scale(1.02);
+}
+
+.service-tab-btn.active .tab-sub {
+  opacity: 0.95;
+  color: #fff7ed;
+  font-weight: 600;
+}
+
+.service-tab-btn:not(.active):hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+.service-tab-btn:not(.active):hover .tab-title i {
+  color: var(--primary-color);
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+/* Hero Titles & Gradient Typography */
+.portal-hero h1 {
+  font-size: clamp(2rem, 4.5vw, 3.2rem);
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 18px;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+}
+
+.hero-highlight-gradient {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 50%, #facc15 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.portal-hero p.lead {
+  color: rgba(255, 255, 255, 0.88);
+  max-width: 720px;
+  margin: 0 auto 20px;
+  font-size: clamp(0.95rem, 2vw, 1.15rem);
+  line-height: 1.5;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Hero Trust Badges Bar */
+.hero-trust-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 30px;
+}
+
+.hero-trust-pill {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50px;
+  padding: 5px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.hero-trust-pill i {
+  color: #facc15;
 }
 
 /* Hero Feature Cards Grid */
 .hero-feature-card {
-  background: rgba(255, 255, 255, 0.94);
-  border-radius: 16px;
-  padding: 30px 20px;
-  text-align: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
-  border: 1px solid var(--border-color);
-  height: 100%;
-  transition: all 0.3s ease;
-}
-
-/* --- Relocation Video Showcase --- */
-.relocation-showcase {
-  background: #eef4f7;
-  padding: 30px 0 18px;
-}
-
-.showcase-frame {
-  min-height: 330px;
-  position: relative;
-  overflow: hidden;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
   border-radius: 18px;
-  background: #183242 url('https://images.unsplash.com/photo-1600518464441-9154a4dea21b?auto=format&fit=crop&w=1600&q=85') center / cover;
-  box-shadow: 0 18px 42px rgba(15, 42, 55, 0.16);
-}
-
-.showcase-video {
-  width: 100%;
+  padding: 26px 20px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   height: 100%;
-  min-height: 330px;
-  display: block;
-  object-fit: cover;
-  opacity: 0.78;
-}
-
-.showcase-frame::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, rgba(7, 26, 39, 0.86), rgba(7, 26, 39, 0.2) 72%);
-  pointer-events: none;
-}
-
-.showcase-overlay {
-  position: absolute;
-  z-index: 1;
-  left: clamp(24px, 6vw, 80px);
-  top: 50%;
-  transform: translateY(-50%);
-  max-width: 500px;
-  color: #ffffff;
-  text-align: left;
-}
-
-.showcase-kicker {
-  color: #fbbf24;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-}
-
-.showcase-overlay h2 {
-  margin: 10px 0 8px;
-  font-size: clamp(1.8rem, 4vw, 3rem);
-  line-height: 1.08;
-  font-weight: 800;
-}
-
-.showcase-overlay p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .hero-feature-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+  transform: translateY(-6px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
+  border-color: var(--primary-color);
 }
 
 .hero-feature-icon {
-  font-size: 2.2rem;
-  margin-bottom: 16px;
-  color: #0077c8;
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.05) 100%);
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  margin: 0 auto 16px;
+  color: var(--primary-color);
+  transition: transform 0.3s ease;
+}
+
+.hero-feature-card:hover .hero-feature-icon {
+  transform: scale(1.12) rotate(-4deg);
 }
 
 .hero-feature-card h5 {
   font-weight: 700;
-  color: #0077c8;
-  font-size: 1.1rem;
-  margin-bottom: 10px;
+  color: var(--secondary-color);
+  font-size: 1.05rem;
+  margin-bottom: 8px;
 }
 
 .hero-feature-card p {
-  font-size: 0.88rem;
-  color: var(--text-muted);
+  font-size: 0.86rem;
+  color: #64748b;
   margin-bottom: 0;
+  line-height: 1.45;
 }
 
-/* CTA Feature Card (Dark Blue) */
+/* CTA Feature Card (Vibrant Orange & Aubergine) */
 .hero-cta-card {
-  background: linear-gradient(135deg, #0077c8 0%, #004d80 100%);
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 2px solid var(--primary-color);
   color: #ffffff;
-  border-radius: 16px;
-  padding: 30px 20px;
+  border-radius: 18px;
+  padding: 26px 20px;
   text-align: center;
-  box-shadow: 0 8px 24px rgba(0, 119, 200, 0.3);
+  box-shadow: 0 12px 32px rgba(249, 115, 22, 0.25);
   height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.hero-cta-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 40px rgba(249, 115, 22, 0.35);
+}
+
+.hero-cta-card i.fa-clipboard-check {
+  color: var(--primary-color);
+  font-size: 2.2rem;
 }
 
 .hero-cta-card h5 {
   color: #ffffff;
   font-weight: 800;
-  font-size: 1.25rem;
-  margin-bottom: 8px;
+  font-size: 1.18rem;
+  margin-top: 8px;
+  margin-bottom: 6px;
 }
 
 .hero-cta-card p {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 20px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.82);
+  margin-bottom: 16px;
 }
 
 .btn-get-quotes {
-  background-color: #b91c1c;
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+  color: #ffffff !important;
   font-weight: 700;
+  font-size: 0.92rem;
   border-radius: 50px;
-  padding: 10px 26px;
+  padding: 10px 24px;
   border: none;
-  box-shadow: 0 4px 12px rgba(185, 28, 28, 0.4);
+  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4);
   transition: all 0.25s ease;
+  text-decoration: none !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .btn-get-quotes:hover {
-  background-color: #991b1b;
-  color: #ffffff;
   transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.55);
+  color: #ffffff !important;
 }
 
 /* --- Popular Services Strip --- */
@@ -819,7 +918,7 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Vehicle Select Cards --- */
+/* --- Vehicle Select Cards (Grid Layout) --- */
 .vehicle-select-card {
   border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -833,30 +932,33 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
+  position: relative;
+  overflow: hidden;
 }
 
 .vehicle-select-card:hover {
   border-color: var(--primary-color);
   transform: translateY(-3px);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 6px 16px rgba(249, 115, 22, 0.15);
 }
 
+.vehicle-select-card.active,
 .vehicle-select-card.selected {
   border-color: var(--primary-color);
   background: linear-gradient(180deg, rgba(249, 115, 22, 0.08) 0%, rgba(249, 115, 22, 0.02) 100%);
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.18);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.22);
 }
 
 .vehicle-icon-wrap {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
   background: rgba(249, 115, 22, 0.12);
   color: var(--primary-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.3rem;
+  font-size: 1.35rem;
   margin-bottom: 8px;
   transition: transform 0.25s ease;
 }
@@ -880,12 +982,13 @@ body {
 }
 
 .vehicle-price-tag {
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: #166534;
   background: #dcfce7;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 50px;
+  border: 1px solid #bbf7d0;
 }
 
 /* --- House Size Cards --- */
@@ -897,18 +1000,20 @@ body {
   cursor: pointer;
   transition: all 0.25s ease;
   background: #ffffff;
+  height: 100%;
 }
 
 .house-size-card:hover {
   border-color: var(--primary-color);
   transform: translateY(-3px);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 6px 16px rgba(249, 115, 22, 0.12);
 }
 
+.house-size-card.active,
 .house-size-card.selected {
   border-color: var(--primary-color);
-  background-color: rgba(249, 115, 22, 0.05);
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+  background-color: rgba(249, 115, 22, 0.06);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
 }
 
 .house-size-card i {
@@ -919,76 +1024,70 @@ body {
 
 .house-size-card h6 {
   font-weight: 700;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
-/* --- Item Counter Selector --- */
-.item-counter-row {
+/* --- Item Counter Boxes --- */
+.item-counter-box {
+  background: #ffffff;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: #ffffff;
-  margin-bottom: 10px;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
-.item-counter-row:hover {
+.item-counter-box:hover {
   border-color: var(--border-focus);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.item-info {
+.item-counter-box > span {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--secondary-color);
+}
+
+.counter-ctrl {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
 }
 
-.item-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-sm);
-  background: rgba(249, 115, 22, 0.1);
-  color: var(--primary-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-}
-
-.counter-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.qty-btn {
+.counter-btn {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   border: 1px solid var(--border-color);
-  background: #ffffff;
-  color: var(--text-dark);
+  background: #f8fafc;
+  color: var(--secondary-color);
+  font-size: 1.1rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
+  user-select: none;
+  padding: 0;
+  line-height: 1;
 }
 
-.qty-btn:hover {
+.counter-btn:hover {
   background: var(--primary-color);
   color: #ffffff;
   border-color: var(--primary-color);
+  transform: scale(1.08);
 }
 
-.qty-val {
-  min-width: 28px;
+.counter-val {
+  min-width: 26px;
   text-align: center;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  color: var(--secondary-color);
 }
 
 /* --- Addons Checkbox Cards --- */
@@ -1013,97 +1112,180 @@ body {
   background-color: rgba(249, 115, 22, 0.04);
 }
 
-.addon-card .addon-checkbox {
-  width: 20px;
-  height: 20px;
-  margin-top: 3px;
-  accent-color: var(--primary-color);
-  cursor: pointer;
-}
-
-/* --- Sticky Live Summary Card --- */
-.summary-card {
+/* ==========================================================================
+   LIVE COST SUMMARY CARD (Crystal-Clear Transparent Breakdown)
+   ========================================================================== */
+.cost-summary-card {
   position: sticky;
   top: 90px;
   background: #ffffff;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  overflow: hidden;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  transition: all 0.3s ease;
 }
 
-.summary-header {
-  background: var(--secondary-color);
-  color: #ffffff;
-  padding: 18px 22px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.cost-summary-card:hover {
+  box-shadow: 0 16px 42px rgba(15, 23, 42, 0.12);
 }
 
-.summary-header h5 {
-  margin: 0;
-  font-weight: 700;
-}
-
-.summary-body {
-  padding: 22px;
-}
-
-.summary-line {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  font-size: 0.93rem;
-  color: var(--text-muted);
-}
-
-.summary-line strong {
-  color: var(--text-dark);
-}
-
-.summary-divider {
-  border-top: 1px dashed var(--border-color);
-  margin: 16px 0;
-}
-
-.summary-total {
+.cost-summary-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 1.25rem;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  border-bottom: 1.5px solid #f1f5f9;
+}
+
+.cost-summary-header h5 {
   font-weight: 800;
   color: var(--secondary-color);
+  font-size: 1.15rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-route-badge {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.summary-line-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px dashed #f1f5f9;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.summary-line-item:last-of-type {
+  border-bottom: none;
+}
+
+.summary-line-item span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.summary-line-item span:last-child {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.summary-line-item.text-success span:last-child {
+  color: #16a34a !important;
+}
+
+/* Total Price Highlight Row */
+.summary-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0 12px;
+  margin-top: 8px;
+  border-top: 2px solid #e2e8f0;
+}
+
+.summary-total-row span:first-child {
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--secondary-color);
+  letter-spacing: 0.3px;
 }
 
 .summary-total-amount {
+  font-weight: 800;
+  font-size: 1.65rem;
   color: var(--primary-color);
-  font-size: 1.5rem;
+  letter-spacing: -0.5px;
 }
 
-/* --- WhatsApp Checkout Button --- */
-.btn-whatsapp {
-  background-color: #25d366;
-  color: #ffffff;
-  font-size: 1.1rem;
-  font-weight: 700;
-  padding: 14px 24px;
-  border-radius: var(--radius-md);
-  border: none;
-  width: 100%;
+.summary-guarantee-note {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 14px;
+}
+
+/* ==========================================================================
+   MOBILE FLOATING LIVE PRICE BAR (< 992px)
+   ========================================================================== */
+.mobile-floating-price-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1040;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 1.5px solid rgba(226, 232, 240, 0.9);
+  padding: 10px 18px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
-  transition: all 0.25s ease;
+  justify-content: space-between;
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.08);
+  animation: slideUpBar 0.35s ease forwards;
 }
 
-.btn-whatsapp:hover {
-  background-color: #1ebd59;
+@keyframes slideUpBar {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.mobile-price-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-price-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mobile-price-amount {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--primary-color);
+  line-height: 1.1;
+}
+
+.btn-mobile-breakdown {
+  background: var(--secondary-color);
   color: #ffffff;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(37, 211, 102, 0.45);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 8px 16px;
+  border-radius: 50px;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  text-decoration: none !important;
+}
+
+.btn-mobile-breakdown:hover {
+  background: var(--primary-color);
+  color: #ffffff;
 }
 
 /* --- Admin Panel Layout --- */
@@ -1208,7 +1390,9 @@ body {
   margin-top: 15px;
 }
 
-/* Responsive adjustments */
+/* ==========================================================================
+   RESPONSIVE ADJUSTMENTS (Tablet & Mobile Screens)
+   ========================================================================== */
 @media (max-width: 991px) {
   .admin-sidebar {
     position: relative;
@@ -1219,13 +1403,134 @@ body {
     margin-left: 0;
     padding: 15px;
   }
-  .summary-card {
-    position: relative;
-    top: 0;
+  
+  .cost-summary-card {
+    position: static !important;
+    top: 0 !important;
     margin-top: 25px;
   }
+  
   .portal-hero h1 {
-    font-size: 1.8rem;
+    font-size: 1.85rem;
+  }
+
+  /* Keep WhatsApp button above mobile floating price bar */
+  .floating-whatsapp-btn {
+    bottom: 78px;
+    right: 16px;
+    padding: 8px 16px;
+    font-size: 0.88rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .portal-hero {
+    padding: 40px 0 45px;
+  }
+  
+  .hero-service-switcher {
+    padding: 4px;
+    gap: 4px;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .service-tab-btn {
+    padding: 8px 14px;
+    flex: 1;
+  }
+
+  .service-tab-btn .tab-title {
+    font-size: 0.85rem;
+    gap: 5px;
+  }
+
+  .service-tab-btn .tab-sub {
+    font-size: 0.68rem;
+  }
+
+  .hero-trust-bar {
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+
+  .hero-trust-pill {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+  }
+
+  .custom-card {
+    padding: 18px 14px;
+    border-radius: 14px;
+  }
+
+  /* Stepper on Mobile */
+  .stepper-wrapper {
+    margin-bottom: 24px;
+    padding: 0 4px;
+  }
+
+  .stepper-wrapper::before,
+  .stepper-progress-bar {
+    top: 18px;
+    left: 20px;
+    right: 20px;
+  }
+
+  .step-node .circle {
+    width: 36px;
+    height: 36px;
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+  }
+
+  .step-node .label {
+    font-size: 0.72rem;
+  }
+
+  /* Item counters & cards */
+  .item-counter-box {
+    padding: 8px 10px;
+  }
+
+  .item-counter-box > span {
+    font-size: 0.8rem;
+  }
+
+  .counter-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.95rem;
+  }
+
+  .counter-val {
+    font-size: 0.85rem;
+    min-width: 20px;
+  }
+
+  /* Popular services 3 cols on mobile */
+  .popular-services-section {
+    padding: 30px 0;
+  }
+
+  .popular-icon-box {
+    width: 46px;
+    height: 46px;
+    font-size: 1.4rem;
+    margin-bottom: 6px;
+  }
+
+  .popular-icon-item span {
+    font-size: 0.78rem;
+  }
+
+  /* Offer cards 2 cols on mobile */
+  .offer-card {
+    height: 140px;
+  }
+
+  .offer-card-title {
+    font-size: 0.9rem;
   }
 }
 
