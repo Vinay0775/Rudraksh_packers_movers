@@ -51,8 +51,6 @@
       <ul class="brdg-nav-links d-none d-lg-flex">
         <li><a href="#services" class="brdg-nav-link">Our Services</a></li>
         <li><a href="#bookingCalculator" class="brdg-nav-link active">Instant Fare</a></li>
-        <li><a href="#riderPartner" class="brdg-nav-link" onclick="openRiderModal(); return false;"><span
-              class="badge bg-warning text-dark me-1">Earn</span> Become a Rider</a></li>
         <li><a href="track.html" class="brdg-nav-link">Track Shipment</a></li>
         <li><a href="index.html" class="brdg-nav-link"><i class="fa-solid fa-truck-moving text-warning me-1"></i>
             Packers & Movers</a></li>
@@ -60,15 +58,10 @@
 
       <!-- Action Buttons -->
       <div class="d-flex align-items-center gap-2">
-        <a href="driver.html"
-          class="btn btn-sm btn-warning rounded-pill px-3 py-1 fw-bold d-inline-flex align-items-center gap-1"
-          title="Driver / Rider Login Portal">
-          <i class="fa-solid fa-id-badge"></i> <span>Rider Login</span>
-        </a>
         <button type="button"
           class="btn btn-sm btn-outline-warning rounded-pill px-3 py-1 fw-bold d-none d-sm-inline-flex align-items-center gap-1"
           onclick="openRiderModal()">
-          <i class="fa-solid fa-motorcycle"></i> <span>Become a Rider</span>
+          <i class="fa-solid fa-motorcycle"></i> <span>Rider Partner</span>
         </button>
         <a href="tel:+917296831460" class="btn-brdg-phone">
           <i class="fa-solid fa-phone"></i> <span class="d-none d-sm-inline">+91 72968 31460</span>
@@ -690,6 +683,16 @@
         </div>
 
         <div class="modal-body p-4">
+          <!-- Existing Partner Login Prompt -->
+          <div class="d-flex align-items-center justify-content-between p-2 px-3 rounded-3 mb-4" style="background: rgba(249, 115, 22, 0.08); border: 1px solid rgba(249, 115, 22, 0.25);">
+            <div class="small text-muted" style="font-size: 0.82rem;">
+              <i class="fa-solid fa-id-badge text-warning me-1"></i> Already an approved delivery partner?
+            </div>
+            <a href="driver.html" class="btn btn-sm btn-warning rounded-pill px-3 py-1 fw-bold text-dark" style="font-size: 0.75rem; text-decoration: none;">
+              <span>Rider Login</span> <i class="fa-solid fa-arrow-right ms-1"></i>
+            </a>
+          </div>
+
           <form id="riderRegForm" onsubmit="handleRiderRegistrationSubmit(event)">
 
             <!-- Personal Info -->

@@ -56,6 +56,7 @@ function checkDriverAuth() {
   // Not logged in -> Show login overlay
   if (loginOverlay) {
     loginOverlay.style.display = 'flex';
+    loginOverlay.style.opacity = '1';
   }
   return false;
 }
@@ -168,34 +169,82 @@ function submitDriverLogin() {
   showToast(`🎉 Login successful! Welcome back, ${currentDriver.driver_name}!`, 'success');
 }
 
-function logoutDriver() {
-  if (!confirm(`Are you sure you want to log out from ${currentDriver.driver_name}'s account?`)) return;
+function logoutDriver(skipConfirm = false) {
+  try {
+    const driverName = (currentDriver && currentDriver.driver_name) ? currentDriver.driver_name : 'Driver';
+    if (!skipConfirm && typeof confirm === 'function') {
+      const ok = confirm(`Are you sure you want to log out from ${driverName}'s account?`);
+      if (!ok) return;
+    }
+  } catch (e) {
+    console.warn('Confirm dialog skipped or error:', e);
+  }
 
+  // 1. Clear all session and driver state
   localStorage.removeItem('rudraksha_driver_session');
+  localStorage.removeItem('rudraksha_current_driver');
+  currentDriver = null;
+
+  // 2. Clear inputs
+  const phoneInput = document.getElementById('loginDriverPhone');
+  if (phoneInput) phoneInput.value = '';
+  const pinInput = document.getElementById('loginDriverPin');
+  if (pinInput) pinInput.value = '';
+  const errorEl = document.getElementById('loginErrorMsg');
+  if (errorEl) errorEl.style.display = 'none';
+
+  // 3. Force show login overlay immediately
   const loginOverlay = document.getElementById('driverLoginOverlay');
   if (loginOverlay) {
     loginOverlay.style.display = 'flex';
-    const pin = document.getElementById('loginDriverPin');
-    if (pin) pin.value = '';
-    const err = document.getElementById('loginErrorMsg');
-    if (err) err.style.display = 'none';
+    loginOverlay.style.opacity = '1';
+    loginOverlay.style.visibility = 'visible';
   }
-  showToast('You have been logged out from your driver account.', 'info');
+
+  // 4. Switch view to feed
+  if (typeof switchDriverView === 'function') {
+    try { switchDriverView('feed'); } catch (e) {}
+  }
+
+  showToast('Logged out successfully.', 'info');
+
+  // 5. Clean reload after brief tick to reset all timers, in-memory states, and active trip polling
+  setTimeout(() => {
+    window.location.reload();
+  }, 200);
 }
 
 /* ==========================================================================
    2. RIDER PROFILE & DATA ISOLATION
    ========================================================================== */
 function initDriverProfile() {
+  const session = localStorage.getItem('rudraksha_driver_session');
   const saved = localStorage.getItem('rudraksha_current_driver');
-  if (saved) {
+  if (session) {
+    try { currentDriver = JSON.parse(session); } catch {}
+  } else if (saved) {
     try { currentDriver = JSON.parse(saved); } catch {}
   }
+
+  if (!currentDriver) {
+    currentDriver = {
+      id: 'drv-101',
+      driver_name: 'Rudraksha Rider',
+      driver_phone: '',
+      vehicle_number: '',
+      vehicle_type: 'Delivery Fleet',
+      status: 'Active',
+      onDuty: true
+    };
+  }
+
   renderNavProfile();
   updateDriverStatsDisplay();
 
   const logPhone = document.getElementById('logoutPhoneLabel');
-  if (logPhone) logPhone.innerText = `+91 ${currentDriver.driver_phone}`;
+  if (logPhone) {
+    logPhone.innerText = currentDriver.driver_phone ? `+91 ${currentDriver.driver_phone}` : '-';
+  }
 }
 
 function renderNavProfile() {

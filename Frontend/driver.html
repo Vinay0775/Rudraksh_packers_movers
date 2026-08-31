@@ -569,12 +569,16 @@
       </div>
     </div>
     <div style="display:flex; gap:8px; align-items:center;">
-      <button onclick="openSetupSheet()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;color:#94a3b8;font-size:0.72rem;cursor:pointer;font-family:inherit;" title="Edit Profile">
+      <button type="button" onclick="openSetupSheet()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;color:#94a3b8;font-size:0.72rem;cursor:pointer;font-family:inherit;" title="Edit Profile">
         <i class="fa-solid fa-user-pen"></i>
       </button>
       <div class="duty-badge">
         <span class="pulse"></span> ON DUTY
       </div>
+      <button type="button" onclick="logoutDriver()" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.28);border-radius:8px;padding:6px 10px;color:#f87171;font-size:0.75rem;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;" title="Log Out from Account">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        <span class="d-none d-sm-inline" style="font-size:0.72rem;font-weight:700;">Logout</span>
+      </button>
     </div>
   </nav>
 
@@ -703,7 +707,7 @@
 
       <!-- Driver Logout Button -->
       <div style="margin-top: 24px; margin-bottom: 30px; text-align: center;">
-        <button onclick="logoutDriver()" style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: 14px; padding: 12px 20px; color: #f87171; font-weight: 700; font-size: 0.85rem; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+        <button type="button" onclick="logoutDriver()" style="background: rgba(239,68,68,0.12); border: 1.5px solid rgba(239,68,68,0.35); border-radius: 14px; padding: 13px 20px; color: #f87171; font-weight: 700; font-size: 0.88rem; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
           <i class="fa-solid fa-arrow-right-from-bracket"></i>
           <span>Log Out from Account (<span id="logoutPhoneLabel">-</span>)</span>
         </button>
