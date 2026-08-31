@@ -368,10 +368,17 @@ async function handleRequestParcelDelivery() {
   const parcelId = `RP-PCL-${randomSuffix}`;
   parcelBookingState.generatedParcelId = parcelId;
 
+  // Generate 4-digit Pickup and Delivery OTPs
+  const pickupOtp = String(Math.floor(1000 + Math.random() * 9000));
+  const deliveryOtp = String(Math.floor(1000 + Math.random() * 9000));
+
   // Selected Vehicle Name
   const vehicleName = VEHICLE_CONFIG[parcelBookingState.selectedVehicle]?.name || 'Bike';
 
-  // Format WhatsApp Click-to-Chat Message (Standard plain WhatsApp API)
+  // Driver Dispatch URL (Relative & absolute link)
+  const dispatchUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}driver.html?jobId=${parcelId}`;
+
+  // Format WhatsApp Click-to-Chat Message
   const whatsappMessage = 
 `📦 *NEW PARCEL DELIVERY REQUEST*
 ━━━━━━━━━━━━━━━━━━━━
@@ -398,16 +405,15 @@ async function handleRequestParcelDelivery() {
 📏 *Estimated Distance*
 • ${parcelBookingState.estimatedDistanceKm} KM
 
-💰 *Estimated Fare Breakdown*
-• Base Fare: ₹${fareCalc.baseFare}
-• Distance Charge: ₹${fareCalc.distanceCharge}
-• Weight Charge: ₹${fareCalc.weightCharge}
-• Vehicle Charge: ₹${fareCalc.vehicleCharge}
-• Handling Fee: ₹${fareCalc.handlingCharge}
-• Total Estimated Fare: *₹${fareCalc.estimatedTotal}*
+💰 *Estimated Fare:* *₹${fareCalc.estimatedTotal}* (${document.getElementById('pclPaymentOption')?.value || 'Cash'})
+
+🔑 *Security OTPs:*
+• Pickup OTP: ${pickupOtp}
+• Delivery OTP: ${deliveryOtp}
 
 ━━━━━━━━━━━━━━━━━━━━
-Please confirm rider availability and final fare.`;
+📢 *RIDER DISPATCH LINK (Tap to Accept):*
+${dispatchUrl}`;
 
   // WhatsApp Link
   const whatsappUrl = `https://wa.me/91${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(whatsappMessage)}`;
@@ -437,6 +443,9 @@ Please confirm rider availability and final fare.`;
     payment_status: 'pending',
     booking_status: 'searching_driver',
     status: 'searching_driver',
+    pickup_otp: pickupOtp,
+    delivery_otp: deliveryOtp,
+    dispatch_url: dispatchUrl,
     created_at: new Date().toISOString()
   };
 
@@ -449,11 +458,15 @@ Please confirm rider availability and final fare.`;
     }).catch(() => {});
   } catch {}
 
-  // Save in local storage history
+  // Save in shared storage across app (rudraksha_parcels & rudraksha_parcels_history)
   try {
-    const history = JSON.parse(localStorage.getItem('rudraksha_parcels_history') || '[]');
-    history.unshift(bookingPayload);
-    localStorage.setItem('rudraksha_parcels_history', JSON.stringify(history));
+    const list1 = JSON.parse(localStorage.getItem('rudraksha_parcels') || '[]');
+    list1.unshift(bookingPayload);
+    localStorage.setItem('rudraksha_parcels', JSON.stringify(list1));
+
+    const list2 = JSON.parse(localStorage.getItem('rudraksha_parcels_history') || '[]');
+    list2.unshift(bookingPayload);
+    localStorage.setItem('rudraksha_parcels_history', JSON.stringify(list2));
   } catch {}
 
   // Open WhatsApp in a new tab

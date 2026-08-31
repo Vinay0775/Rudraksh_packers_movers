@@ -1133,10 +1133,23 @@ async function loadAdminParcels() {
       throw new Error('API fetch failed');
     }
   } catch (err) {
-    // Read from localStorage
-    const saved = localStorage.getItem('rudraksha_parcels_history');
-    if (saved) {
-      allAdminParcels = JSON.parse(saved);
+    // Read and merge from localStorage keys
+    let localList = [];
+    try {
+      const p1 = JSON.parse(localStorage.getItem('rudraksha_parcels') || '[]');
+      const p2 = JSON.parse(localStorage.getItem('rudraksha_parcels_history') || '[]');
+      const map = new Map();
+      [...p1, ...p2].forEach(p => {
+        const id = p.parcel_id || p.id;
+        if (id && !map.has(id)) {
+          map.set(id, p);
+        }
+      });
+      localList = Array.from(map.values());
+    } catch {}
+
+    if (localList.length > 0) {
+      allAdminParcels = localList;
     } else {
       // Seed rich demo parcel bookings if none exist
       allAdminParcels = [
@@ -1199,6 +1212,7 @@ async function loadAdminParcels() {
         }
       ];
       localStorage.setItem('rudraksha_parcels_history', JSON.stringify(allAdminParcels));
+      localStorage.setItem('rudraksha_parcels', JSON.stringify(allAdminParcels));
     }
   }
 
@@ -1535,6 +1549,7 @@ async function submitParcelDriverAssignment() {
     p.assigned_driver_phone = '7296831460';
     p.booking_status = 'driver_assigned';
     localStorage.setItem('rudraksha_parcels_history', JSON.stringify(allAdminParcels));
+    localStorage.setItem('rudraksha_parcels', JSON.stringify(allAdminParcels));
   }
 
   showAdminToast(`Driver "${driverName}" assigned to Parcel ${parcelId}!`);
@@ -1548,6 +1563,7 @@ async function quickUpdateParcelStatus(parcelId, newStatus) {
   if (p) {
     p.booking_status = newStatus;
     localStorage.setItem('rudraksha_parcels_history', JSON.stringify(allAdminParcels));
+    localStorage.setItem('rudraksha_parcels', JSON.stringify(allAdminParcels));
   }
   showAdminToast(`Parcel ${parcelId} status updated to "${newStatus.toUpperCase()}"`);
   renderParcelsTable();
