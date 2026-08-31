@@ -203,7 +203,7 @@ function recalculateDistance() {
    4. PARCEL SELECTION & AUTOMATIC VEHICLE RECOMMENDATION
    ========================================================================== */
 function selectParcelType(typeText, el) {
-  document.querySelectorAll('.parcel-type-chips .parcel-chip-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.parcel-type-chips .chip-item').forEach(btn => btn.classList.remove('active'));
   if (el) el.classList.add('active');
   parcelBookingState.parcelType = typeText;
   autoRecommendVehicle();
@@ -211,7 +211,7 @@ function selectParcelType(typeText, el) {
 }
 
 function selectParcelWeight(weightKey, labelText, el) {
-  document.querySelectorAll('.parcel-weight-chips .parcel-chip-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.parcel-weight-chips .chip-item').forEach(btn => btn.classList.remove('active'));
   if (el) el.classList.add('active');
   parcelBookingState.weightCategory = weightKey;
   parcelBookingState.weightLabel = labelText;
@@ -220,7 +220,7 @@ function selectParcelWeight(weightKey, labelText, el) {
 }
 
 function selectParcelSize(sizeText, el) {
-  document.querySelectorAll('.parcel-size-chips .parcel-chip-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.parcel-size-chips .chip-item').forEach(btn => btn.classList.remove('active'));
   if (el) el.classList.add('active');
   parcelBookingState.packageSize = sizeText;
 
@@ -252,17 +252,17 @@ function autoRecommendVehicle() {
   parcelBookingState.recommendedVehicle = recommended;
   parcelBookingState.selectedVehicle = recommended;
 
-  // Update cards in UI
-  document.querySelectorAll('.parcel-veh-card').forEach(card => {
-    card.classList.remove('active', 'recommended');
-    const badge = card.querySelector('.parcel-veh-badge');
+  // Update vehicle cards in UI
+  document.querySelectorAll('.vehicle-picker-grid .vehicle-card-choice').forEach(card => {
+    card.classList.remove('active');
+    const badge = card.querySelector('.veh-badge-rec');
     if (badge) badge.style.display = 'none';
   });
 
   const activeCard = document.getElementById(`veh-card-${recommended}`);
   if (activeCard) {
-    activeCard.classList.add('active', 'recommended');
-    const badge = activeCard.querySelector('.parcel-veh-badge');
+    activeCard.classList.add('active');
+    const badge = activeCard.querySelector('.veh-badge-rec');
     if (badge) {
       badge.style.display = 'block';
       badge.innerText = 'RECOMMENDED';
@@ -274,7 +274,8 @@ function autoRecommendVehicle() {
 
 function manuallySelectParcelVehicle(vehKey) {
   parcelBookingState.selectedVehicle = vehKey;
-  document.querySelectorAll('.parcel-vehicles-grid .parcel-veh-card').forEach(card => card.classList.remove('active'));
+  // Deselect all vehicle cards using correct classes
+  document.querySelectorAll('.vehicle-picker-grid .vehicle-card-choice').forEach(card => card.classList.remove('active'));
   const card = document.getElementById(`veh-card-${vehKey}`);
   if (card) card.classList.add('active');
   calculateFreeParcelFare();
