@@ -930,12 +930,27 @@ async function verifyEnteredOTP() {
    ========================================================================== */
 
 /**
- * Validates current step and transitions to target step
+ * Validates all previous steps sequentially before transitioning to target step
  */
 function validateAndGoStep(targetStep) {
-  if (targetStep > currentStep) {
-    if (!validateStep(currentStep)) return;
+  if (targetStep < 1 || targetStep > 4) return;
+
+  // Going backward is always allowed without blocking validation
+  if (targetStep <= currentStep) {
+    goToStep(targetStep);
+    return;
   }
+
+  // Going forward: Strictly validate EVERY preceding step from Step 1 up to (targetStep - 1)
+  for (let s = 1; s < targetStep; s++) {
+    if (!validateStep(s)) {
+      // Return user to the incomplete step to complete it
+      goToStep(s);
+      return;
+    }
+  }
+
+  // All previous steps are verified -> proceed to targetStep
   goToStep(targetStep);
 }
 
@@ -1008,18 +1023,29 @@ function navigateWizard(direction) {
 
 function validateStep(step) {
   if (step === 1) {
-    const pickup = document.getElementById('pickupCity')?.value.trim();
-    const drop = document.getElementById('dropCity')?.value.trim();
+    const pickupInput = document.getElementById('pickupCity');
+    const dropInput = document.getElementById('dropCity');
+    const pickup = pickupInput?.value?.trim() || '';
+    const drop = dropInput?.value?.trim() || '';
     const date = document.getElementById('shiftingDate')?.value;
 
-    if (!pickup) {
-      alert('⚠️ Missing Detail: Please enter your Pickup Address / Area in Step 1.');
-      document.getElementById('pickupCity')?.focus();
+    if (!pickup || pickup.length < 2) {
+      alert('⚠️ Missing Detail: Please enter your Pickup Address / Area in Step 1 before proceeding.');
+      if (pickupInput) {
+        pickupInput.focus();
+        pickupInput.classList.add('is-invalid');
+        setTimeout(() => pickupInput.classList.remove('is-invalid'), 3500);
+      }
       return false;
     }
-    if (!drop) {
-      alert('⚠️ Missing Detail: Please enter your Drop Destination City / Area in Step 1.');
-      document.getElementById('dropCity')?.focus();
+
+    if (!drop || drop.length < 2) {
+      alert('⚠️ Missing Detail: Please enter your Drop Destination City / Area in Step 1 before proceeding.');
+      if (dropInput) {
+        dropInput.focus();
+        dropInput.classList.add('is-invalid');
+        setTimeout(() => dropInput.classList.remove('is-invalid'), 3500);
+      }
       return false;
     }
 
@@ -1044,6 +1070,8 @@ function validateStep(step) {
     if (!selectedHouseSize) {
       selectHouseSize('1bhk');
     }
+  } else if (step === 3) {
+    recalculateTotal();
   }
   return true;
 }

@@ -384,22 +384,22 @@
           <div class="col-lg-8">
             
             <!-- Stepper Progress Tracker -->
-            <!-- Stepper Progress Tracker (4 Clean Steps) -->
+            <!-- Stepper Progress Tracker (4 Sequential Steps with Validation) -->
             <div class="stepper-wrapper">
               <div class="stepper-progress-bar" id="stepperProgressBar" style="width: 0%;"></div>
-              <div class="step-node active" data-step="1" onclick="goToStep(1)" style="cursor: pointer;">
+              <div class="step-node active" data-step="1" onclick="validateAndGoStep(1)" style="cursor: pointer;" title="Step 1: Route & Distance">
                 <div class="circle"><i class="fa-solid fa-map-location-dot"></i></div>
                 <div class="label">Route</div>
               </div>
-              <div class="step-node" data-step="2" onclick="goToStep(2)" style="cursor: pointer;">
+              <div class="step-node" data-step="2" onclick="validateAndGoStep(2)" style="cursor: pointer;" title="Step 2: Vehicle & Inventory">
                 <div class="circle"><i class="fa-solid fa-truck-moving"></i></div>
                 <div class="label">Inventory</div>
               </div>
-              <div class="step-node" data-step="3" onclick="goToStep(3)" style="cursor: pointer;">
+              <div class="step-node" data-step="3" onclick="validateAndGoStep(3)" style="cursor: pointer;" title="Step 3: Floors & Lift">
                 <div class="circle"><i class="fa-solid fa-stairs"></i></div>
-                <div class="label">Floors & Lift</div>
+                <div class="label">Floors &amp; Lift</div>
               </div>
-              <div class="step-node" data-step="4" onclick="goToStep(4)" style="cursor: pointer;">
+              <div class="step-node" data-step="4" onclick="validateAndGoStep(4)" style="cursor: pointer;" title="Step 4: Review & Book">
                 <div class="circle"><i class="fa-solid fa-receipt"></i></div>
                 <div class="label">Book Now</div>
               </div>
