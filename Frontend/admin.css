@@ -17,8 +17,9 @@
   --accent-neon-glow-strong: rgba(208, 253, 56, 0.5);
   
   --text-white: #FFFFFF;
-  --text-muted: #8E8E93;
-  --text-dim: #5E5E65;
+  --text-muted: #94a3b8;
+  --text-dim: #cbd5e1;
+  --text-subtle: #64748b;
   
   --radius-card: 20px;
   --radius-pill: 50px;
@@ -30,6 +31,38 @@
   
   --font-main: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --transition-smooth: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   HIGH-CONTRAST TEXT & READABILITY OVERRIDES (Fix for dark backgrounds)
+   ========================================================================== */
+.text-muted,
+.small.text-muted,
+span.text-muted,
+div.text-muted,
+p.text-muted,
+label.text-muted,
+small.text-muted {
+  color: #94a3b8 !important; /* Crisp light slate for 7:1+ contrast on dark background */
+}
+
+.text-dim {
+  color: #cbd5e1 !important;
+}
+
+.cyber-table thead tr th {
+  color: #cbd5e1 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px;
+}
+
+.cyber-label {
+  color: #cbd5e1 !important;
+  font-weight: 600 !important;
+}
+
+.cyber-card-title {
+  color: #ffffff !important;
 }
 
 /* Base resets */

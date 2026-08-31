@@ -28,9 +28,9 @@
       --bg-deep: #0b0c0e;
       --bg-card: #13141a;
       --bg-ele: #1c1d26;
-      --border: rgba(255,255,255,0.07);
-      --text-muted: #64748b;
-      --text-dim: #94a3b8;
+      --border: rgba(255,255,255,0.09);
+      --text-muted: #94a3b8;
+      --text-dim: #cbd5e1;
     }
     body {
       background: var(--bg-deep);
@@ -38,6 +38,14 @@
       font-family: 'Plus Jakarta Sans', sans-serif;
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
+    }
+
+    /* High contrast text overrides */
+    .text-muted, small.text-muted, span.text-muted, div.text-muted {
+      color: #94a3b8 !important;
+    }
+    .text-dim {
+      color: #cbd5e1 !important;
     }
 
     /* ===================== NAVBAR ===================== */
@@ -263,32 +271,32 @@
       text-transform: uppercase; letter-spacing: 0.5px;
       display: inline-flex; align-items: center; gap: 4px;
     }
-    .feed-id { font-size: 0.85rem; font-weight: 700; color: #fff; margin-top: 4px; }
+    .feed-id { font-size: 0.88rem; font-weight: 800; color: #fff; margin-top: 4px; }
     .feed-fare { font-size: 1.4rem; font-weight: 900; color: #fff; text-align: right; }
-    .feed-payout { font-size: 0.68rem; color: var(--text-muted); text-align: right; }
-    .feed-payout strong { color: var(--green); }
+    .feed-payout { font-size: 0.72rem; color: #cbd5e1; text-align: right; font-weight: 600; }
+    .feed-payout strong { color: var(--green); font-size: 0.78rem; }
 
-    .feed-route { background: rgba(255,255,255,0.025); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+    .feed-route { background: rgba(255,255,255,0.035); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
     .feed-route-row { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; }
-    .feed-route-row:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .feed-route-row:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.07); }
     .feed-route-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
     .feed-route-dot.p { background: var(--accent); }
     .feed-route-dot.d { background: var(--green); }
-    .feed-route-text { font-size: 0.78rem; }
-    .feed-route-tag { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .feed-route-text { font-size: 0.8rem; }
+    .feed-route-tag { font-size: 0.68rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
     .feed-route-addr { color: #f1f5f9; font-weight: 600; }
-    .feed-route-who { color: var(--text-muted); }
+    .feed-route-who { color: #cbd5e1; }
 
     .feed-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .feed-meta-item { font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+    .feed-meta-item { font-size: 0.76rem; color: #cbd5e1; font-weight: 600; display: flex; align-items: center; gap: 4px; }
     .feed-meta-item i { color: var(--accent); }
 
     .feed-actions { display: flex; gap: 8px; }
     .btn-decline {
       flex: 0 0 auto;
       background: transparent;
-      border: 1px solid rgba(255,255,255,0.1);
-      color: var(--text-muted);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #cbd5e1;
       border-radius: 10px;
       padding: 10px 16px;
       font-size: 0.8rem; font-weight: 600; cursor: pointer;
@@ -487,64 +495,146 @@
   <!-- =================== MAIN CONTENT =================== -->
   <main class="rider-main">
 
-    <!-- Stats Ribbon -->
-    <div class="stats-ribbon">
-      <div class="stat-card earn">
-        <div class="stat-label">Today's Earnings</div>
-        <div class="stat-val earn" id="statEarnings">₹1,450</div>
+    <!-- VIEW 1: JOBS FEED & ACTIVE TRIP -->
+    <div id="driverFeedSection">
+      <!-- Stats Ribbon -->
+      <div class="stats-ribbon">
+        <div class="stat-card earn">
+          <div class="stat-label">Today's Earnings</div>
+          <div class="stat-val earn" id="statEarnings">₹1,450</div>
+        </div>
+        <div class="stat-card trips">
+          <div class="stat-label">Trips Done</div>
+          <div class="stat-val neutral" id="statTrips">7</div>
+        </div>
+        <div class="stat-card rating">
+          <div class="stat-label">Rider Rating</div>
+          <div class="stat-val star">★ 4.9</div>
+        </div>
       </div>
-      <div class="stat-card trips">
-        <div class="stat-label">Trips Done</div>
-        <div class="stat-val neutral" id="statTrips">7</div>
+
+      <!-- Active Trip Container -->
+      <div id="activeTripContainer"></div>
+
+      <!-- Available Jobs Feed -->
+      <div class="section-hdr">
+        <div class="section-hdr-title">
+          <span class="dot-badge"></span>
+          Available Parcel Jobs
+          <span id="feedCount" style="background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.25);border-radius:20px;padding:2px 8px;font-size:0.68rem;color:var(--accent);"></span>
+        </div>
+        <button class="btn-refresh" id="btnRefreshFeed" onclick="loadDriverFeed(true)">
+          <i class="fa-solid fa-rotate-right me-1"></i> Refresh
+        </button>
       </div>
-      <div class="stat-card rating">
-        <div class="stat-label">Rider Rating</div>
-        <div class="stat-val star">★ 4.9</div>
+
+      <div id="driverFeedList">
+        <div class="empty-state">
+          <div class="empty-icon"><i class="fa-solid fa-spinner fa-spin"></i></div>
+          <div class="empty-title">Scanning for Parcel Jobs...</div>
+          <div class="empty-sub">New requests appear automatically every 6 seconds</div>
+        </div>
       </div>
     </div>
 
-    <!-- Active Trip Container -->
-    <div id="activeTripContainer"></div>
+    <!-- VIEW 2: DEDICATED DRIVER PROFILE & EARNINGS VIEW (Isolated per Driver) -->
+    <div id="driverProfileSection" style="display: none;">
+      <!-- Rider Identification Card -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; margin-bottom: 16px; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #f97316, #22c55e);"></div>
 
-    <!-- Available Jobs Feed -->
-    <div class="section-hdr">
-      <div class="section-hdr-title">
-        <span class="dot-badge"></span>
-        Available Parcel Jobs
-        <span id="feedCount" style="background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.25);border-radius:20px;padding:2px 8px;font-size:0.68rem;color:var(--accent);"></span>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <div style="width: 54px; height: 54px; border-radius: 16px; background: linear-gradient(135deg, #f97316, #ea580c); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #fff; font-weight: 800; box-shadow: 0 8px 20px rgba(249,115,22,0.35);">
+              <i class="fa-solid fa-id-badge"></i>
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <h5 style="font-weight: 800; color: #fff; margin-bottom: 2px;" id="profileRiderName">Rajesh Kumar</h5>
+                <span class="badge bg-success text-dark fw-bold" style="font-size: 0.65rem; border-radius: 20px;">✓ Verified</span>
+              </div>
+              <div style="font-size: 0.8rem; color: #94a3b8;" id="profileRiderPhone">+91 7296831460</div>
+              <div style="font-size: 0.72rem; color: #f97316; font-weight: 600; margin-top: 2px;" id="profileRiderVehicle">Tata Ace • RJ-14-GA-1024</div>
+            </div>
+          </div>
+          <button onclick="openSetupSheet()" style="background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; color: #cbd5e1; font-size: 0.75rem; font-weight: 600; cursor: pointer;">
+            <i class="fa-solid fa-user-pen me-1"></i> Edit
+          </button>
+        </div>
+
+        <!-- Duty & Availability Toggle -->
+        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px;">
+          <div>
+            <div style="font-size: 0.68rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Rider Duty Status</div>
+            <div style="font-size: 0.85rem; font-weight: 700; color: #22c55e;" id="profileDutyStatusText">🟢 On Duty (Receiving Orders)</div>
+          </div>
+          <button onclick="toggleDriverDuty()" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold" id="btnToggleDuty" style="font-size: 0.75rem;">
+            Go Off Duty
+          </button>
+        </div>
       </div>
-      <button class="btn-refresh" id="btnRefreshFeed" onclick="loadDriverFeed(true)">
-        <i class="fa-solid fa-rotate-right me-1"></i> Refresh
-      </button>
-    </div>
 
-    <div id="driverFeedList">
-      <div class="empty-state">
-        <div class="empty-icon"><i class="fa-solid fa-spinner fa-spin"></i></div>
-        <div class="empty-title">Scanning for Parcel Jobs...</div>
-        <div class="empty-sub">New requests appear automatically every 6 seconds</div>
+      <!-- Financial Metrics Grid (Only for This Driver) -->
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px;">
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; position: relative;">
+          <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Total Lifetime Payout</div>
+          <div style="font-size: 1.4rem; font-weight: 900; color: #22c55e; margin: 4px 0;" id="profileTotalEarnings">₹1,450</div>
+          <div style="font-size: 0.68rem; color: #94a3b8;">85% guaranteed net share</div>
+        </div>
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px;">
+          <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Completed Trips</div>
+          <div style="font-size: 1.4rem; font-weight: 900; color: #ffffff; margin: 4px 0;" id="profileCompletedTrips">7</div>
+          <div style="font-size: 0.68rem; color: #94a3b8;">Delivered safely with OTP</div>
+        </div>
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px;">
+          <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Today's Payout</div>
+          <div style="font-size: 1.4rem; font-weight: 900; color: #f97316; margin: 4px 0;" id="profileTodayEarnings">₹1,450</div>
+          <div style="font-size: 0.68rem; color: #94a3b8;">Calculated for today</div>
+        </div>
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px;">
+          <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Rider Fleet Rating</div>
+          <div style="font-size: 1.4rem; font-weight: 900; color: #fbbf24; margin: 4px 0;">★ 4.9</div>
+          <div style="font-size: 0.68rem; color: #94a3b8;">Top fleet performance</div>
+        </div>
+      </div>
+
+      <!-- Past Deliveries History Header -->
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <div style="font-size: 0.9rem; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 6px;">
+          <i class="fa-solid fa-clock-rotate-left" style="color: #f97316;"></i>
+          My Delivery History
+          <span id="profileTripsCountBadge" style="background: rgba(249,115,22,0.15); border: 1px solid rgba(249,115,22,0.25); border-radius: 20px; padding: 2px 8px; font-size: 0.68rem; color: #f97316;">0</span>
+        </div>
+        <button onclick="renderDriverProfileView()" class="btn-refresh" style="font-size: 0.72rem;">
+          <i class="fa-solid fa-rotate-right me-1"></i> Refresh History
+        </button>
+      </div>
+
+      <!-- Past Deliveries Container (Isolated to this driver) -->
+      <div id="myPastDeliveriesList">
+        <!-- Rendered dynamically -->
       </div>
     </div>
 
   </main>
 
-  <!-- =================== BOTTOM TAB BAR =================== -->
+  <!-- =================== BOTTOM TAB BAR (Admin replaced with Driver Profile) =================== -->
   <div class="bottom-bar">
-    <a class="bottom-tab active" href="#">
+    <button type="button" class="bottom-tab active" id="btnTabFeed" onclick="switchDriverView('feed')">
       <i class="fa-solid fa-motorcycle"></i>
       Jobs Feed
-    </a>
-    <a class="bottom-tab" href="#activeTripContainer">
+    </button>
+    <button type="button" class="bottom-tab" id="btnTabActive" onclick="switchDriverView('active')">
       <i class="fa-solid fa-box-open"></i>
       Active Trip
-    </a>
-    <a class="bottom-tab" href="https://wa.me/917296831460" target="_blank">
+    </button>
+    <button type="button" class="bottom-tab" id="btnTabProfile" onclick="switchDriverView('profile')">
+      <i class="fa-solid fa-id-badge"></i>
+      My Profile
+    </button>
+    <a class="bottom-tab" id="btnTabSupport" href="https://wa.me/917296831460?text=Hello%20Rudraksha%20Logistics%20Helpline,%20I%20am%20a%20registered%20driver%20partner%20and%20need%20assistance." target="_blank">
       <i class="fa-brands fa-whatsapp"></i>
       Support
-    </a>
-    <a class="bottom-tab" href="admin.html" target="_blank">
-      <i class="fa-solid fa-chart-pie"></i>
-      Admin
     </a>
   </div>
 

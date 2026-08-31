@@ -12,8 +12,8 @@
   --accent-neon: #D0FD38;
   --accent-neon-glow: rgba(208, 253, 56, 0.35);
   --text-white: #FFFFFF;
-  --text-muted: #9E9EA7;
-  --text-dim: #5C5C66;
+  --text-muted: #94a3b8;
+  --text-dim: #cbd5e1;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-glow: rgba(249, 115, 22, 0.4);
   --radius-card: 20px;
@@ -22,6 +22,38 @@
   --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.6);
   --shadow-orange: 0 0 20px rgba(249, 115, 22, 0.3);
   --transition-smooth: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* High-Contrast Readability Overrides for Dark Backgrounds */
+.text-muted,
+.small.text-muted,
+span.text-muted,
+div.text-muted,
+p.text-muted,
+label.text-muted,
+small.text-muted {
+  color: #94a3b8 !important; /* Crisp light slate for crystal clear readability */
+}
+
+.text-dim {
+  color: #cbd5e1 !important;
+}
+
+.tracker-hero-subtitle {
+  color: #cbd5e1 !important;
+}
+
+.tracker-info-label {
+  color: #94a3b8 !important;
+  font-weight: 600 !important;
+}
+
+.tracker-info-val {
+  color: #ffffff !important;
+}
+
+.tracker-step-time {
+  color: #cbd5e1 !important;
 }
 
 *, *::before, *::after {

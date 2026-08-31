@@ -13,7 +13,8 @@ let currentDriver = {
   driver_name: 'Rajesh Kumar',
   driver_phone: '7296831460',
   vehicle_number: 'RJ-14-GA-1024',
-  vehicle_type: 'Tata Ace / Bike Courier'
+  vehicle_type: 'Tata Ace / Bike Courier',
+  onDuty: true
 };
 
 let currentActiveTrip = null;
@@ -36,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ==========================================================================
-   2. RIDER PROFILE
+   2. RIDER PROFILE & DATA ISOLATION
    ========================================================================== */
 function initDriverProfile() {
   const saved = localStorage.getItem('rudraksha_current_driver');
@@ -52,6 +53,7 @@ function renderNavProfile() {
   const vehEl = document.getElementById('navVehicleInfo');
   if (nameEl) nameEl.innerText = currentDriver.driver_name;
   if (vehEl) vehEl.innerText = `${currentDriver.vehicle_type} • ${currentDriver.vehicle_number}`;
+  updateDutyDisplay();
 }
 
 function openSetupSheet() {
@@ -80,25 +82,58 @@ function saveRiderProfile() {
     driver_name: name,
     driver_phone: phone,
     vehicle_number: vNo || 'RJ-00-GA-0000',
-    vehicle_type: vType || 'Bike'
+    vehicle_type: vType || 'Bike',
+    onDuty: currentDriver.onDuty !== undefined ? currentDriver.onDuty : true
   };
   localStorage.setItem('rudraksha_current_driver', JSON.stringify(currentDriver));
 
   document.getElementById('setupOverlay').classList.remove('active');
   renderNavProfile();
-  showToast(`Profile saved! Welcome, ${name} 👋`, 'success');
+  updateDriverStatsDisplay();
+  renderDriverProfileView();
+  loadDriverFeed(true);
+  showToast(`Profile updated! Welcome, ${name} 👋`, 'success');
 }
 
 /* ==========================================================================
-   3. STATS DISPLAY
+   3. STATS DISPLAY & DATA ISOLATION (Scoped strictly per Driver)
    ========================================================================== */
+function getDriverEarningsAndDeliveries() {
+  const allParcels = getAllParcelsFromStorage();
+  const driverPhoneClean = (currentDriver.driver_phone || '').replace(/\D/g, '');
+
+  // Filter deliveries belonging ONLY to this specific driver
+  const myDeliveries = allParcels.filter(p => {
+    const pPhoneClean = (p.assigned_driver_phone || '').replace(/\D/g, '');
+    const isThisDriver = (p.driver_id && p.driver_id === currentDriver.id) ||
+                         (pPhoneClean && driverPhoneClean && pPhoneClean === driverPhoneClean);
+    const isDone = (p.booking_status === 'delivered' || p.status === 'delivered');
+    return isThisDriver && isDone;
+  });
+
+  // Calculate earnings from completed deliveries
+  const deliveryEarnings = myDeliveries.reduce((sum, p) => sum + Math.round((Number(p.total_amount) || 0) * 0.85), 0);
+
+  // Stored base earnings per driver phone
+  const storedBase = Number(localStorage.getItem(`rudraksha_driver_bonus_${driverPhoneClean}`) || (driverPhoneClean === '7296831460' ? '1450' : '0'));
+  const totalEarnings = deliveryEarnings + storedBase;
+
+  // Today's earnings
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayDeliveries = myDeliveries.filter(p => (p.completed_at || p.created_at || '').startsWith(todayStr));
+  const todayEarnings = todayDeliveries.reduce((sum, p) => sum + Math.round((Number(p.total_amount) || 0) * 0.85), 0) + (driverPhoneClean === '7296831460' ? 1450 : 0);
+
+  const totalTrips = myDeliveries.length + (driverPhoneClean === '7296831460' ? 7 : 0);
+
+  return { myDeliveries, totalEarnings, totalTrips, todayEarnings };
+}
+
 function updateDriverStatsDisplay() {
-  const earnings = localStorage.getItem('rudraksha_driver_earnings') || '1450';
-  const trips = localStorage.getItem('rudraksha_driver_trips') || '7';
+  const { totalEarnings, totalTrips } = getDriverEarningsAndDeliveries();
   const eEl = document.getElementById('statEarnings');
   const tEl = document.getElementById('statTrips');
-  if (eEl) eEl.innerText = `₹${Number(earnings).toLocaleString('en-IN')}`;
-  if (tEl) tEl.innerText = trips;
+  if (eEl) eEl.innerText = `₹${totalEarnings.toLocaleString('en-IN')}`;
+  if (tEl) tEl.innerText = totalTrips;
 }
 
 /* ==========================================================================
@@ -587,18 +622,18 @@ function submitOtpVerification() {
     target.booking_status = 'delivered';
     target.status = 'delivered';
     target.completed_at = new Date().toISOString();
+    target.driver_id = currentDriver.id;
+    target.assigned_driver_name = currentDriver.driver_name;
+    target.assigned_driver_phone = currentDriver.driver_phone;
+    target.vehicle_number = currentDriver.vehicle_number;
     saveAllParcelsToStorage(allParcels);
 
-    // Update earnings
     const riderShare = Math.round((Number(target.total_amount) || 100) * 0.85);
-    const prevEarnings = Number(localStorage.getItem('rudraksha_driver_earnings') || '1450');
-    const prevTrips = Number(localStorage.getItem('rudraksha_driver_trips') || '7');
-    localStorage.setItem('rudraksha_driver_earnings', String(prevEarnings + riderShare));
-    localStorage.setItem('rudraksha_driver_trips', String(prevTrips + 1));
 
     currentActiveTrip = null;
     localStorage.removeItem('rudraksha_driver_active_trip');
     updateDriverStatsDisplay();
+    renderDriverProfileView();
     renderActiveTrip();
     loadDriverFeed();
 
@@ -667,4 +702,153 @@ function getTimeAgo(isoString) {
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   return `${hrs}h ago`;
+}
+
+/* ==========================================================================
+   12. DRIVER VIEW SWITCHER (Feed vs Active vs Profile)
+   ========================================================================== */
+function switchDriverView(viewName) {
+  const feedSec = document.getElementById('driverFeedSection');
+  const profileSec = document.getElementById('driverProfileSection');
+  const btnFeed = document.getElementById('btnTabFeed');
+  const btnActive = document.getElementById('btnTabActive');
+  const btnProfile = document.getElementById('btnTabProfile');
+
+  // Reset active classes
+  [btnFeed, btnActive, btnProfile].forEach(b => b?.classList.remove('active'));
+
+  if (viewName === 'profile') {
+    if (feedSec) feedSec.style.display = 'none';
+    if (profileSec) profileSec.style.display = 'block';
+    if (btnProfile) btnProfile.classList.add('active');
+    renderDriverProfileView();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else if (viewName === 'active') {
+    if (feedSec) feedSec.style.display = 'block';
+    if (profileSec) profileSec.style.display = 'none';
+    if (btnActive) btnActive.classList.add('active');
+    const atc = document.getElementById('activeTripContainer');
+    if (atc) atc.scrollIntoView({ behavior: 'smooth' });
+  } else {
+    // Default: 'feed'
+    if (feedSec) feedSec.style.display = 'block';
+    if (profileSec) profileSec.style.display = 'none';
+    if (btnFeed) btnFeed.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+function toggleDriverDuty() {
+  currentDriver.onDuty = !currentDriver.onDuty;
+  localStorage.setItem('rudraksha_current_driver', JSON.stringify(currentDriver));
+  updateDutyDisplay();
+
+  if (currentDriver.onDuty) {
+    showToast('🟢 You are now ON DUTY. You will receive active parcel alerts!', 'success');
+  } else {
+    showToast('⚪ You are now OFF DUTY. Parcel alerts paused.', 'info');
+  }
+}
+
+function updateDutyDisplay() {
+  const onDuty = currentDriver.onDuty !== false;
+  const navBadge = document.querySelector('.duty-badge');
+  if (navBadge) {
+    navBadge.innerHTML = onDuty ? '<span class="pulse"></span> ON DUTY' : '<span style="width:7px;height:7px;border-radius:50%;background:#8E8E93;display:inline-block;"></span> OFF DUTY';
+    navBadge.style.borderColor = onDuty ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)';
+    navBadge.style.color = onDuty ? 'var(--green)' : '#94a3b8';
+  }
+
+  const profileDutyText = document.getElementById('profileDutyStatusText');
+  const btnToggleDuty = document.getElementById('btnToggleDuty');
+  if (profileDutyText) {
+    profileDutyText.innerText = onDuty ? '🟢 On Duty (Receiving Orders)' : '⚪ Off Duty (Not Available)';
+    profileDutyText.style.color = onDuty ? '#22c55e' : '#94a3b8';
+  }
+  if (btnToggleDuty) {
+    btnToggleDuty.innerText = onDuty ? 'Go Off Duty' : 'Go On Duty';
+    btnToggleDuty.className = onDuty ? 'btn btn-sm btn-outline-danger rounded-pill px-3 py-1 fw-bold' : 'btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold';
+  }
+}
+
+function renderDriverProfileView() {
+  const { myDeliveries, totalEarnings, totalTrips, todayEarnings } = getDriverEarningsAndDeliveries();
+
+  // Populate driver identity
+  const nameEl = document.getElementById('profileRiderName');
+  const phoneEl = document.getElementById('profileRiderPhone');
+  const vehEl = document.getElementById('profileRiderVehicle');
+
+  if (nameEl) nameEl.innerText = currentDriver.driver_name;
+  if (phoneEl) phoneEl.innerText = `+91 ${currentDriver.driver_phone}`;
+  if (vehEl) vehEl.innerText = `${currentDriver.vehicle_type} • ${currentDriver.vehicle_number}`;
+
+  // Populate financial metrics (strictly scoped for this driver)
+  if (document.getElementById('profileTotalEarnings')) document.getElementById('profileTotalEarnings').innerText = `₹${totalEarnings.toLocaleString('en-IN')}`;
+  if (document.getElementById('profileCompletedTrips')) document.getElementById('profileCompletedTrips').innerText = `${totalTrips}`;
+  if (document.getElementById('profileTodayEarnings')) document.getElementById('profileTodayEarnings').innerText = `₹${todayEarnings.toLocaleString('en-IN')}`;
+  if (document.getElementById('profileTripsCountBadge')) document.getElementById('profileTripsCountBadge').innerText = `${myDeliveries.length}`;
+
+  updateDutyDisplay();
+
+  // Render My Past Deliveries List
+  const listContainer = document.getElementById('myPastDeliveriesList');
+  if (!listContainer) return;
+
+  if (myDeliveries.length === 0) {
+    listContainer.innerHTML = `
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px 16px; text-align: center;">
+        <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(249,115,22,0.1); color: #f97316; display: inline-flex; align-items: center; justify-content: center; font-size: 1.3rem; margin-bottom: 10px;">
+          <i class="fa-solid fa-box-open"></i>
+        </div>
+        <div style="font-weight: 700; color: #fff; font-size: 0.92rem; margin-bottom: 4px;">No Completed Deliveries Yet</div>
+        <div style="font-size: 0.76rem; color: #94a3b8; max-width: 320px; margin: 0 auto 14px;">
+          Deliveries accepted and completed by <strong>${currentDriver.driver_name}</strong> will appear here with transparent payout records.
+        </div>
+        <button onclick="switchDriverView('feed')" class="btn-refresh" style="font-size: 0.78rem;">
+          <i class="fa-solid fa-motorcycle me-1"></i> Check Available Jobs
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  listContainer.innerHTML = myDeliveries.map(p => {
+    const pId = p.parcel_id || p.id;
+    const dateStr = p.completed_at ? new Date(p.completed_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : 'Recent';
+    const riderEarned = Math.round((Number(p.total_amount) || 100) * 0.85);
+
+    return `
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-weight: 800; color: #f97316; font-size: 0.85rem;">${pId}</span>
+            <span class="badge bg-success text-dark fw-bold" style="font-size: 0.62rem; border-radius: 20px;">✓ DELIVERED</span>
+          </div>
+          <span style="font-size: 0.7rem; color: #94a3b8;">${dateStr}</span>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-bottom: 10px;">
+          <div style="display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px;">
+            <span style="width: 7px; height: 7px; border-radius: 50%; background: #f97316; margin-top: 5px; flex-shrink: 0;"></span>
+            <div style="font-size: 0.78rem; color: #f1f5f9;">${p.pickup_address || 'Pickup'}</div>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: flex-start;">
+            <span style="width: 7px; height: 7px; border-radius: 50%; background: #22c55e; margin-top: 5px; flex-shrink: 0;"></span>
+            <div style="font-size: 0.78rem; color: #f1f5f9;">${p.drop_address || 'Drop'}</div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 0.72rem; color: #94a3b8;">
+            ${(p.vehicle_type || 'bike').toUpperCase()} • ${p.distance_km || 5} KM • ${p.parcel_type || 'Package'}
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase;">Rider Payout</div>
+            <div style="font-size: 1.1rem; font-weight: 900; color: #22c55e;">₹${riderEarned}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
