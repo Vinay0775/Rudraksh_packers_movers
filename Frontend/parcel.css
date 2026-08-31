@@ -1,393 +1,773 @@
 /* ==========================================================================
-   PORTER-STYLE PARCEL DELIVERY SYSTEM DESIGN | RUDRAKSHA LOGISTICS
+   BRDG ERRAND THEME — RUDRAKSHA EXPRESS PARCEL & LOGISTICS SYSTEM
+   Aubergine (#352236) + Golden Orange (#FF9E1B) + Clean Off-White (#F8F9FC)
    ========================================================================== */
 
-/* 1. HERO SERVICE SWITCHER PILLS */
-.hero-service-switcher {
-  display: inline-flex;
-  background: rgba(13, 13, 15, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 50px;
-  padding: 6px;
-  margin-bottom: 24px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  max-width: 100%;
+:root {
+  --bg-dark-plum: #352236;
+  --bg-dark-plum-darker: #261627;
+  --bg-dark-plum-card: #452D47;
+  --primary-orange: #FF9E1B;
+  --primary-orange-hover: #E88B0E;
+  --primary-orange-light: #FFF5E6;
+  --primary-orange-glow: rgba(255, 158, 27, 0.35);
+  --body-bg: #F8F9FC;
+  --card-bg: #FFFFFF;
+  --text-dark: #1E1E24;
+  --text-muted: #6B7280;
+  --text-light: #F3F4F6;
+  --border-color: #E5E7EB;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 20px 40px rgba(53, 34, 54, 0.08);
+  --font-display: 'Outfit', sans-serif;
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
 }
 
-.service-tab-btn {
-  background: transparent;
-  border: none;
-  color: #9E9EA7;
-  padding: 10px 24px;
-  border-radius: 40px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--body-bg);
+  color: var(--text-dark);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
   font-weight: 700;
-  font-size: 0.95rem;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--text-dark);
 }
 
-.service-tab-btn .tab-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 1rem;
+/* ==========================================================================
+   1. TOP NAVBAR
+   ========================================================================== */
+.brdg-navbar {
+  background: #FFFFFF;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 1050;
+  padding: 12px 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
 }
 
-.service-tab-btn .tab-sub {
-  font-size: 0.68rem;
-  font-weight: 500;
-  color: #6C6C75;
-  margin-top: 2px;
-}
-
-.service-tab-btn.active {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  color: #FFFFFF;
-  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
-}
-
-.service-tab-btn.active .tab-sub {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.service-tab-btn:hover:not(.active) {
-  color: #FFFFFF;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-/* 2. PARCEL BOOKING CONTAINER */
-.parcel-booking-section {
-  padding: 40px 0 60px 0;
-  background: #0B0B0E;
-  color: #FFFFFF;
-}
-
-.parcel-wizard-card {
-  background: #151518;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
-  padding: 32px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-  position: relative;
-}
-
-.parcel-card-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 18px;
-  margin-bottom: 24px;
+.brdg-brand {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
+  text-decoration: none;
 }
 
-.parcel-step-pill {
-  background: rgba(249, 115, 22, 0.12);
-  border: 1px solid rgba(249, 115, 22, 0.3);
-  color: #f97316;
-  font-size: 0.76rem;
-  font-weight: 800;
-  padding: 4px 12px;
-  border-radius: 50px;
-  text-transform: uppercase;
-}
-
-/* Location Inputs with Route Line */
-.parcel-locations-box {
-  background: #101013;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 18px;
-  padding: 20px;
-  margin-bottom: 20px;
-  position: relative;
-}
-
-.parcel-input-group {
-  position: relative;
+.brdg-brand-icon {
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, var(--primary-orange) 0%, #FF7A00 100%);
+  border-radius: 12px;
   display: flex;
   align-items: center;
-  background: #19191D;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 10px 14px;
-  transition: all 0.2s ease;
-}
-
-.parcel-input-group:focus-within {
-  border-color: #f97316;
-  box-shadow: 0 0 15px rgba(249, 115, 22, 0.25);
-}
-
-.parcel-input-group .icon-pin-pickup {
-  color: #22c55e;
-  font-size: 1.1rem;
-  margin-right: 12px;
-}
-
-.parcel-input-group .icon-pin-drop {
-  color: #f97316;
-  font-size: 1.1rem;
-  margin-right: 12px;
-}
-
-.parcel-input-field {
-  background: transparent;
-  border: none;
-  outline: none;
+  justify-content: center;
   color: #FFFFFF;
-  width: 100%;
-  font-family: inherit;
-  font-size: 0.95rem;
+  font-size: 1.35rem;
+  box-shadow: 0 4px 12px var(--primary-orange-glow);
 }
 
-.parcel-input-field::placeholder {
-  color: #5C5C66;
-  font-size: 0.88rem;
+.brdg-brand-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.22rem;
+  color: var(--bg-dark-plum);
+  line-height: 1.1;
+  letter-spacing: -0.5px;
 }
 
-.btn-gps-detect {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #f97316;
-  padding: 4px 10px;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s ease;
+.brdg-brand-title span {
+  color: var(--primary-orange);
 }
 
-.btn-gps-detect:hover {
-  background: #f97316;
-  color: #FFFFFF;
-}
-
-/* Route Distance Pill */
-.parcel-distance-pill {
-  background: rgba(34, 197, 94, 0.12);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  color: #86efac;
-  font-size: 0.82rem;
-  font-weight: 700;
-  padding: 6px 14px;
-  border-radius: 50px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Parcel Selection Chips Grid */
-.parcel-type-chips,
-.parcel-weight-chips {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.parcel-chip-btn {
-  background: #19191D;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #9E9EA7;
-  border-radius: 14px;
-  padding: 12px 10px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.25s ease;
+.brdg-nav-links {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
+  gap: 22px;
+  list-style: none;
+  margin: 0;
+}
+
+.brdg-nav-link {
+  text-decoration: none;
+  color: #4B5563;
   font-weight: 600;
+  font-size: 0.92rem;
+  transition: color 0.2s ease;
+  position: relative;
 }
 
-.parcel-chip-btn i {
-  font-size: 1.2rem;
-  color: #f97316;
+.brdg-nav-link:hover, .brdg-nav-link.active {
+  color: var(--primary-orange);
 }
 
-.parcel-chip-btn.active {
-  background: rgba(249, 115, 22, 0.15);
-  border-color: #f97316;
+.brdg-nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--primary-orange);
+  border-radius: 2px;
+}
+
+.btn-brdg-phone {
+  background: var(--bg-dark-plum);
   color: #FFFFFF;
-  box-shadow: 0 0 15px rgba(249, 115, 22, 0.3);
+  padding: 8px 18px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
 }
 
-/* Vehicle Selection Cards (Porter Style) */
-.parcel-vehicles-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
-  margin-bottom: 24px;
+.btn-brdg-phone:hover {
+  background: #4A304C;
+  color: #FFFFFF;
+  transform: translateY(-1px);
 }
 
-.parcel-veh-card {
-  background: #19191D;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  padding: 18px;
-  cursor: pointer;
-  transition: all 0.25s ease;
+/* ==========================================================================
+   2. HERO SECTION
+   ========================================================================== */
+.brdg-hero {
+  background: var(--bg-dark-plum);
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(255, 158, 27, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(67, 44, 68, 0.6) 0%, transparent 50%);
+  color: #FFFFFF;
+  padding: 55px 0 75px 0;
   position: relative;
   overflow: hidden;
 }
 
-.parcel-veh-card.recommended {
-  border-color: #D0FD38;
-}
-
-.parcel-veh-badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(208, 253, 56, 0.15);
-  border: 1px solid #D0FD38;
-  color: #D0FD38;
-  font-size: 0.65rem;
+.brdg-hero-h1 {
+  font-family: var(--font-display);
   font-weight: 800;
-  padding: 2px 8px;
-  border-radius: 50px;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  line-height: 1.15;
+  margin-bottom: 24px;
+  color: #FFFFFF;
+  letter-spacing: -0.5px;
+}
+
+.brdg-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 32px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.brdg-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: #E2D9E2;
+}
+
+.brdg-check-icon {
+  color: var(--primary-orange);
+  font-size: 1.1rem;
+}
+
+.btn-brdg-orange {
+  background: var(--primary-orange);
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 0.95rem;
+  padding: 14px 28px;
+  border-radius: 12px;
+  border: none;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  box-shadow: 0 8px 20px rgba(255, 158, 27, 0.4);
+  transition: all 0.25s ease;
+  cursor: pointer;
 }
 
-.parcel-veh-card.active {
-  background: rgba(249, 115, 22, 0.12);
-  border-color: #f97316;
-  box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
+.btn-brdg-orange:hover {
+  background: var(--primary-orange-hover);
+  color: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(255, 158, 27, 0.5);
 }
 
-.parcel-veh-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  background: rgba(249, 115, 22, 0.12);
+.btn-brdg-outline {
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 14px 24px;
+  border-radius: 12px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-brdg-outline:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+  border-color: #FFFFFF;
+}
+
+.hero-rider-visual-wrap {
+  position: relative;
+  text-align: center;
+}
+
+.hero-scooter-svg {
+  max-width: 100%;
+  height: auto;
+  filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.35));
+  animation: floatSmooth 4s ease-in-out infinite;
+}
+
+@keyframes floatSmooth {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.hero-floating-stat {
+  position: absolute;
+  bottom: 20px;
+  right: 10px;
+  background: #FFFFFF;
+  color: var(--text-dark);
+  padding: 12px 18px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.stat-badge-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--primary-orange-light);
+  color: var(--primary-orange);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #f97316;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
+}
+
+/* ==========================================================================
+   3. "WHAT ARE OUR SERVICES" (3-Card Section)
+   ========================================================================== */
+.services-section {
+  padding: 70px 0 50px 0;
+  position: relative;
+}
+
+.section-title-wrap {
+  text-align: center;
+  margin-bottom: 45px;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+  color: var(--bg-dark-plum);
+  position: relative;
+  display: inline-block;
   margin-bottom: 12px;
 }
 
-.parcel-veh-card.active .parcel-veh-icon {
-  background: #f97316;
-  color: #FFFFFF;
+.section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 4px;
+  background: var(--primary-orange);
+  border-radius: 4px;
 }
 
-/* Sender & Receiver Card */
-.parcel-party-card {
-  background: #101013;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 18px;
-  padding: 20px;
-  margin-bottom: 20px;
+.section-subtitle {
+  color: var(--text-muted);
+  max-width: 600px;
+  margin: 12px auto 0 auto;
+  font-size: 0.98rem;
 }
 
-/* Dynamic Live Fare Calculator Panel */
-.parcel-fare-card {
-  background: #18181C;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  position: sticky;
-  top: 100px;
-}
-
-.parcel-fare-row {
+.service-feature-card {
+  background: #FFFFFF;
+  border-radius: var(--radius-lg);
+  padding: 36px 28px;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  height: 100%;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  font-size: 0.88rem;
-  color: #9E9EA7;
-  padding: 6px 0;
 }
 
-.parcel-fare-row.total-row {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: 14px;
-  margin-top: 10px;
-  color: #FFFFFF;
-  font-size: 1.15rem;
-  font-weight: 800;
+.service-feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(255, 158, 27, 0.3);
 }
 
-.parcel-fare-row.total-row .total-amount {
-  color: #f97316;
-  font-size: 1.4rem;
-}
-
-.btn-book-parcel {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  color: #FFFFFF;
-  border: none;
-  border-radius: 50px;
-  padding: 16px 28px;
-  font-size: 1.05rem;
-  font-weight: 800;
-  width: 100%;
-  cursor: pointer;
-  box-shadow: 0 6px 25px rgba(249, 115, 22, 0.45);
-  transition: all 0.3s ease;
+.service-icon-box {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: var(--primary-orange-light);
+  color: var(--primary-orange);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  margin-top: 18px;
+  font-size: 1.8rem;
+  margin-bottom: 22px;
+  transition: transform 0.3s ease;
 }
 
-.btn-book-parcel:hover {
-  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
-  box-shadow: 0 8px 30px rgba(249, 115, 22, 0.6);
-  transform: translateY(-2px);
+.service-feature-card:hover .service-icon-box {
+  transform: scale(1.1) rotate(5deg);
+  background: var(--primary-orange);
+  color: #FFFFFF;
 }
 
-/* OTP Pill Display */
-.otp-pill {
-  background: #111113;
-  border: 1px solid rgba(249, 115, 22, 0.4);
-  color: #f97316;
-  font-family: monospace;
+.service-card-h5 {
+  font-size: 1.25rem;
   font-weight: 800;
-  font-size: 1.2rem;
-  padding: 6px 14px;
-  border-radius: 8px;
-  letter-spacing: 2px;
-  display: inline-block;
+  color: var(--bg-dark-plum);
+  margin-bottom: 12px;
 }
 
-/* Responsive Media Queries */
+.service-card-p {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ==========================================================================
+   4. PARCEL BOOKING WIZARD & FARE CALCULATOR
+   ========================================================================== */
+.calculator-section {
+  padding: 40px 0 70px 0;
+}
+
+.wizard-white-card {
+  background: #FFFFFF;
+  border-radius: var(--radius-xl);
+  padding: 36px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+}
+
+.wizard-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 16px;
+  margin-bottom: 22px;
+}
+
+.wizard-block-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--bg-dark-plum);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wizard-step-tag {
+  background: var(--primary-orange-light);
+  color: var(--primary-orange);
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 50px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.brdg-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.brdg-input-icon {
+  position: absolute;
+  left: 14px;
+  font-size: 1.1rem;
+  z-index: 5;
+}
+
+.icon-pickup { color: #10B981; }
+.icon-drop { color: #EF4444; }
+
+.brdg-input-control {
+  width: 100%;
+  padding: 12px 14px 12px 42px;
+  background: #F9FAFC;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  color: var(--text-dark);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.brdg-input-control:focus {
+  outline: none;
+  background: #FFFFFF;
+  border-color: var(--primary-orange);
+  box-shadow: 0 0 0 4px rgba(255, 158, 27, 0.15);
+}
+
+.btn-gps-action {
+  background: transparent;
+  border: none;
+  color: var(--primary-orange);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.btn-gps-action:hover {
+  color: var(--primary-orange-hover);
+  text-decoration: underline;
+}
+
+/* Chips */
+.chips-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.chip-item {
+  padding: 8px 16px;
+  border-radius: 50px;
+  background: #F3F4F6;
+  color: #4B5563;
+  border: 1.5px solid transparent;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.chip-item:hover {
+  background: #E5E7EB;
+  color: var(--text-dark);
+}
+
+.chip-item.active {
+  background: var(--primary-orange-light);
+  color: #B45309;
+  border-color: var(--primary-orange);
+  font-weight: 700;
+}
+
+/* Vehicles Grid */
+.vehicle-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.vehicle-card-choice {
+  background: #F9FAFC;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px 14px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.25s ease;
+  text-align: center;
+}
+
+.vehicle-card-choice:hover {
+  border-color: #D1D5DB;
+  background: #FFFFFF;
+}
+
+.vehicle-card-choice.active {
+  border-color: var(--primary-orange);
+  background: #FFFDF9;
+  box-shadow: 0 6px 16px rgba(255, 158, 27, 0.15);
+}
+
+.veh-badge-rec {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--primary-orange);
+  color: #FFFFFF;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: 50px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.veh-choice-icon {
+  font-size: 2rem;
+  color: var(--bg-dark-plum);
+  margin-bottom: 8px;
+}
+
+.vehicle-card-choice.active .veh-choice-icon {
+  color: var(--primary-orange);
+}
+
+.contact-subcard {
+  background: #F9FAFC;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 18px;
+}
+
+/* Fare Summary Card */
+.fare-summary-card {
+  background: #FFFFFF;
+  border-radius: var(--radius-xl);
+  padding: 30px 24px;
+  box-shadow: var(--shadow-lg);
+  border: 1.5px solid var(--border-color);
+  position: sticky;
+  top: 90px;
+}
+
+.fare-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 18px;
+}
+
+.fare-line-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.fare-line-row strong {
+  color: var(--text-dark);
+  font-weight: 700;
+}
+
+.fare-total-divider {
+  border-top: 2px dashed var(--border-color);
+  margin: 14px 0;
+  padding-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fare-total-amount {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--bg-dark-plum);
+}
+
+.btn-whatsapp-dispatch {
+  width: 100%;
+  background: #25D366;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 12px;
+  padding: 15px 20px;
+  font-weight: 800;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(37, 211, 102, 0.35);
+  transition: all 0.25s ease;
+}
+
+.btn-whatsapp-dispatch:hover {
+  background: #20BA5A;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(37, 211, 102, 0.45);
+  color: #FFFFFF;
+}
+
+/* ==========================================================================
+   5. PORTER-STYLE RIDER / DELIVERY PARTNER SECTION ("Earn With Us")
+   ========================================================================== */
+.rider-partner-section {
+  background: linear-gradient(135deg, var(--bg-dark-plum) 0%, #2D1A2E 100%);
+  color: #FFFFFF;
+  padding: 70px 0;
+  border-radius: var(--radius-xl);
+  margin: 40px 0 70px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.rider-earn-widget {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-lg);
+  padding: 30px;
+}
+
+.earnings-display-box {
+  background: #FFFFFF;
+  color: var(--text-dark);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.earnings-amount {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: var(--primary-orange);
+  line-height: 1;
+}
+
+.custom-range-slider {
+  width: 100%;
+  accent-color: var(--primary-orange);
+  cursor: pointer;
+  height: 8px;
+}
+
+/* ==========================================================================
+   6. TRACK SHIPMENT BANNER
+   ========================================================================== */
+.tracking-banner-section {
+  background: #FFFFFF;
+  border-radius: var(--radius-xl);
+  padding: 50px 40px;
+  margin-bottom: 60px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+}
+
+.helpline-strip-bar {
+  background: #FFFFFF;
+  border-radius: 50px;
+  padding: 16px 30px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+
+.helpline-icon-wrap {
+  width: 48px;
+  height: 48px;
+  background: var(--primary-orange-light);
+  color: var(--primary-orange);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+/* ==========================================================================
+   7. FOOTER
+   ========================================================================== */
+.brdg-footer {
+  background: var(--bg-dark-plum-darker);
+  color: #9CA3AF;
+  padding: 50px 0 25px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.9rem;
+}
+
+.brdg-footer a {
+  color: #D1D5DB;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.brdg-footer a:hover {
+  color: var(--primary-orange);
+}
+
 @media (max-width: 768px) {
-  .hero-service-switcher {
-    width: 100%;
-    border-radius: 18px;
+  .wizard-white-card {
+    padding: 22px 18px;
   }
-  .service-tab-btn {
-    flex: 1;
-    padding: 8px 12px;
+  .brdg-hero {
+    padding: 40px 0 50px 0;
   }
-  .service-tab-btn .tab-title {
-    font-size: 0.88rem;
-  }
-  .service-tab-btn .tab-sub {
-    font-size: 0.62rem;
-  }
-  .parcel-wizard-card {
-    padding: 20px 16px;
-    border-radius: 18px;
-  }
-  .parcel-type-chips,
-  .parcel-weight-chips {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .parcel-vehicles-grid {
-    grid-template-columns: 1fr;
+  .fare-summary-card {
+    position: static;
+    margin-top: 20px;
   }
 }
