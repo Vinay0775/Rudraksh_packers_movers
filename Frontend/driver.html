@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Driver Partner Portal | Rudraksha Logistics</title>
+  <meta name="description" content="Rudraksha Rider Partner App – Accept parcel delivery jobs, verify OTPs, track earnings in real time.">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png">
@@ -11,105 +12,587 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <!-- Bootstrap 5 CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
-  <!-- Driver CSS -->
-  <link rel="stylesheet" href="driver.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --accent: #f97316;
+      --accent-glow: rgba(249,115,22,0.35);
+      --green: #22c55e;
+      --green-dim: rgba(34,197,94,0.15);
+      --yellow: #fbbf24;
+      --bg-deep: #0b0c0e;
+      --bg-card: #13141a;
+      --bg-ele: #1c1d26;
+      --border: rgba(255,255,255,0.07);
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+    }
+    body {
+      background: var(--bg-deep);
+      color: #f1f5f9;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===================== NAVBAR ===================== */
+    .rider-nav {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: rgba(11,12,14,0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .rider-nav-brand { display: flex; align-items: center; gap: 10px; }
+    .rider-nav-logo {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; color: #fff;
+    }
+    .rider-nav-title { font-size: 0.95rem; font-weight: 800; color: #fff; line-height: 1.1; }
+    .rider-nav-sub { font-size: 0.68rem; color: var(--text-muted); }
+    .duty-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.25);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 0.75rem; font-weight: 700; color: var(--green);
+    }
+    .duty-badge .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.5)} }
+
+    /* ===================== MAIN ===================== */
+    .rider-main { max-width: 600px; margin: 0 auto; padding: 16px 14px 90px; }
+
+    /* ===================== STATS RIBBON ===================== */
+    .stats-ribbon {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+      margin-bottom: 18px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 10px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    }
+    .stat-card.earn::before { background: linear-gradient(90deg, #22c55e, #16a34a); }
+    .stat-card.trips::before { background: linear-gradient(90deg, #f97316, #ea580c); }
+    .stat-card.rating::before { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+    .stat-label { font-size: 0.63rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .stat-val { font-size: 1.1rem; font-weight: 800; }
+    .stat-val.earn { color: var(--green); }
+    .stat-val.neutral { color: #f1f5f9; }
+    .stat-val.star { color: var(--yellow); }
+
+    /* ===================== SECTION HEADER ===================== */
+    .section-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .section-hdr-title {
+      font-size: 0.9rem; font-weight: 700; color: #fff;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .section-hdr-title .dot-badge {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    .btn-refresh {
+      background: var(--bg-ele);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 0.75rem; font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-refresh:hover { color: #fff; border-color: var(--accent); }
+
+    /* ===================== ACTIVE TRIP CARD ===================== */
+    .active-trip-card {
+      background: var(--bg-card);
+      border: 2px solid var(--green);
+      border-radius: 20px;
+      padding: 18px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .active-trip-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+    }
+    .active-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(34,197,94,0.15);
+      border: 1px solid rgba(34,197,94,0.3);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 0.7rem; font-weight: 800; color: var(--green);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .trip-id-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; }
+    .trip-id-val { font-size: 1.2rem; font-weight: 800; color: #fff; }
+    .trip-status-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(249,115,22,0.12);
+      border: 1px solid rgba(249,115,22,0.25);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 0.72rem; font-weight: 700; color: var(--accent);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .route-info-box {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin: 14px 0;
+    }
+    .route-row { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; }
+    .route-row:not(:last-child) { border-bottom: 1px solid var(--border); }
+    .route-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; flex-shrink: 0; margin-top: 2px; }
+    .route-icon.pickup { background: rgba(249,115,22,0.15); color: var(--accent); }
+    .route-icon.drop { background: rgba(34,197,94,0.15); color: var(--green); }
+    .route-label { font-size: 0.63rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .route-addr { font-size: 0.85rem; font-weight: 600; color: #f1f5f9; }
+    .route-contact { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+    .route-contact a { color: var(--yellow); text-decoration: none; }
+
+    .meta-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .meta-pill {
+      background: var(--bg-ele);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.72rem; font-weight: 600; color: var(--text-dim);
+      display: flex; align-items: center; gap: 5px;
+    }
+    .meta-pill i { color: var(--accent); }
+
+    .trip-fare { font-size: 1.6rem; font-weight: 900; color: var(--green); }
+    .trip-fare-sub { font-size: 0.72rem; color: var(--text-muted); }
+
+    /* Action Buttons */
+    .action-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-nav {
+      flex: 1; min-width: 120px;
+      background: var(--bg-ele);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: 12px;
+      padding: 11px;
+      font-size: 0.8rem; font-weight: 700;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-nav:hover { background: rgba(249,115,22,0.12); }
+    .btn-otp {
+      flex: 1; min-width: 120px;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      border: none;
+      color: #fff;
+      border-radius: 12px;
+      padding: 11px;
+      font-size: 0.82rem; font-weight: 800;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-otp:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(34,197,94,0.3); }
+    .btn-status {
+      width: 100%;
+      background: linear-gradient(135deg, #1c1d26, #13141a);
+      border: 1px solid var(--border);
+      color: #fff;
+      border-radius: 12px;
+      padding: 11px;
+      font-size: 0.8rem; font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+    .btn-status:hover { border-color: var(--accent); }
+
+    /* ===================== FEED CARDS ===================== */
+    .feed-card {
+      background: var(--bg-card);
+      border: 1.5px solid rgba(249,115,22,0.2);
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 12px;
+      transition: all 0.25s;
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .feed-card:hover { border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
+    .feed-card.highlighted { border-color: var(--green) !important; box-shadow: 0 0 25px rgba(34,197,94,0.35) !important; }
+
+    .feed-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .feed-badge {
+      background: rgba(249,115,22,0.15);
+      border: 1px solid rgba(249,115,22,0.3);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 0.68rem; font-weight: 800; color: var(--accent);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .feed-id { font-size: 0.85rem; font-weight: 700; color: #fff; margin-top: 4px; }
+    .feed-fare { font-size: 1.4rem; font-weight: 900; color: #fff; text-align: right; }
+    .feed-payout { font-size: 0.68rem; color: var(--text-muted); text-align: right; }
+    .feed-payout strong { color: var(--green); }
+
+    .feed-route { background: rgba(255,255,255,0.025); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+    .feed-route-row { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; }
+    .feed-route-row:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .feed-route-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+    .feed-route-dot.p { background: var(--accent); }
+    .feed-route-dot.d { background: var(--green); }
+    .feed-route-text { font-size: 0.78rem; }
+    .feed-route-tag { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .feed-route-addr { color: #f1f5f9; font-weight: 600; }
+    .feed-route-who { color: var(--text-muted); }
+
+    .feed-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .feed-meta-item { font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+    .feed-meta-item i { color: var(--accent); }
+
+    .feed-actions { display: flex; gap: 8px; }
+    .btn-decline {
+      flex: 0 0 auto;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text-muted);
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 0.8rem; font-weight: 600; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-decline:hover { border-color: #ef4444; color: #ef4444; }
+    .btn-accept {
+      flex: 1;
+      background: linear-gradient(135deg, var(--accent), #ea580c);
+      border: none; color: #fff;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 0.85rem; font-weight: 800;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-accept:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(249,115,22,0.4); }
+
+    /* ===================== EMPTY STATE ===================== */
+    .empty-state { text-align: center; padding: 48px 20px; }
+    .empty-icon { width: 64px; height: 64px; border-radius: 50%; background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.2); display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--accent); margin-bottom: 16px; }
+    .empty-title { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .empty-sub { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* ===================== OTP MODAL ===================== */
+    .otp-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(6px);
+      z-index: 1000;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .otp-overlay.active { display: flex; }
+    .otp-sheet {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 28px 28px 0 0;
+      padding: 28px 24px 40px;
+      width: 100%; max-width: 500px;
+      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    .otp-sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+    .otp-icon-ring {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: rgba(249,115,22,0.12);
+      border: 2px solid rgba(249,115,22,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; color: var(--accent);
+      margin: 0 auto 16px;
+    }
+    .otp-title { font-size: 1.2rem; font-weight: 800; text-align: center; color: #fff; margin-bottom: 6px; }
+    .otp-sub { font-size: 0.8rem; text-align: center; color: var(--text-muted); margin-bottom: 20px; }
+    .otp-input-wrap { display: flex; justify-content: center; gap: 10px; margin-bottom: 24px; }
+    .otp-digit {
+      width: 52px; height: 64px;
+      background: var(--bg-ele);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      text-align: center;
+      font-size: 1.8rem; font-weight: 800; color: #fff;
+      outline: none;
+      transition: all 0.2s;
+      caret-color: var(--accent);
+    }
+    .otp-digit:focus { border-color: var(--accent); background: rgba(249,115,22,0.06); box-shadow: 0 0 0 3px rgba(249,115,22,0.15); }
+    .btn-verify-otp {
+      width: 100%;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      border: none; color: #fff;
+      border-radius: 14px; padding: 14px;
+      font-size: 0.95rem; font-weight: 800;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.2s; margin-bottom: 10px;
+    }
+    .btn-verify-otp:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(34,197,94,0.35); }
+    .btn-otp-cancel { width: 100%; background: transparent; border: 1px solid var(--border); color: var(--text-muted); border-radius: 14px; padding: 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-otp-cancel:hover { border-color: rgba(255,255,255,0.15); color: #fff; }
+
+    /* ===================== TOAST ===================== */
+    .toast-container {
+      position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; display: flex; flex-direction: column; gap: 8px;
+      pointer-events: none;
+    }
+    .toast-msg {
+      background: var(--bg-ele);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 20px;
+      font-size: 0.82rem; font-weight: 600; color: #fff;
+      display: flex; align-items: center; gap: 8px;
+      animation: toastIn 0.3s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      pointer-events: auto;
+    }
+    @keyframes toastIn { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
+    .toast-msg.success { border-color: rgba(34,197,94,0.3); }
+    .toast-msg.success i { color: var(--green); }
+    .toast-msg.error { border-color: rgba(239,68,68,0.3); }
+    .toast-msg.error i { color: #ef4444; }
+    .toast-msg.info { border-color: rgba(249,115,22,0.3); }
+    .toast-msg.info i { color: var(--accent); }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      20%,60%{transform:translateX(-8px)}
+      40%,80%{transform:translateX(8px)}
+    }
+
+    /* ===================== BOTTOM TAB BAR ===================== */
+    .bottom-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(11,12,14,0.95);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+    }
+    .bottom-tab {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 10px 4px 8px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.2s;
+      font-size: 0.6rem; font-weight: 600;
+      text-decoration: none;
+    }
+    .bottom-tab i { font-size: 1.1rem; margin-bottom: 3px; }
+    .bottom-tab.active { color: var(--accent); }
+    .bottom-tab:hover { color: var(--accent); }
+
+    /* ===================== RIDER PROFILE SETUP ===================== */
+    .setup-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      z-index: 1500;
+      align-items: flex-end; justify-content: center;
+    }
+    .setup-overlay.active { display: flex; }
+    .setup-sheet {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 28px 28px 0 0; padding: 28px 24px 40px;
+      width: 100%; max-width: 500px;
+      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .setup-field-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .setup-input {
+      width: 100%;
+      background: var(--bg-ele); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px;
+      font-size: 0.9rem; font-weight: 600; color: #fff;
+      outline: none; margin-bottom: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .setup-input:focus { border-color: var(--accent); }
+    .btn-save-profile {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent), #ea580c);
+      border: none; color: #fff;
+      border-radius: 14px; padding: 14px;
+      font-size: 0.95rem; font-weight: 800;
+      cursor: pointer; transition: all 0.2s;
+    }
+  </style>
 </head>
-<body class="driver-body">
+<body>
 
-  <!-- Top Navbar -->
-  <header class="driver-navbar d-flex justify-content-between align-items-center">
-    <div class="d-flex align-items-center gap-2">
-      <img src="favicon.png" alt="Rudraksha" style="width: 32px; height: 32px; border-radius: 8px;">
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- =================== TOP NAVBAR =================== -->
+  <nav class="rider-nav">
+    <div class="rider-nav-brand">
+      <div class="rider-nav-logo"><i class="fa-solid fa-motorcycle"></i></div>
       <div>
-        <h6 class="fw-bold mb-0 text-white" style="font-size: 0.95rem;">Rudraksha Rider</h6>
-        <span class="small text-muted" style="font-size: 0.72rem;" id="driverVehInfo">Tata Ace • RJ-14-GA-1024</span>
+        <div class="rider-nav-title" id="navDriverName">Rudraksha Rider</div>
+        <div class="rider-nav-sub" id="navVehicleInfo">Tata Ace • RJ-14-GA-1024</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button onclick="openSetupSheet()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;color:#94a3b8;font-size:0.72rem;cursor:pointer;font-family:inherit;" title="Edit Profile">
+        <i class="fa-solid fa-user-pen"></i>
+      </button>
+      <div class="duty-badge">
+        <span class="pulse"></span> ON DUTY
+      </div>
+    </div>
+  </nav>
+
+  <!-- =================== MAIN CONTENT =================== -->
+  <main class="rider-main">
+
+    <!-- Stats Ribbon -->
+    <div class="stats-ribbon">
+      <div class="stat-card earn">
+        <div class="stat-label">Today's Earnings</div>
+        <div class="stat-val earn" id="statEarnings">₹1,450</div>
+      </div>
+      <div class="stat-card trips">
+        <div class="stat-label">Trips Done</div>
+        <div class="stat-val neutral" id="statTrips">7</div>
+      </div>
+      <div class="stat-card rating">
+        <div class="stat-label">Rider Rating</div>
+        <div class="stat-val star">★ 4.9</div>
       </div>
     </div>
 
-    <div class="driver-duty-toggle">
-      <span class="spinner-grow spinner-grow-sm text-success" role="status"></span>
-      <span>ON DUTY</span>
-    </div>
-  </header>
+    <!-- Active Trip Container -->
+    <div id="activeTripContainer"></div>
 
-  <!-- Main Container -->
-  <main class="container py-3" style="max-width: 600px;">
-    
-    <!-- Driver Stats Ribbon -->
-    <div class="row g-2 mb-3">
-      <div class="col-4">
-        <div class="p-2 rounded-3 text-center" style="background: #17171B; border: 1px solid rgba(255,255,255,0.06);">
-          <div class="small text-muted" style="font-size: 0.7rem;">Today's Earnings</div>
-          <strong class="text-success fs-6" id="driverEarnings">₹1,240</strong>
-        </div>
+    <!-- Available Jobs Feed -->
+    <div class="section-hdr">
+      <div class="section-hdr-title">
+        <span class="dot-badge"></span>
+        Available Parcel Jobs
+        <span id="feedCount" style="background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.25);border-radius:20px;padding:2px 8px;font-size:0.68rem;color:var(--accent);"></span>
       </div>
-      <div class="col-4">
-        <div class="p-2 rounded-3 text-center" style="background: #17171B; border: 1px solid rgba(255,255,255,0.06);">
-          <div class="small text-muted" style="font-size: 0.7rem;">Trips Done</div>
-          <strong class="text-white fs-6" id="driverTripCount">6</strong>
-        </div>
-      </div>
-      <div class="col-4">
-        <div class="p-2 rounded-3 text-center" style="background: #17171B; border: 1px solid rgba(255,255,255,0.06);">
-          <div class="small text-muted" style="font-size: 0.7rem;">Rider Rating</div>
-          <strong class="text-warning fs-6">★ 4.9</strong>
-        </div>
-      </div>
-    </div>
-
-    <!-- Active Delivery Trip (If Any) -->
-    <div id="activeTripContainer">
-      <!-- Injected by driver.js when trip is active -->
-    </div>
-
-    <!-- Incoming Delivery Feed -->
-    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
-      <h6 class="fw-bold text-white mb-0"><i class="fa-solid fa-bell text-warning me-1"></i> Available Parcel Requests</h6>
-      <button class="btn btn-sm text-muted" onclick="loadDriverFeed()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+      <button class="btn-refresh" id="btnRefreshFeed" onclick="loadDriverFeed(true)">
+        <i class="fa-solid fa-rotate-right me-1"></i> Refresh
+      </button>
     </div>
 
     <div id="driverFeedList">
-      <!-- Injected by driver.js -->
-      <div class="text-center py-4 text-muted small">
-        <i class="fa-solid fa-spinner fa-spin fa-2x mb-2"></i><br>
-        Scanning for nearby parcel delivery jobs...
+      <div class="empty-state">
+        <div class="empty-icon"><i class="fa-solid fa-spinner fa-spin"></i></div>
+        <div class="empty-title">Scanning for Parcel Jobs...</div>
+        <div class="empty-sub">New requests appear automatically every 6 seconds</div>
       </div>
     </div>
 
   </main>
 
-  <!-- Verify OTP Modal -->
-  <div class="modal fade" id="otpModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content text-white" style="background: #17171B; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px;">
-        <div class="modal-body p-4 text-center">
-          <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(208, 253, 56, 0.15); border: 2px solid #D0FD38; display: inline-flex; align-items: center; justify-content: center; color: #D0FD38; font-size: 1.6rem;" class="mb-3">
-            <i class="fa-solid fa-shield-keyhole"></i>
-          </div>
-          <h5 class="fw-bold mb-1" id="otpModalTitle">Enter 4-Digit Pickup OTP</h5>
-          <p class="text-muted small mb-3" id="otpModalSub">Ask the sender for the 4-digit secret OTP to confirm goods handover.</p>
+  <!-- =================== BOTTOM TAB BAR =================== -->
+  <div class="bottom-bar">
+    <a class="bottom-tab active" href="#">
+      <i class="fa-solid fa-motorcycle"></i>
+      Jobs Feed
+    </a>
+    <a class="bottom-tab" href="#activeTripContainer">
+      <i class="fa-solid fa-box-open"></i>
+      Active Trip
+    </a>
+    <a class="bottom-tab" href="https://wa.me/917296831460" target="_blank">
+      <i class="fa-brands fa-whatsapp"></i>
+      Support
+    </a>
+    <a class="bottom-tab" href="admin.html" target="_blank">
+      <i class="fa-solid fa-chart-pie"></i>
+      Admin
+    </a>
+  </div>
 
-          <input type="tel" class="otp-input-field mb-3" id="inputDriverOtp" placeholder="••••" maxlength="4">
-
-          <div class="d-flex gap-2">
-            <button type="button" class="btn btn-outline-secondary flex-fill rounded-pill" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-driver-accept flex-fill rounded-pill" id="btnConfirmDriverOtp" onclick="submitOtpVerification()">Verify & Start Trip</button>
-          </div>
-        </div>
+  <!-- =================== OTP BOTTOM SHEET =================== -->
+  <div class="otp-overlay" id="otpOverlay">
+    <div class="otp-sheet">
+      <div class="otp-sheet-handle"></div>
+      <div class="otp-icon-ring" id="otpIconRing"><i class="fa-solid fa-shield-keyhole"></i></div>
+      <div class="otp-title" id="otpSheetTitle">Enter Pickup OTP</div>
+      <div class="otp-sub" id="otpSheetSub">Ask the sender for the 4-digit secret code to confirm pickup.</div>
+      <div class="otp-input-wrap">
+        <input class="otp-digit" id="otp1" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code">
+        <input class="otp-digit" id="otp2" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input class="otp-digit" id="otp3" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input class="otp-digit" id="otp4" maxlength="1" inputmode="numeric" pattern="[0-9]">
       </div>
+      <button class="btn-verify-otp" id="btnVerifyOtp" onclick="submitOtpVerification()">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="btnVerifyLabel">Verify Pickup OTP</span>
+      </button>
+      <button class="btn-otp-cancel" onclick="closeOtpSheet()">Cancel</button>
     </div>
   </div>
 
-  <!-- Bootstrap 5 JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- =================== RIDER PROFILE SETUP SHEET =================== -->
+  <div class="setup-overlay" id="setupOverlay">
+    <div class="setup-sheet">
+      <div class="otp-sheet-handle"></div>
+      <h5 style="font-weight:800;color:#fff;margin-bottom:4px;">Rider Profile Setup</h5>
+      <p style="font-size:0.78rem;color:#64748b;margin-bottom:20px;">Your profile is saved locally on this device.</p>
+
+      <div class="setup-field-label">Full Name</div>
+      <input class="setup-input" id="setupName" placeholder="e.g. Rajesh Kumar" type="text">
+
+      <div class="setup-field-label">Mobile Number</div>
+      <input class="setup-input" id="setupPhone" placeholder="e.g. 9876543210" type="tel">
+
+      <div class="setup-field-label">Vehicle Number</div>
+      <input class="setup-input" id="setupVehicleNo" placeholder="e.g. RJ-14-GA-1024" type="text">
+
+      <div class="setup-field-label">Vehicle Type</div>
+      <input class="setup-input" id="setupVehicleType" placeholder="e.g. Bike / Tata Ace / Auto" type="text">
+
+      <button class="btn-save-profile" onclick="saveRiderProfile()">
+        <i class="fa-solid fa-floppy-disk me-2"></i> Save Profile & Start Riding
+      </button>
+    </div>
+  </div>
 
   <!-- Driver Logic JS -->
   <script src="driver.js"></script>

@@ -98,11 +98,17 @@ async function fetchBookingAndTrack(query) {
       }
     }
 
-    // 2. Fallback to local storage (both bookings & parcels)
+    // 2. Fallback to local storage (both bookings & parcels) — Phase 2: merged dual keys
     if (!booking) {
-      const parcelHistory = localStorage.getItem('rudraksha_parcels_history');
-      if (parcelHistory) {
-        const pList = JSON.parse(parcelHistory);
+      try {
+        const p1 = JSON.parse(localStorage.getItem('rudraksha_parcels') || '[]');
+        const p2 = JSON.parse(localStorage.getItem('rudraksha_parcels_history') || '[]');
+        const parcelMap = new Map();
+        [...p1, ...p2].forEach(p => {
+          const pid = p.parcel_id || p.id;
+          if (pid && !parcelMap.has(pid)) parcelMap.set(pid, p);
+        });
+        const pList = Array.from(parcelMap.values());
         const cleanQ = query.trim().toLowerCase();
         const phoneClean = cleanQ.replace(/\D/g, '');
         const pMatch = pList.find(p =>

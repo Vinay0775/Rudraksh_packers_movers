@@ -11,9 +11,81 @@ let adminRates = {};
 let adminVehicles = {};
 let adminCompany = {};
 
+// Phase 2: Auto-refresh tracking
+let _adminLastParcelCount = 0;
+let _adminAutoRefreshTimer = null;
+let _adminLastRefreshTime = null;
+
 document.addEventListener('DOMContentLoaded', async () => {
   await checkAdminAuth();
+  // Start auto-refresh of parcel panel every 15 seconds
+  _adminAutoRefreshTimer = setInterval(autoRefreshParcelPanel, 15000);
 });
+
+// Auto-refresh only the parcel panel silently
+async function autoRefreshParcelPanel() {
+  try {
+    await loadAdminParcels();
+    updateDashboardMetrics();
+    _adminLastRefreshTime = new Date();
+    updateAdminRefreshBadge();
+  } catch {}
+}
+
+function updateAdminRefreshBadge() {
+  // Update notification count badge on parcel tab
+  const newCount = allAdminParcels.filter(p => {
+    const st = p.booking_status || p.status || '';
+    return st === 'searching_driver' || st === 'received';
+  }).length;
+
+  const badge = document.getElementById('parcelNewBadge');
+  const badgeCount = document.getElementById('parcelNewBadgeCount');
+  if (badge) {
+    if (newCount > 0) {
+      if (badgeCount) badgeCount.textContent = newCount;
+      badge.style.display = 'inline-flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  // Flash notification if NEW orders came in since last check
+  if (newCount > _adminLastParcelCount && _adminLastParcelCount > 0) {
+    showAdminToast(`🔔 ${newCount - _adminLastParcelCount} new parcel order(s) received!`, 'new-order');
+  }
+  _adminLastParcelCount = newCount;
+
+  // Update last-refresh time indicator
+  const refreshEl = document.getElementById('adminLastRefreshTime');
+  if (refreshEl && _adminLastRefreshTime) {
+    const diff = Math.round((Date.now() - _adminLastRefreshTime.getTime()) / 1000);
+    refreshEl.textContent = diff < 5 ? 'Just now' : `${diff}s ago`;
+  }
+}
+
+function showAdminToast(msg, type = 'info') {
+  // Admin toast notification
+  let container = document.getElementById('adminToastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'adminToastContainer';
+    container.style.cssText = 'position:fixed;top:70px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;';
+    document.body.appendChild(container);
+  }
+  const colors = { 'new-order': '#f97316', info: '#38bdf8', success: '#22c55e', error: '#ef4444' };
+  const toast = document.createElement('div');
+  toast.style.cssText = `background:#1c1d26;border:1px solid ${colors[type] || colors.info}44;border-left:3px solid ${colors[type] || colors.info};border-radius:10px;padding:12px 16px;font-size:0.82rem;font-weight:600;color:#f1f5f9;box-shadow:0 8px 32px rgba(0,0,0,0.4);animation:toastSlideIn 0.3s ease;max-width:320px;`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  if (!document.getElementById('adminToastStyle')) {
+    const s = document.createElement('style');
+    s.id = 'adminToastStyle';
+    s.textContent = '@keyframes toastSlideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}';
+    document.head.appendChild(s);
+  }
+  setTimeout(() => { toast.style.transition = 'all 0.3s'; toast.style.opacity = '0'; toast.style.transform = 'translateX(20px)'; setTimeout(() => toast.remove(), 300); }, 4000);
+}
 
 /* ==========================================================================
    1. ADMIN AUTHENTICATION CONTROLLER
@@ -1112,6 +1184,8 @@ async function refreshAdminAll() {
   await loadAdminParcels();
   loadAdminThemeSettings();
   updateDashboardMetrics();
+  _adminLastRefreshTime = new Date();
+  updateAdminRefreshBadge();
 }
 
 /* ==========================================================================

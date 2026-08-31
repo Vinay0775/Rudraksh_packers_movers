@@ -1,13 +1,13 @@
 /* ==========================================================================
-   DRIVER PARTNER INTERFACE ENGINE | RUDRAKSHA LOGISTICS FLEET
-   100% Client & Shared Storage Synchronized (Admin & Customer Live Sync)
+   DRIVER PARTNER INTERFACE ENGINE v2 | RUDRAKSHA LOGISTICS FLEET
+   Phase 2 — Premium UX: Toast Notifications, OTP Bottom Sheet, Profile Setup,
+   Auto-refresh Feed, WhatsApp Acceptance, Earnings Tracker
    ========================================================================== */
 
 const isLocalhostDriver = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const PRODUCTION_API_URL_DRIVER = 'https://rudraksha-packers-movers.onrender.com/api';
-const DRIVER_API_BASE = isLocalhostDriver ? 'http://localhost:3000/api' : (localStorage.getItem('rudraksha_backend_api_url') || PRODUCTION_API_URL_DRIVER);
+const DRIVER_API_BASE = isLocalhostDriver ? 'http://localhost:3000/api' : 'https://rudraksha-packers-movers.onrender.com/api';
 
-// Default logged-in Rider Profile
+// Default Rider Profile (loaded from localStorage)
 let currentDriver = {
   id: 'drv-101',
   driver_name: 'Rajesh Kumar',
@@ -19,58 +19,108 @@ let currentDriver = {
 let currentActiveTrip = null;
 let currentOtpMode = 'pickup'; // 'pickup' or 'delivery'
 let currentOtpParcelId = null;
+let feedAutoRefreshTimer = null;
 
+/* ==========================================================================
+   1. INIT
+   ========================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
   initDriverProfile();
   loadActiveTripFromStorage();
   loadDriverFeed();
   checkUrlDispatchJob();
-  setInterval(loadDriverFeed, 6000); // Auto refresh new jobs every 6 seconds
+  initOtpDigitInputs();
+
+  // Auto-refresh job feed every 6 seconds
+  feedAutoRefreshTimer = setInterval(() => loadDriverFeed(false), 6000);
 });
 
+/* ==========================================================================
+   2. RIDER PROFILE
+   ========================================================================== */
 function initDriverProfile() {
-  const savedDriver = localStorage.getItem('rudraksha_current_driver');
-  if (savedDriver) {
-    try {
-      currentDriver = JSON.parse(savedDriver);
-    } catch {}
+  const saved = localStorage.getItem('rudraksha_current_driver');
+  if (saved) {
+    try { currentDriver = JSON.parse(saved); } catch {}
   }
-  const vehEl = document.getElementById('driverVehInfo');
-  if (vehEl) {
-    vehEl.innerText = `${currentDriver.driver_name} • ${currentDriver.vehicle_type} (${currentDriver.vehicle_number})`;
-  }
+  renderNavProfile();
   updateDriverStatsDisplay();
 }
 
+function renderNavProfile() {
+  const nameEl = document.getElementById('navDriverName');
+  const vehEl = document.getElementById('navVehicleInfo');
+  if (nameEl) nameEl.innerText = currentDriver.driver_name;
+  if (vehEl) vehEl.innerText = `${currentDriver.vehicle_type} • ${currentDriver.vehicle_number}`;
+}
+
+function openSetupSheet() {
+  const overlay = document.getElementById('setupOverlay');
+  if (!overlay) return;
+  document.getElementById('setupName').value = currentDriver.driver_name || '';
+  document.getElementById('setupPhone').value = currentDriver.driver_phone || '';
+  document.getElementById('setupVehicleNo').value = currentDriver.vehicle_number || '';
+  document.getElementById('setupVehicleType').value = currentDriver.vehicle_type || '';
+  overlay.classList.add('active');
+}
+
+function saveRiderProfile() {
+  const name = document.getElementById('setupName')?.value.trim();
+  const phone = document.getElementById('setupPhone')?.value.trim();
+  const vNo = document.getElementById('setupVehicleNo')?.value.trim();
+  const vType = document.getElementById('setupVehicleType')?.value.trim();
+
+  if (!name || !phone) {
+    showToast('Please enter your name and mobile number.', 'error');
+    return;
+  }
+
+  currentDriver = {
+    id: `drv-${phone.slice(-4)}`,
+    driver_name: name,
+    driver_phone: phone,
+    vehicle_number: vNo || 'RJ-00-GA-0000',
+    vehicle_type: vType || 'Bike'
+  };
+  localStorage.setItem('rudraksha_current_driver', JSON.stringify(currentDriver));
+
+  document.getElementById('setupOverlay').classList.remove('active');
+  renderNavProfile();
+  showToast(`Profile saved! Welcome, ${name} 👋`, 'success');
+}
+
+/* ==========================================================================
+   3. STATS DISPLAY
+   ========================================================================== */
 function updateDriverStatsDisplay() {
   const earnings = localStorage.getItem('rudraksha_driver_earnings') || '1450';
   const trips = localStorage.getItem('rudraksha_driver_trips') || '7';
-
-  if (document.getElementById('driverEarnings')) document.getElementById('driverEarnings').innerText = `₹${Number(earnings).toLocaleString('en-IN')}`;
-  if (document.getElementById('driverTripCount')) document.getElementById('driverTripCount').innerText = trips;
+  const eEl = document.getElementById('statEarnings');
+  const tEl = document.getElementById('statTrips');
+  if (eEl) eEl.innerText = `₹${Number(earnings).toLocaleString('en-IN')}`;
+  if (tEl) tEl.innerText = trips;
 }
 
-function loadActiveTripFromStorage() {
-  const saved = localStorage.getItem('rudraksha_driver_active_trip');
-  if (saved) {
-    try {
-      currentActiveTrip = JSON.parse(saved);
-      renderActiveTrip();
-    } catch {}
-  }
-}
-
-// Get all parcels from shared storage
+/* ==========================================================================
+   4. STORAGE HELPERS
+   ========================================================================== */
 function getAllParcelsFromStorage() {
-  let list = [];
+  // Merge from both keys
+  let combined = [];
   try {
-    const raw = localStorage.getItem('rudraksha_parcels') || localStorage.getItem('rudraksha_parcels_history');
-    if (raw) list = JSON.parse(raw);
+    const p1 = JSON.parse(localStorage.getItem('rudraksha_parcels') || '[]');
+    const p2 = JSON.parse(localStorage.getItem('rudraksha_parcels_history') || '[]');
+    const map = new Map();
+    [...p1, ...p2].forEach(p => {
+      const id = p.parcel_id || p.id;
+      if (id && !map.has(id)) map.set(id, p);
+    });
+    combined = Array.from(map.values());
   } catch {}
 
-  // Seed sample requests if completely empty
-  if (!list || list.length === 0) {
-    list = [
+  // Seed sample requests only if completely empty
+  if (!combined || combined.length === 0) {
+    combined = [
       {
         parcel_id: 'RP-PCL-482910',
         sender_name: 'Mukesh Sharma',
@@ -110,9 +160,9 @@ function getAllParcelsFromStorage() {
         created_at: new Date(Date.now() - 15 * 60000).toISOString()
       }
     ];
-    saveAllParcelsToStorage(list);
+    saveAllParcelsToStorage(combined);
   }
-  return list;
+  return combined;
 }
 
 function saveAllParcelsToStorage(list) {
@@ -122,125 +172,129 @@ function saveAllParcelsToStorage(list) {
   } catch {}
 }
 
-async function loadDriverFeed() {
+/* ==========================================================================
+   5. JOB FEED
+   ========================================================================== */
+function loadDriverFeed(showRefreshAnim = false) {
   const feedList = document.getElementById('driverFeedList');
+  const feedCountEl = document.getElementById('feedCount');
   if (!feedList) return;
 
+  if (showRefreshAnim) {
+    const btn = document.getElementById('btnRefreshFeed');
+    if (btn) {
+      const icon = btn.querySelector('i');
+      if (icon) { icon.classList.add('fa-spin'); setTimeout(() => icon.classList.remove('fa-spin'), 600); }
+    }
+  }
+
   const allParcels = getAllParcelsFromStorage();
-  
-  // Available jobs are those still searching for rider or assigned to this rider
-  const available = allParcels.filter(p => 
-    p.booking_status === 'searching_driver' || 
-    p.status === 'searching_driver' ||
-    (p.booking_status === 'driver_assigned' && (p.driver_id === currentDriver.id || p.assigned_driver_phone === currentDriver.driver_phone))
-  );
+
+  // Available = searching_driver + this rider's accepted (not yet delivered)
+  const available = allParcels.filter(p => {
+    const st = p.booking_status || p.status || '';
+    if (st === 'delivered' || st === 'cancelled') return false;
+    if (st === 'searching_driver') return true;
+    // Show if this rider accepted it and it's in some active state
+    if (['driver_assigned', 'reached_pickup', 'picked_up', 'in_transit', 'out_for_delivery'].includes(st)) {
+      return (p.assigned_driver_phone === currentDriver.driver_phone || p.driver_id === currentDriver.id);
+    }
+    return false;
+  });
+
+  if (feedCountEl) feedCountEl.innerText = available.length > 0 ? available.length : '';
 
   if (available.length === 0) {
     feedList.innerHTML = `
-      <div class="text-center py-5 text-muted">
-        <i class="fa-solid fa-satellite-dish fa-2x mb-2 text-warning"></i><br>
-        <strong class="text-white">Scanning for Nearby Parcel Orders...</strong><br>
-        <span class="small text-muted">New requests will pop up automatically.</span>
+      <div class="empty-state">
+        <div class="empty-icon"><i class="fa-solid fa-satellite-dish"></i></div>
+        <div class="empty-title">Scanning for Parcel Jobs...</div>
+        <div class="empty-sub">New delivery requests will appear here automatically.</div>
       </div>
     `;
     return;
   }
 
-  feedList.innerHTML = available.map(parcel => {
-    const pId = parcel.parcel_id || parcel.id;
-    const isAssignedToMe = (parcel.booking_status === 'driver_assigned' && (parcel.driver_id === currentDriver.id || parcel.assigned_driver_phone === currentDriver.driver_phone));
-    const riderNetEarnings = Math.round((parcel.total_amount || 100) * 0.85);
+  feedList.innerHTML = available.map(parcel => buildFeedCard(parcel)).join('');
+}
 
-    return `
-      <div class="driver-feed-card urgent mb-3" id="card-${pId}" style="background: #17171B; border: 1.5px solid rgba(255,158,27,0.3); border-radius: 16px; padding: 18px;">
-        <div class="d-flex justify-content-between align-items-start mb-2">
-          <div>
-            <span class="badge bg-warning text-dark fw-bold mb-1"><i class="fa-solid fa-bolt me-1"></i> NEW INSTANT DELIVERY</span>
-            <h6 class="fw-bold text-white mb-0">${pId}</h6>
-          </div>
-          <div class="text-end">
-            <div class="trip-fare-badge fw-extrabold text-success fs-5">₹${parcel.total_amount}</div>
-            <div class="small text-muted" style="font-size: 0.7rem;">Rider Payout: <strong class="text-warning">₹${riderNetEarnings}</strong></div>
-          </div>
+function buildFeedCard(parcel) {
+  const pId = parcel.parcel_id || parcel.id;
+  const st = parcel.booking_status || parcel.status || 'searching_driver';
+  const isMyJob = (parcel.assigned_driver_phone === currentDriver.driver_phone || parcel.driver_id === currentDriver.id);
+  const riderEarning = Math.round((parcel.total_amount || 100) * 0.85);
+  const timeAgo = getTimeAgo(parcel.created_at);
+
+  let badgeText = '⚡ NEW DELIVERY REQUEST';
+  let badgeStyle = '';
+  let acceptLabel = '<i class="fa-solid fa-circle-check"></i> Accept Delivery Job';
+
+  if (isMyJob) {
+    badgeText = '🔄 YOUR ACCEPTED JOB';
+    badgeStyle = 'background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.3);color:#22c55e;';
+    acceptLabel = '<i class="fa-solid fa-arrow-right"></i> Continue Delivery';
+  }
+
+  return `
+    <div class="feed-card${isMyJob ? ' highlighted' : ''}" id="card-${pId}">
+      <div class="feed-top">
+        <div>
+          <span class="feed-badge" style="${badgeStyle}">${badgeText}</span>
+          <div class="feed-id">${pId} <span style="font-size:0.68rem;color:#64748b;font-weight:400;">• ${timeAgo}</span></div>
         </div>
-
-        <div class="route-step-indicator my-3 p-2 rounded-3" style="background: rgba(255,255,255,0.03);">
-          <div class="d-flex flex-column gap-2">
-            <div class="d-flex align-items-start gap-2">
-              <div class="text-warning"><i class="fa-solid fa-location-dot"></i></div>
-              <div>
-                <div class="small text-muted" style="font-size: 0.7rem;">PICKUP LOCATION</div>
-                <strong class="text-white small">${parcel.pickup_address}</strong>
-                <div class="small text-muted">${parcel.sender_name || 'Sender'} (${parcel.sender_phone || ''})</div>
-              </div>
-            </div>
-            <div class="d-flex align-items-start gap-2 pt-2 border-top border-secondary border-opacity-25">
-              <div class="text-success"><i class="fa-solid fa-flag-checkered"></i></div>
-              <div>
-                <div class="small text-muted" style="font-size: 0.7rem;">DELIVERY DESTINATION</div>
-                <strong class="text-white small">${parcel.drop_address}</strong>
-                <div class="small text-muted">${parcel.receiver_name || 'Receiver'} (${parcel.receiver_phone || ''})</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="d-flex justify-content-between align-items-center p-2 rounded-3 my-2" style="background: rgba(255,255,255,0.04); font-size: 0.8rem; color: #cbd5e1;">
-          <span><i class="fa-solid fa-box text-warning me-1"></i> ${parcel.parcel_type || 'Package'}</span>
-          <span><i class="fa-solid fa-route text-info me-1"></i> ${parcel.distance_km || 5} KM</span>
-          <span><i class="fa-solid fa-credit-card text-success me-1"></i> ${parcel.payment_method || 'COD'}</span>
-        </div>
-
-        <div class="d-flex gap-2 mt-3">
-          <button class="btn btn-outline-secondary flex-fill rounded-pill py-2 text-white small" onclick="rejectParcelJob('${pId}')">
-            Decline
-          </button>
-          <button class="btn btn-warning flex-fill rounded-pill py-2 fw-bold text-dark d-flex align-items-center justify-content-center gap-1 shadow-sm" onclick="acceptParcelJob('${pId}')">
-            <i class="fa-solid fa-circle-check"></i> ${isAssignedToMe ? 'Resume Delivery' : 'Accept Delivery Job'}
-          </button>
+        <div>
+          <div class="feed-fare">₹${parcel.total_amount || 0}</div>
+          <div class="feed-payout">You earn: <strong>₹${riderEarning}</strong></div>
         </div>
       </div>
-    `;
-  }).join('');
+
+      <div class="feed-route">
+        <div class="feed-route-row">
+          <div class="feed-route-dot p"></div>
+          <div class="feed-route-text">
+            <div class="feed-route-tag">Pickup</div>
+            <div class="feed-route-addr">${parcel.pickup_address}</div>
+            <div class="feed-route-who">${parcel.sender_name || 'Sender'} • ${parcel.sender_phone || ''}</div>
+          </div>
+        </div>
+        <div class="feed-route-row">
+          <div class="feed-route-dot d"></div>
+          <div class="feed-route-text">
+            <div class="feed-route-tag">Drop</div>
+            <div class="feed-route-addr">${parcel.drop_address}</div>
+            <div class="feed-route-who">${parcel.receiver_name || 'Receiver'} • ${parcel.receiver_phone || ''}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="feed-meta">
+        <span class="feed-meta-item"><i class="fa-solid fa-box"></i> ${parcel.parcel_type || 'Package'}</span>
+        <span class="feed-meta-item"><i class="fa-solid fa-route"></i> ${parcel.distance_km || '?'} km</span>
+        <span class="feed-meta-item"><i class="fa-solid fa-credit-card"></i> ${parcel.payment_method || 'COD'}</span>
+      </div>
+
+      <div class="feed-actions">
+        <button class="btn-decline" onclick="rejectParcelJob('${pId}')">✕ Decline</button>
+        <button class="btn-accept" onclick="acceptParcelJob('${pId}')">${acceptLabel}</button>
+      </div>
+    </div>
+  `;
 }
 
-// Automatically highlights job if opened from URL dispatch link (WhatsApp)
-function checkUrlDispatchJob() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const targetJobId = urlParams.get('jobId') || urlParams.get('orderId');
-  if (!targetJobId) return;
-
-  const all = getAllParcelsFromStorage();
-  const match = all.find(p => (p.parcel_id === targetJobId || p.id === targetJobId));
-
-  if (match) {
-    if (match.booking_status !== 'searching_driver' && match.status !== 'searching_driver') {
-      alert(`ℹ️ Order #${targetJobId} has already been accepted by Rider: ${match.assigned_driver_name || 'Fleet Member'}.`);
-    } else {
-      setTimeout(() => {
-        const el = document.getElementById(`card-${targetJobId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          el.style.border = '2px solid #22c55e';
-          el.style.boxShadow = '0 0 25px rgba(34, 197, 94, 0.4)';
-        }
-      }, 500);
-    }
-  }
-}
-
+/* ==========================================================================
+   6. JOB ACCEPT / DECLINE / STATUS
+   ========================================================================== */
 async function acceptParcelJob(parcelId) {
   const allParcels = getAllParcelsFromStorage();
   const target = allParcels.find(p => (p.parcel_id === parcelId || p.id === parcelId));
 
-  if (!target) {
-    alert('⚠️ Delivery request not found.');
-    return;
-  }
+  if (!target) { showToast('Delivery request not found.', 'error'); return; }
 
-  // Check if another driver already claimed it
-  if (target.booking_status === 'driver_assigned' && target.assigned_driver_phone !== currentDriver.driver_phone) {
-    alert(`⚠️ This ride was already accepted by another rider (${target.assigned_driver_name || 'Fleet Member'}).`);
+  // Check if another driver claimed it
+  if (target.booking_status === 'driver_assigned' &&
+      target.assigned_driver_phone !== currentDriver.driver_phone &&
+      target.driver_id !== currentDriver.id) {
+    showToast(`Already accepted by another rider (${target.assigned_driver_name || 'Fleet Member'}).`, 'error');
     loadDriverFeed();
     return;
   }
@@ -254,113 +308,39 @@ async function acceptParcelJob(parcelId) {
   target.vehicle_number = currentDriver.vehicle_number;
   target.accepted_at = new Date().toISOString();
 
-  // Save back to storage
   saveAllParcelsToStorage(allParcels);
 
-  // Set as current active trip
   currentActiveTrip = target;
   localStorage.setItem('rudraksha_driver_active_trip', JSON.stringify(target));
 
-  alert(`🎉 Delivery Accepted! Trip #${parcelId} is now assigned to you. Proceed to pickup location.`);
+  showToast(`Job #${parcelId} accepted! Proceed to pickup. 🎉`, 'success');
   renderActiveTrip();
   loadDriverFeed();
 
   // Scroll to active trip
-  const activeContainer = document.getElementById('activeTripContainer');
-  if (activeContainer) activeContainer.scrollIntoView({ behavior: 'smooth' });
+  const atc = document.getElementById('activeTripContainer');
+  if (atc) setTimeout(() => atc.scrollIntoView({ behavior: 'smooth' }), 200);
+
+  // Open WhatsApp to notify owner
+  const waMsg = `✅ *JOB ACCEPTED*\n\nRider: *${currentDriver.driver_name}*\nPhone: *${currentDriver.driver_phone}*\nVehicle: *${currentDriver.vehicle_number}* (${currentDriver.vehicle_type})\n\nOrder ID: *${parcelId}*\nPickup: ${target.pickup_address}\nDrop: ${target.drop_address}\n\n_Rider is now heading to pickup location._`;
+  const waUrl = `https://wa.me/917296831460?text=${encodeURIComponent(waMsg)}`;
+
+  // Small delay so rider sees the toast first
+  setTimeout(() => {
+    if (confirm(`Send WhatsApp acceptance message to Owner?`)) {
+      window.open(waUrl, '_blank');
+    }
+  }, 500);
 }
 
 function rejectParcelJob(parcelId) {
   const card = document.getElementById(`card-${parcelId}`);
   if (card) {
+    card.style.transition = 'all 0.25s';
     card.style.opacity = '0';
+    card.style.transform = 'translateX(20px)';
     setTimeout(() => card.remove(), 250);
   }
-}
-
-function renderActiveTrip() {
-  const container = document.getElementById('activeTripContainer');
-  if (!container) return;
-
-  if (!currentActiveTrip) {
-    container.innerHTML = '';
-    return;
-  }
-
-  const p = currentActiveTrip;
-  const status = p.booking_status || 'driver_assigned';
-
-  const pickupNavUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.pickup_address)}`;
-  const dropNavUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.drop_address)}`;
-
-  let actionButtonsHtml = '';
-
-  if (status === 'driver_assigned') {
-    actionButtonsHtml = `
-      <div class="d-flex gap-2 mt-3">
-        <a href="${pickupNavUrl}" target="_blank" class="btn btn-outline-warning flex-fill d-flex align-items-center justify-content-center gap-1 rounded-pill py-2 fw-bold text-decoration-none">
-          <i class="fa-solid fa-diamond-turn-right"></i> Navigate to Pickup
-        </a>
-        <button class="btn btn-warning fw-bold text-dark rounded-pill px-3" onclick="updateTripStatus('${p.parcel_id || p.id}', 'reached_pickup')">
-          Reached Pickup
-        </button>
-      </div>
-      <button class="btn btn-success mt-2 w-100 py-2 rounded-pill fw-bold" onclick="openOtpModal('${p.parcel_id || p.id}', 'pickup')">
-        <i class="fa-solid fa-key me-1"></i> Enter Sender's Pickup OTP
-      </button>
-    `;
-  } else if (status === 'reached_pickup') {
-    actionButtonsHtml = `
-      <button class="btn btn-success mt-3 w-100 py-3 fs-6 rounded-pill fw-bold shadow" onclick="openOtpModal('${p.parcel_id || p.id}', 'pickup')">
-        <i class="fa-solid fa-key me-1"></i> Verify Pickup OTP & Pick Up Parcel
-      </button>
-    `;
-  } else if (status === 'picked_up' || status === 'in_transit') {
-    actionButtonsHtml = `
-      <div class="d-flex gap-2 mt-3">
-        <a href="${dropNavUrl}" target="_blank" class="btn btn-outline-info flex-fill d-flex align-items-center justify-content-center gap-1 rounded-pill py-2 fw-bold text-decoration-none">
-          <i class="fa-solid fa-diamond-turn-right"></i> Navigate to Drop
-        </a>
-        <button class="btn btn-info fw-bold text-dark rounded-pill px-3" onclick="updateTripStatus('${p.parcel_id || p.id}', 'out_for_delivery')">
-          Reached Drop
-        </button>
-      </div>
-      <button class="btn btn-success mt-2 w-100 py-2 rounded-pill fw-bold" onclick="openOtpModal('${p.parcel_id || p.id}', 'delivery')">
-        <i class="fa-solid fa-shield-check me-1"></i> Enter Receiver's Delivery OTP
-      </button>
-    `;
-  } else if (status === 'out_for_delivery') {
-    actionButtonsHtml = `
-      <button class="btn btn-success mt-3 w-100 py-3 fs-6 rounded-pill fw-bold shadow" onclick="openOtpModal('${p.parcel_id || p.id}', 'delivery')">
-        <i class="fa-solid fa-circle-check me-1"></i> Verify Delivery OTP & Complete Trip
-      </button>
-    `;
-  }
-
-  container.innerHTML = `
-    <div class="driver-feed-card active-trip mb-4 p-3 rounded-4 shadow-lg" style="background: linear-gradient(135deg, #1f1f24 0%, #17171B 100%); border: 2px solid #22c55e;">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="badge bg-success text-dark fw-extrabold px-3 py-1 rounded-pill">ACTIVE DELIVERY IN PROGRESS</span>
-        <span class="text-warning fw-extrabold fs-5">₹${p.total_amount}</span>
-      </div>
-
-      <h5 class="fw-bold text-white mb-1">Trip ID: ${p.parcel_id || p.id}</h5>
-      <div class="small text-muted mb-3">Status: <strong class="text-warning text-uppercase">${status.replace('_', ' ')}</strong></div>
-
-      <div class="p-3 rounded-3 mb-2" style="background: rgba(255,255,255,0.04);">
-        <div class="d-flex justify-content-between mb-2">
-          <span class="small text-muted">Sender:</span>
-          <strong class="text-white small">${p.sender_name} (<a href="tel:${p.sender_phone}" class="text-warning text-decoration-none"><i class="fa-solid fa-phone me-1"></i>${p.sender_phone}</a>)</strong>
-        </div>
-        <div class="d-flex justify-content-between">
-          <span class="small text-muted">Receiver:</span>
-          <strong class="text-white small">${p.receiver_name} (<a href="tel:${p.receiver_phone}" class="text-success text-decoration-none"><i class="fa-solid fa-phone me-1"></i>${p.receiver_phone}</a>)</strong>
-        </div>
-      </div>
-
-      ${actionButtonsHtml}
-    </div>
-  `;
 }
 
 function updateTripStatus(parcelId, status) {
@@ -377,93 +357,314 @@ function updateTripStatus(parcelId, status) {
     localStorage.setItem('rudraksha_driver_active_trip', JSON.stringify(target));
     renderActiveTrip();
     loadDriverFeed();
+
+    const statusLabels = {
+      reached_pickup: '📍 Marked as Reached Pickup!',
+      out_for_delivery: '🚀 Marked as Out for Delivery!',
+      delivered: '🎉 Delivery Complete!'
+    };
+    showToast(statusLabels[status] || `Status updated: ${status}`, 'success');
   }
 }
 
-function openOtpModal(parcelId, mode) {
+function loadActiveTripFromStorage() {
+  const saved = localStorage.getItem('rudraksha_driver_active_trip');
+  if (saved) {
+    try { currentActiveTrip = JSON.parse(saved); renderActiveTrip(); } catch {}
+  }
+}
+
+/* ==========================================================================
+   7. ACTIVE TRIP CARD RENDERER
+   ========================================================================== */
+function renderActiveTrip() {
+  const container = document.getElementById('activeTripContainer');
+  if (!container) return;
+
+  if (!currentActiveTrip) { container.innerHTML = ''; return; }
+
+  const p = currentActiveTrip;
+  const pId = p.parcel_id || p.id;
+  const status = p.booking_status || p.status || 'driver_assigned';
+
+  const pickupNav = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.pickup_address)}`;
+  const dropNav = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.drop_address)}`;
+
+  const statusLabels = {
+    driver_assigned: { text: 'Driver Assigned — Head to Pickup', color: '#f97316' },
+    reached_pickup: { text: 'Reached Pickup — Verify OTP', color: '#fbbf24' },
+    picked_up: { text: 'Parcel Picked Up — In Transit', color: '#22c55e' },
+    in_transit: { text: 'In Transit — En Route', color: '#22c55e' },
+    out_for_delivery: { text: 'Out for Delivery — Verify Delivery OTP', color: '#38bdf8' },
+  };
+  const stInfo = statusLabels[status] || { text: status.replace(/_/g, ' '), color: '#94a3b8' };
+
+  let actions = '';
+  if (status === 'driver_assigned') {
+    actions = `
+      <div class="action-group">
+        <a href="${pickupNav}" target="_blank" class="btn-nav"><i class="fa-solid fa-diamond-turn-right"></i> Navigate to Pickup</a>
+        <button class="btn-status" onclick="updateTripStatus('${pId}','reached_pickup')"><i class="fa-solid fa-location-dot me-1"></i> Reached Pickup</button>
+      </div>
+      <button class="btn-otp" style="width:100%;margin-top:8px;" onclick="openOtpSheet('${pId}','pickup')"><i class="fa-solid fa-key"></i> Enter Pickup OTP</button>
+    `;
+  } else if (status === 'reached_pickup') {
+    actions = `
+      <button class="btn-otp" style="width:100%;" onclick="openOtpSheet('${pId}','pickup')"><i class="fa-solid fa-key"></i> Verify Pickup OTP & Start Trip</button>
+    `;
+  } else if (status === 'picked_up' || status === 'in_transit') {
+    actions = `
+      <div class="action-group">
+        <a href="${dropNav}" target="_blank" class="btn-nav" style="border-color:#38bdf8;color:#38bdf8;"><i class="fa-solid fa-diamond-turn-right"></i> Navigate to Drop</a>
+        <button class="btn-status" onclick="updateTripStatus('${pId}','out_for_delivery')"><i class="fa-solid fa-truck-fast me-1"></i> Reached Drop</button>
+      </div>
+      <button class="btn-otp" style="width:100%;margin-top:8px;" onclick="openOtpSheet('${pId}','delivery')"><i class="fa-solid fa-shield-check"></i> Enter Delivery OTP</button>
+    `;
+  } else if (status === 'out_for_delivery') {
+    actions = `
+      <button class="btn-otp" style="width:100%;" onclick="openOtpSheet('${pId}','delivery')"><i class="fa-solid fa-circle-check"></i> Verify Delivery OTP & Complete Trip</button>
+    `;
+  }
+
+  container.innerHTML = `
+    <div class="active-trip-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+        <span class="active-badge"><span class="pulse"></span> ACTIVE DELIVERY</span>
+        <div class="trip-fare">₹${p.total_amount || 0}</div>
+      </div>
+      <div class="trip-id-label">Trip ID</div>
+      <div class="trip-id-val">${pId}</div>
+      <span class="trip-status-pill" style="border-color:${stInfo.color}33;color:${stInfo.color};background:${stInfo.color}15;margin-top:8px;display:inline-flex;">
+        ${stInfo.text}
+      </span>
+
+      <div class="route-info-box">
+        <div class="route-row">
+          <div class="route-icon pickup"><i class="fa-solid fa-location-dot"></i></div>
+          <div>
+            <div class="route-label">Pickup</div>
+            <div class="route-addr">${p.pickup_address}</div>
+            <div class="route-contact">${p.sender_name} • <a href="tel:${p.sender_phone}"><i class="fa-solid fa-phone me-1"></i>${p.sender_phone}</a></div>
+          </div>
+        </div>
+        <div class="route-row">
+          <div class="route-icon drop"><i class="fa-solid fa-flag-checkered"></i></div>
+          <div>
+            <div class="route-label">Drop</div>
+            <div class="route-addr">${p.drop_address}</div>
+            <div class="route-contact">${p.receiver_name} • <a href="tel:${p.receiver_phone}"><i class="fa-solid fa-phone me-1"></i>${p.receiver_phone}</a></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="meta-pills">
+        <span class="meta-pill"><i class="fa-solid fa-box"></i> ${p.parcel_type || 'Package'}</span>
+        <span class="meta-pill"><i class="fa-solid fa-route"></i> ${p.distance_km || '?'} km</span>
+        <span class="meta-pill"><i class="fa-solid fa-credit-card"></i> ${p.payment_method || 'COD'}</span>
+      </div>
+
+      ${actions}
+    </div>
+  `;
+}
+
+/* ==========================================================================
+   8. OTP BOTTOM SHEET
+   ========================================================================== */
+function initOtpDigitInputs() {
+  const digits = ['otp1','otp2','otp3','otp4'];
+  digits.forEach((id, idx) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/\D/g, '').slice(-1);
+      if (e.target.value && idx < digits.length - 1) {
+        document.getElementById(digits[idx + 1])?.focus();
+      }
+    });
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+        document.getElementById(digits[idx - 1])?.focus();
+      }
+    });
+    el.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+      digits.forEach((did, di) => {
+        const dEl = document.getElementById(did);
+        if (dEl) dEl.value = text[di] || '';
+      });
+      document.getElementById(digits[Math.min(text.length, 3)])?.focus();
+    });
+  });
+}
+
+function openOtpSheet(parcelId, mode) {
   currentOtpMode = mode;
   currentOtpParcelId = parcelId;
 
-  const title = document.getElementById('otpModalTitle');
-  const sub = document.getElementById('otpModalSub');
-  const btn = document.getElementById('btnConfirmDriverOtp');
-  const input = document.getElementById('inputDriverOtp');
+  const overlay = document.getElementById('otpOverlay');
+  const title = document.getElementById('otpSheetTitle');
+  const sub = document.getElementById('otpSheetSub');
+  const label = document.getElementById('btnVerifyLabel');
+  const icon = document.getElementById('otpIconRing');
 
-  if (input) input.value = '';
+  // Clear digit inputs
+  ['otp1','otp2','otp3','otp4'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
 
   if (mode === 'pickup') {
-    title.innerText = 'Enter 4-Digit Pickup OTP';
-    sub.innerText = 'Ask the sender for the 4-digit secret OTP to confirm goods pickup.';
-    btn.innerText = 'Verify Pickup & Start Trip';
+    if (title) title.innerText = 'Enter Pickup OTP';
+    if (sub) sub.innerText = 'Ask the sender for the 4-digit secret code to confirm goods handover.';
+    if (label) label.innerText = 'Verify Pickup OTP';
+    if (icon) icon.innerHTML = '<i class="fa-solid fa-key"></i>';
   } else {
-    title.innerText = 'Enter 4-Digit Delivery OTP';
-    sub.innerText = 'Ask the receiver for the 4-digit secret OTP to verify safe delivery.';
-    btn.innerText = 'Verify Delivery & Complete Trip';
+    if (title) title.innerText = 'Enter Delivery OTP';
+    if (sub) sub.innerText = 'Ask the receiver for the 4-digit secret code to confirm safe delivery.';
+    if (label) label.innerText = 'Verify Delivery OTP';
+    if (icon) { icon.innerHTML = '<i class="fa-solid fa-shield-check"></i>'; icon.style.background = 'rgba(34,197,94,0.12)'; icon.style.borderColor = 'rgba(34,197,94,0.3)'; icon.style.color = '#22c55e'; }
   }
 
-  const modal = new bootstrap.Modal(document.getElementById('otpModal'));
-  modal.show();
+  if (overlay) overlay.classList.add('active');
+  setTimeout(() => document.getElementById('otp1')?.focus(), 300);
+}
+
+function closeOtpSheet() {
+  const overlay = document.getElementById('otpOverlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+function getOtpValue() {
+  return ['otp1','otp2','otp3','otp4'].map(id => document.getElementById(id)?.value || '').join('');
 }
 
 function submitOtpVerification() {
-  const input = document.getElementById('inputDriverOtp');
-  const otp = input?.value.trim();
+  const otp = getOtpValue();
 
-  if (!otp || otp.length < 4) {
-    alert('Please enter a valid 4-digit OTP.');
+  if (otp.length < 4) {
+    showToast('Please enter all 4 digits.', 'error');
     return;
   }
 
   const allParcels = getAllParcelsFromStorage();
   const target = allParcels.find(p => (p.parcel_id === currentOtpParcelId || p.id === currentOtpParcelId));
 
-  if (!target) {
-    alert('Order not found.');
-    return;
-  }
+  if (!target) { showToast('Order not found.', 'error'); return; }
 
-  const expectedOtp = currentOtpMode === 'pickup' ? (target.pickup_otp || '3412') : (target.delivery_otp || '7890');
+  const expectedOtp = currentOtpMode === 'pickup'
+    ? (target.pickup_otp || '3412')
+    : (target.delivery_otp || '7890');
 
-  // Verify OTP (accept expectedOtp or universal bypass 1234 for testing)
+  // Accept correct OTP or universal testing bypass
   if (otp !== expectedOtp && otp !== '1234') {
-    alert(`❌ Incorrect OTP entered (${otp}). Please ask customer for the correct 4-digit code.`);
+    showToast(`❌ Wrong OTP (${otp}). Ask customer for correct code.`, 'error');
+    // Shake input
+    const wrap = document.querySelector('.otp-input-wrap');
+    if (wrap) {
+      wrap.style.animation = 'none';
+      wrap.offsetHeight;
+      wrap.style.animation = 'shake 0.4s ease';
+    }
     return;
   }
 
-  // Close modal
-  const modalEl = document.getElementById('otpModal');
-  const modal = bootstrap.Modal.getInstance(modalEl);
-  if (modal) modal.hide();
+  closeOtpSheet();
 
   if (currentOtpMode === 'pickup') {
     target.booking_status = 'picked_up';
     target.status = 'picked_up';
+    target.pickup_verified_at = new Date().toISOString();
     saveAllParcelsToStorage(allParcels);
-
     currentActiveTrip = target;
     localStorage.setItem('rudraksha_driver_active_trip', JSON.stringify(target));
-    alert('✅ Pickup OTP Verified! Parcel is now In Transit to destination.');
+    showToast('✅ Pickup OTP Verified! Parcel picked up. Head to drop location.', 'success');
     renderActiveTrip();
+    loadDriverFeed();
   } else {
+    // Delivery complete
     target.booking_status = 'delivered';
     target.status = 'delivered';
     target.completed_at = new Date().toISOString();
     saveAllParcelsToStorage(allParcels);
 
-    // Calculate rider payout (85% of total amount)
+    // Update earnings
     const riderShare = Math.round((Number(target.total_amount) || 100) * 0.85);
     const prevEarnings = Number(localStorage.getItem('rudraksha_driver_earnings') || '1450');
     const prevTrips = Number(localStorage.getItem('rudraksha_driver_trips') || '7');
-
     localStorage.setItem('rudraksha_driver_earnings', String(prevEarnings + riderShare));
     localStorage.setItem('rudraksha_driver_trips', String(prevTrips + 1));
 
     currentActiveTrip = null;
     localStorage.removeItem('rudraksha_driver_active_trip');
     updateDriverStatsDisplay();
-
-    alert(`🎉 Delivery Completed Successfully!\nEarned ₹${riderShare} for this delivery.`);
     renderActiveTrip();
     loadDriverFeed();
+
+    showToast(`🎉 Delivery Complete! You earned ₹${riderShare} for this trip.`, 'success');
   }
+}
+
+/* ==========================================================================
+   9. URL DISPATCH JOB DETECTION (WhatsApp link click)
+   ========================================================================== */
+function checkUrlDispatchJob() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const targetJobId = urlParams.get('jobId') || urlParams.get('orderId') || urlParams.get('id');
+  if (!targetJobId) return;
+
+  const all = getAllParcelsFromStorage();
+  const match = all.find(p => (p.parcel_id === targetJobId || p.id === targetJobId));
+
+  if (match) {
+    if (match.booking_status !== 'searching_driver' && match.status !== 'searching_driver') {
+      showToast(`Order #${targetJobId} already accepted by ${match.assigned_driver_name || 'another rider'}.`, 'info');
+    } else {
+      setTimeout(() => {
+        const el = document.getElementById(`card-${targetJobId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('highlighted');
+          showToast(`📦 Delivery job #${targetJobId} highlighted for you!`, 'info');
+        }
+      }, 600);
+    }
+  } else {
+    showToast(`Searching for job #${targetJobId}...`, 'info');
+  }
+}
+
+/* ==========================================================================
+   10. TOAST NOTIFICATION SYSTEM
+   ========================================================================== */
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+
+  const icons = { success: 'fa-circle-check', error: 'fa-circle-xmark', info: 'fa-circle-info' };
+  const toast = document.createElement('div');
+  toast.className = `toast-msg ${type}`;
+  toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i> ${message}`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.transition = 'all 0.3s';
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-8px)';
+    setTimeout(() => toast.remove(), 300);
+  }, 3200);
+}
+
+/* ==========================================================================
+   11. UTILITY
+   ========================================================================== */
+function getTimeAgo(isoString) {
+  if (!isoString) return '';
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  return `${hrs}h ago`;
 }
