@@ -929,28 +929,46 @@ async function verifyEnteredOTP() {
    3. MULTI-STEP WIZARD & PRICE ENGINE
    ========================================================================== */
 
-function navigateWizard(direction) {
-  if (direction === 1 && !validateStep(currentStep)) return;
+/**
+ * Validates current step and transitions to target step
+ */
+function validateAndGoStep(targetStep) {
+  if (targetStep > currentStep) {
+    if (!validateStep(currentStep)) return;
+  }
+  goToStep(targetStep);
+}
 
-  const newStep = currentStep + direction;
-  if (newStep < 1 || newStep > 5) return;
+/**
+ * Directly switches to a specific wizard step (1-4)
+ */
+function goToStep(step) {
+  if (step < 1 || step > 4) return;
 
   // Invalidate Leaflet Map Size when step 1 is opened
-  if (newStep === 1 && leafletMap) {
+  if (step === 1 && leafletMap) {
     setTimeout(() => leafletMap.invalidateSize(), 200);
   }
 
-  // Hide active step content
-  document.getElementById(`step${currentStep}`).classList.remove('active');
+  // Hide all steps, show target step
+  for (let s = 1; s <= 4; s++) {
+    const el = document.getElementById(`step${s}`);
+    if (el) el.classList.remove('active');
+  }
 
-  // Update stepper indicator
+  const targetEl = document.getElementById(`step${step}`);
+  if (targetEl) targetEl.classList.add('active');
+
+  currentStep = step;
+
+  // Update Stepper Progress UI
   const nodes = document.querySelectorAll('.step-node');
   nodes.forEach((node) => {
-    const stepNum = parseInt(node.getAttribute('data-step'));
-    if (stepNum === newStep) {
+    const stepNum = parseInt(node.getAttribute('data-step') || '1');
+    if (stepNum === step) {
       node.classList.add('active');
       node.classList.remove('completed');
-    } else if (stepNum < newStep) {
+    } else if (stepNum < step) {
       node.classList.remove('active');
       node.classList.add('completed');
     } else {
@@ -959,63 +977,72 @@ function navigateWizard(direction) {
   });
 
   // Update Progress Line Width
-  const progressPercent = ((newStep - 1) / 4) * 100;
+  const progressPercent = ((step - 1) / 3) * 100;
   const progressBar = document.getElementById('stepperProgressBar');
   if (progressBar) progressBar.style.width = `${progressPercent}%`;
 
-  // Show new step content
-  currentStep = newStep;
-  document.getElementById(`step${currentStep}`).classList.add('active');
-
-  // Update Navigation Buttons
-  const prevBtn = document.getElementById('prevBtn');
-  const nextBtn = document.getElementById('nextBtn');
-
-  if (prevBtn) prevBtn.disabled = currentStep === 1;
-  if (nextBtn) {
-    if (currentStep === 5) nextBtn.style.display = 'none';
-    else nextBtn.style.display = 'inline-block';
+  // Auto-initialize vehicle & house type defaults on Step 2
+  if (step >= 2) {
+    if (!selectedVehicleType) selectVehicleType('mini_truck');
+    if (!selectedHouseSize) selectHouseSize('1bhk');
   }
 
   recalculateTotal();
   updateSummaryTexts();
+
+  // Smooth scroll into calculator view
+  const calcEl = document.getElementById('calculator');
+  if (calcEl) {
+    calcEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function navigateWizard(direction) {
+  const next = currentStep + direction;
+  if (direction > 0) {
+    validateAndGoStep(next);
+  } else {
+    goToStep(next);
+  }
 }
 
 function validateStep(step) {
   if (step === 1) {
     const pickup = document.getElementById('pickupCity')?.value.trim();
     const drop = document.getElementById('dropCity')?.value.trim();
-    const dist = parseFloat(document.getElementById('distanceKm')?.value || 0);
     const date = document.getElementById('shiftingDate')?.value;
 
     if (!pickup) {
-      alert('⚠️ Missing Detail: Please enter your Pickup City / Street Location in Step 1.');
+      alert('⚠️ Missing Detail: Please enter your Pickup Address / Area in Step 1.');
       document.getElementById('pickupCity')?.focus();
       return false;
     }
     if (!drop) {
-      alert('⚠️ Missing Detail: Please enter your Drop Destination City / Street in Step 1.');
+      alert('⚠️ Missing Detail: Please enter your Drop Destination City / Area in Step 1.');
       document.getElementById('dropCity')?.focus();
       return false;
     }
-    if (!dist || dist <= 0) {
-      alert('⚠️ Missing Detail: Please enter or detect a valid moving distance (in KM).');
-      document.getElementById('distanceKm')?.focus();
-      return false;
-    }
+
+    // Default moving date to tomorrow if not set
     if (!date) {
-      alert('⚠️ Missing Detail: Please select your preferred moving/shifting date.');
-      document.getElementById('shiftingDate')?.focus();
-      return false;
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const iso = tomorrow.toISOString().split('T')[0];
+      const dateEl = document.getElementById('shiftingDate');
+      if (dateEl) dateEl.value = iso;
+    }
+
+    // Default distance to 25 KM if not set
+    const distInput = document.getElementById('distanceKm');
+    if (!distInput || !distInput.value || parseFloat(distInput.value) <= 0) {
+      setDistance(25);
     }
   } else if (step === 2) {
     if (!selectedVehicleType) {
-      alert('⚠️ Step Incomplete: Please select your Dedicated Transport Vehicle above.');
-      return false;
+      selectVehicleType('mini_truck');
     }
     if (!selectedHouseSize) {
-      alert('⚠️ Step Incomplete: Please select your House / Cargo Size (e.g. 1 BHK, 2 BHK) above.');
-      return false;
+      selectHouseSize('1bhk');
     }
   }
   return true;
@@ -1023,10 +1050,23 @@ function validateStep(step) {
 
 function setDistance(km) {
   const input = document.getElementById('distanceKm');
-  if (input) {
-    input.value = km;
-    recalculateTotal();
+  if (input) input.value = km;
+  const distDisplay = document.getElementById('routeDistanceDisplay');
+  if (distDisplay) distDisplay.innerText = `${km} KM (Confirmed Route)`;
+  recalculateTotal();
+  updateSummaryTexts();
+}
+
+function selectQuickArea(type, value) {
+  if (type === 'pickup') {
+    const el = document.getElementById('pickupCity');
+    if (el) el.value = value;
+  } else if (type === 'drop') {
+    const el = document.getElementById('dropCity');
+    if (el) el.value = value;
   }
+  updateSummaryTexts();
+  calculateOSRMRoute(false);
 }
 
 function selectVehicleType(type) {
@@ -1034,11 +1074,15 @@ function selectVehicleType(type) {
   selectedVehicleType = type;
 
   document.querySelectorAll('.vehicle-select-card').forEach((card) => {
-    if (card.getAttribute('data-vehicle') === type) card.classList.add('selected');
-    else card.classList.remove('selected');
+    if (card.getAttribute('data-vehicle') === type) {
+      card.classList.add('active');
+      card.classList.add('selected');
+    } else {
+      card.classList.remove('active');
+      card.classList.remove('selected');
+    }
   });
 
-  // Sync house size recommendations or service presets
   if (type === 'bike') {
     selectedServiceType = 'Bike Transport';
   } else if (type === 'car') {
@@ -1065,7 +1109,7 @@ function setServiceCategory(serviceCategory) {
     selectVehicleType('car');
   } else if (lower.includes('tempo') || lower.includes('truck')) {
     selectVehicleType('tempo_14ft');
-  } else if (lower.includes('office') || lower.includes('international') || lower.includes('warehouse')) {
+  } else if (lower.includes('office') || lower.includes('industrial') || lower.includes('warehouse')) {
     selectVehicleType('truck_19ft');
   } else {
     selectVehicleType('mini_truck');
@@ -1084,32 +1128,42 @@ function scrollToCalculatorWithService(serviceCategory) {
 function selectHouseSize(size) {
   selectedHouseSize = size;
   document.querySelectorAll('.house-size-card').forEach((card) => {
-    if (card.getAttribute('data-size') === size) card.classList.add('selected');
-    else card.classList.remove('selected');
+    if (card.getAttribute('data-size') === size) {
+      card.classList.add('active');
+      card.classList.add('selected');
+    } else {
+      card.classList.remove('active');
+      card.classList.remove('selected');
+    }
   });
 
   recalculateTotal();
   updateSummaryTexts();
 }
 
-function updateItemQty(itemKey, delta) {
+function updateItemCount(itemKey, delta) {
   if (itemQuantities.hasOwnProperty(itemKey)) {
-    itemQuantities[itemKey] = Math.max(0, itemQuantities[itemKey] + delta);
-    const el = document.getElementById(`qty_${itemKey}`);
-    if (el) el.innerText = itemQuantities[itemKey];
+    itemQuantities[itemKey] = Math.max(0, (itemQuantities[itemKey] || 0) + delta);
+    const cntEl = document.getElementById(`count-${itemKey}`);
+    if (cntEl) cntEl.innerText = itemQuantities[itemKey];
+    const qtyEl = document.getElementById(`qty_${itemKey}`);
+    if (qtyEl) qtyEl.innerText = itemQuantities[itemKey];
     recalculateTotal();
   }
 }
 
+function updateItemQty(itemKey, delta) {
+  updateItemCount(itemKey, delta);
+}
+
+function calculatePrice() {
+  recalculateTotal();
+}
+
 function toggleAddon(addonKey) {
-  const checkbox = document.getElementById(`addon_${addonKey}`);
+  const checkbox = document.getElementById(`addon_${addonKey}`) || document.getElementById(`addon${addonKey.charAt(0).toUpperCase() + addonKey.slice(1)}`);
   if (checkbox) {
     if (event.target !== checkbox) checkbox.checked = !checkbox.checked;
-    const card = checkbox.closest('.addon-card');
-    if (card) {
-      if (checkbox.checked) card.classList.add('selected');
-      else card.classList.remove('selected');
-    }
     recalculateTotal();
   }
 }
@@ -1138,12 +1192,17 @@ function applyCouponCode() {
 }
 
 function recalculateTotal() {
-  const veh = selectedVehicleType ? vehicleConfig[selectedVehicleType] : null;
-  const distKm = parseFloat(document.getElementById('distanceKm')?.value || 0);
-  const perKmRate = veh ? (veh.perKmRate || ratesConfig.perKmRate) : (ratesConfig.perKmRate || 35);
-  const distanceCost = distKm > 0 && veh ? distKm * perKmRate : 0;
+  if (!selectedVehicleType) selectedVehicleType = 'mini_truck';
+  if (!selectedHouseSize) selectedHouseSize = '1bhk';
+
+  const veh = vehicleConfig[selectedVehicleType] || { name: 'Tata Ace / Mini (1.5 Ton)', basePrice: 2500, perKmRate: 35 };
+  let distKm = parseFloat(document.getElementById('distanceKm')?.value || 25);
+  if (isNaN(distKm) || distKm <= 0) distKm = 25;
+
+  const perKmRate = veh.perKmRate || ratesConfig.perKmRate || 35;
+  const distanceCost = distKm * perKmRate;
   const houseSizeFee = selectedHouseSize ? (ratesConfig.houseSizeRates[selectedHouseSize] || 0) : 0;
-  const baseVehicleCost = veh ? veh.basePrice : 0;
+  const baseVehicleCost = veh.basePrice || 2500;
 
   let inventoryCost = 0;
   for (const key in itemQuantities) {
@@ -1151,19 +1210,24 @@ function recalculateTotal() {
   }
 
   const pickupFloor = parseInt(document.getElementById('pickupFloor')?.value || 0);
-  const pickupLift = document.getElementById('pickupLift')?.checked;
+  const pickupLift = document.getElementById('pickupLift')?.checked ?? true;
   const dropFloor = parseInt(document.getElementById('dropFloor')?.value || 0);
-  const dropLift = document.getElementById('dropLift')?.checked;
+  const dropLift = document.getElementById('dropLift')?.checked ?? true;
 
   let floorLaborCost = 0;
   if (!pickupLift && pickupFloor > 0) floorLaborCost += pickupFloor * ratesConfig.floorNoLiftRate;
   if (!dropLift && dropFloor > 0) floorLaborCost += dropFloor * ratesConfig.floorNoLiftRate;
 
   let addonCost = 0;
-  if (document.getElementById('addon_bubblePacking')?.checked) addonCost += ratesConfig.addonRates.bubblePacking || 1500;
-  if (document.getElementById('addon_unpacking')?.checked) addonCost += ratesConfig.addonRates.unpacking || 1200;
-  if (document.getElementById('addon_insurance')?.checked) addonCost += ratesConfig.addonRates.insurance || 999;
-  if (document.getElementById('addon_vehicleTransport')?.checked) addonCost += ratesConfig.addonRates.vehicleTransport || 2500;
+  const bubbleChecked = document.getElementById('addonBubblePacking')?.checked || document.getElementById('addon_bubblePacking')?.checked;
+  const unpackingChecked = document.getElementById('addonUnpacking')?.checked || document.getElementById('addon_unpacking')?.checked;
+  const insuranceChecked = document.getElementById('addonInsurance')?.checked || document.getElementById('addon_insurance')?.checked;
+  const vehTransChecked = document.getElementById('addonVehicleTransport')?.checked || document.getElementById('addon_vehicleTransport')?.checked;
+
+  if (bubbleChecked) addonCost += ratesConfig.addonRates.bubblePacking || 1500;
+  if (unpackingChecked) addonCost += ratesConfig.addonRates.unpacking || 1200;
+  if (insuranceChecked) addonCost += ratesConfig.addonRates.insurance || 999;
+  if (vehTransChecked) addonCost += ratesConfig.addonRates.vehicleTransport || 2500;
 
   const subtotal = baseVehicleCost + distanceCost + houseSizeFee + inventoryCost + floorLaborCost + addonCost;
 
@@ -1175,31 +1239,55 @@ function recalculateTotal() {
 
   const finalTotal = Math.max(0, subtotal - discountAmount);
 
-  // Update Summary DOM
-  document.getElementById('summaryDistKm').innerText = distKm;
-  document.getElementById('priceBase').innerText = `₹${(baseVehicleCost + houseSizeFee).toLocaleString('en-IN')}`;
-  document.getElementById('priceDistance').innerText = `₹${distanceCost.toLocaleString('en-IN')}`;
-  document.getElementById('priceInventory').innerText = `₹${inventoryCost.toLocaleString('en-IN')}`;
-  document.getElementById('priceLabor').innerText = `₹${floorLaborCost.toLocaleString('en-IN')}`;
-  document.getElementById('priceAddons').innerText = `₹${addonCost.toLocaleString('en-IN')}`;
+  // Update Summary Card elements in DOM
+  const elBase = document.getElementById('priceBase');
+  if (elBase) elBase.innerText = `₹${(baseVehicleCost + houseSizeFee).toLocaleString('en-IN')}`;
 
-  const discountRow = document.getElementById('couponDiscountRow');
-  if (discountAmount > 0) {
-    discountRow.style.display = 'flex';
-    document.getElementById('appliedCouponName').innerText = appliedCoupon.code;
-    document.getElementById('priceDiscount').innerText = `- ₹${discountAmount.toLocaleString('en-IN')}`;
-  } else {
-    discountRow.style.display = 'none';
+  const elDist = document.getElementById('priceDistance');
+  if (elDist) elDist.innerText = `₹${distanceCost.toLocaleString('en-IN')}`;
+
+  const elItems = document.getElementById('priceItems') || document.getElementById('priceInventory');
+  if (elItems) elItems.innerText = `₹${inventoryCost.toLocaleString('en-IN')}`;
+
+  const elFloor = document.getElementById('priceFloor') || document.getElementById('priceLabor');
+  if (elFloor) elFloor.innerText = `₹${floorLaborCost.toLocaleString('en-IN')}`;
+
+  const elAddons = document.getElementById('priceAddons');
+  if (elAddons) elAddons.innerText = `₹${addonCost.toLocaleString('en-IN')}`;
+
+  const elDiscount = document.getElementById('priceDiscount');
+  if (elDiscount) elDiscount.innerText = `-₹${discountAmount.toLocaleString('en-IN')}`;
+
+  const discountWrap = document.getElementById('discountLineWrap') || document.getElementById('couponDiscountRow');
+  if (discountWrap) {
+    discountWrap.style.display = discountAmount > 0 ? 'flex' : 'none';
   }
 
-  document.getElementById('priceTotal').innerText = `₹${finalTotal.toLocaleString('en-IN')}`;
+  const elTotal = document.getElementById('priceTotal');
+  if (elTotal) elTotal.innerText = `₹${finalTotal.toLocaleString('en-IN')}`;
+
+  // Mini summary card badge updates
+  const sumVeh = document.getElementById('summaryVehicleName');
+  if (sumVeh) sumVeh.innerText = veh.name;
+
+  const sumHouse = document.getElementById('summaryHouseType');
+  if (sumHouse) {
+    const houseMap = { '1rk': '1 RK Studio', '1bhk': '1 BHK Apartment', '2bhk': '2 BHK Apartment', '3bhk': '3 BHK Apartment', 'villa': '4+ BHK / Villa' };
+    sumHouse.innerText = houseMap[selectedHouseSize] || selectedHouseSize;
+  }
+
+  const sumDistBadge = document.getElementById('summaryDistanceBadge');
+  if (sumDistBadge) sumDistBadge.innerText = `${distKm} KM`;
+
+  const sumDistKm = document.getElementById('summaryDistKm');
+  if (sumDistKm) sumDistKm.innerText = distKm;
 }
 
 function updateSummaryTexts() {
   const pickup = document.getElementById('pickupCity')?.value.trim() || 'Not set';
   const drop = document.getElementById('dropCity')?.value.trim() || 'Not set';
-  const dist = document.getElementById('distanceKm')?.value || 0;
-  const date = document.getElementById('shiftingDate')?.value || 'Not set';
+  const dist = document.getElementById('distanceKm')?.value || 25;
+  const date = document.getElementById('shiftingDate')?.value || 'Upcoming';
   const veh = selectedVehicleType ? vehicleConfig[selectedVehicleType] : null;
 
   if (document.getElementById('sumPickup')) document.getElementById('sumPickup').innerText = pickup;
@@ -1207,7 +1295,7 @@ function updateSummaryTexts() {
   if (document.getElementById('sumDistance')) document.getElementById('sumDistance').innerText = `${dist} KM`;
   if (document.getElementById('sumDate')) document.getElementById('sumDate').innerText = date;
   if (document.getElementById('sumVehicle')) {
-    document.getElementById('sumVehicle').innerText = veh ? veh.name : 'Select Vehicle in Step 2';
+    document.getElementById('sumVehicle').innerText = veh ? veh.name : 'Tata Ace / Mini';
   }
 
   const houseMap = {
@@ -1218,8 +1306,16 @@ function updateSummaryTexts() {
     'villa': '4+ BHK / Villa'
   };
   if (document.getElementById('sumHouseType')) {
-    document.getElementById('sumHouseType').innerText = selectedHouseSize ? (houseMap[selectedHouseSize] || selectedHouseSize) : 'Select House Size in Step 2';
+    document.getElementById('sumHouseType').innerText = selectedHouseSize ? (houseMap[selectedHouseSize] || selectedHouseSize) : '1 BHK Moving';
   }
+}
+
+function handlePreviewInvoiceClick() {
+  previewCurrentInvoice();
+}
+
+function handleBookRelocationSubmit() {
+  processWhatsAppCheckout(true);
 }
 
 /* ==========================================================================
@@ -1657,9 +1753,26 @@ function applyCSSVariables(theme) {
   if (theme.accentColor) root.style.setProperty('--accent-color', theme.accentColor);
 }
 
-// Background Video Auto-play booster
+// Background Video Auto-play booster & Calculator Initialization
 document.addEventListener('DOMContentLoaded', () => {
   loadBackendData();
+
+  // Set default shifting date to tomorrow
+  const dateInput = document.getElementById('shiftingDate');
+  if (dateInput && !dateInput.value) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    dateInput.value = tomorrow.toISOString().split('T')[0];
+  }
+
+  // Pre-select default vehicle and house size
+  selectVehicleType('mini_truck');
+  selectHouseSize('1bhk');
+
+  // Initial calculation and summary sync
+  recalculateTotal();
+  updateSummaryTexts();
+
   const heroVideo = document.querySelector('.hero-background-video');
   if (heroVideo) {
     heroVideo.muted = true;

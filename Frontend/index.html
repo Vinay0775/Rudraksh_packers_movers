@@ -377,27 +377,24 @@
           <div class="col-lg-8">
             
             <!-- Stepper Progress Tracker -->
+            <!-- Stepper Progress Tracker (4 Clean Steps) -->
             <div class="stepper-wrapper">
-              <div class="stepper-progress-bar" id="stepperProgressBar"></div>
-              <div class="step-node active" data-step="1">
+              <div class="stepper-progress-bar" id="stepperProgressBar" style="width: 0%;"></div>
+              <div class="step-node active" data-step="1" onclick="goToStep(1)" style="cursor: pointer;">
                 <div class="circle"><i class="fa-solid fa-map-location-dot"></i></div>
                 <div class="label">Route</div>
               </div>
-              <div class="step-node" data-step="2">
-                <div class="circle"><i class="fa-solid fa-boxes-packing"></i></div>
+              <div class="step-node" data-step="2" onclick="goToStep(2)" style="cursor: pointer;">
+                <div class="circle"><i class="fa-solid fa-truck-moving"></i></div>
                 <div class="label">Inventory</div>
               </div>
-              <div class="step-node" data-step="3">
-                <div class="circle"><i class="fa-solid fa-building"></i></div>
+              <div class="step-node" data-step="3" onclick="goToStep(3)" style="cursor: pointer;">
+                <div class="circle"><i class="fa-solid fa-stairs"></i></div>
                 <div class="label">Floors & Lift</div>
               </div>
-              <div class="step-node" data-step="4">
-                <div class="circle"><i class="fa-solid fa-shield-halved"></i></div>
-                <div class="label">Add-ons</div>
-              </div>
-              <div class="step-node" data-step="5">
+              <div class="step-node" data-step="4" onclick="goToStep(4)" style="cursor: pointer;">
                 <div class="circle"><i class="fa-solid fa-receipt"></i></div>
-                <div class="label">Checkout</div>
+                <div class="label">Book Now</div>
               </div>
             </div>
 
@@ -472,6 +469,7 @@
 
                     <!-- Distance & Route Stats Alert -->
                     <div class="col-12">
+                      <input type="hidden" id="distanceKm" value="25">
                       <div class="alert alert-info py-2 px-3 small rounded-3 d-flex justify-content-between align-items-center mb-0" id="routeStatsAlert">
                         <div>
                           <i class="fa-solid fa-route text-primary-custom me-1"></i> <strong>Estimated Road Distance:</strong> <span id="routeDistanceDisplay">25 KM (Local Jaipur)</span>
