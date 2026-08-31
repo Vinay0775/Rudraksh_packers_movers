@@ -788,15 +788,322 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--primary-orange);
 }
 
+/* ==========================================================================
+   8. MOBILE RESPONSIVENESS & FLUID LAYOUT (Max Width 768px & 480px)
+   ========================================================================== */
+
+/* Section Anchor offsets for Sticky Header */
+section[id], div[id] {
+  scroll-margin-top: 75px;
+}
+
 @media (max-width: 768px) {
-  .wizard-white-card {
-    padding: 22px 18px;
+  .container {
+    padding-left: 14px;
+    padding-right: 14px;
   }
+
+  /* 1. Navbar */
+  .brdg-navbar {
+    padding: 8px 0;
+  }
+  .brdg-brand {
+    gap: 8px;
+  }
+  .brdg-brand-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+    border-radius: 10px;
+  }
+  .brdg-brand-title {
+    font-size: 1.05rem;
+  }
+  .btn-brdg-phone {
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    gap: 5px;
+  }
+
+  /* 2. Hero Section */
   .brdg-hero {
-    padding: 40px 0 50px 0;
+    padding: 26px 0 36px 0;
+    text-align: center;
+    background-size: cover;
   }
-  .fare-summary-card {
+  .brdg-hero-h1 {
+    font-size: 1.65rem;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+  .brdg-checklist {
+    align-items: flex-start;
+    text-align: left;
+    margin: 0 auto 18px auto;
+    max-width: 320px;
+    gap: 6px;
+  }
+  .brdg-checklist li {
+    font-size: 0.84rem;
+    gap: 8px;
+  }
+  .brdg-checklist .brdg-check-icon {
+    font-size: 0.9rem;
+  }
+  .btn-brdg-orange, .btn-brdg-outline {
+    width: 100%;
+    justify-content: center;
+    padding: 11px 16px;
+    font-size: 0.86rem;
+  }
+  .hero-rider-visual-wrap {
+    margin-top: 18px;
+    text-align: center;
+  }
+  .hero-scooter-img {
+    width: 100%;
+    max-width: 250px;
+    border-radius: 16px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  }
+  .hero-floating-stat {
     position: static;
-    margin-top: 20px;
+    margin: 10px auto 0 auto;
+    max-width: 220px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  }
+  .hero-floating-stat .stat-badge-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
+  }
+
+  /* 3. Services Section */
+  .services-section {
+    padding: 35px 0 25px 0;
+  }
+  .section-title-wrap {
+    margin-bottom: 25px;
+  }
+  .section-title {
+    font-size: 1.5rem;
+  }
+  .section-subtitle {
+    font-size: 0.85rem;
+    margin-top: 6px;
+  }
+  .service-feature-card {
+    padding: 20px 16px;
+    border-radius: 16px;
+  }
+  .service-icon-box {
+    width: 52px;
+    height: 52px;
+    font-size: 1.35rem;
+    border-radius: 14px;
+    margin-bottom: 14px;
+  }
+  .service-card-h5 {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+  }
+  .service-card-p {
+    font-size: 0.84rem;
+  }
+
+  /* 4. Calculator & Form */
+  .calculator-section {
+    padding: 20px 0 35px 0;
+  }
+  .wizard-white-card {
+    padding: 16px 12px;
+    border-radius: 18px;
+  }
+  .wizard-block-header {
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+  }
+  .wizard-block-title {
+    font-size: 1.05rem;
+  }
+  .wizard-step-tag {
+    font-size: 0.68rem;
+    padding: 3px 8px;
+  }
+  .brdg-input-control {
+    padding: 10px 12px 10px 36px;
+    font-size: 0.88rem;
+  }
+  .brdg-input-icon {
+    left: 10px;
+    font-size: 0.95rem;
+  }
+  .btn-gps-action {
+    font-size: 0.76rem;
+  }
+  
+  /* Compact Chips on Mobile */
+  .chips-group {
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .chip-item {
+    padding: 6px 12px;
+    font-size: 0.78rem;
+  }
+  
+  /* 3-Column Compact Vehicles Grid on Mobile */
+  .vehicle-picker-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+    margin-bottom: 16px;
+  }
+  .vehicle-card-choice {
+    padding: 10px 4px;
+    border-radius: 10px;
+  }
+  .veh-choice-icon {
+    font-size: 1.4rem;
+    margin-bottom: 4px;
+  }
+  .vehicle-card-choice h6 {
+    font-size: 0.76rem !important;
+    margin-bottom: 2px !important;
+  }
+  .vehicle-card-choice .small {
+    display: none !important;
+  }
+  .vehicle-card-choice .text-warning {
+    font-size: 0.72rem !important;
+  }
+  .veh-badge-rec {
+    font-size: 0.55rem;
+    padding: 1px 6px;
+    top: -7px;
+  }
+  
+  /* Contact form subcards */
+  .contact-subcard {
+    padding: 12px;
+    border-radius: 12px;
+  }
+  
+  /* Fare Summary Card */
+  .fare-summary-card {
+    padding: 18px 14px;
+    border-radius: 18px;
+    margin-top: 16px;
+  }
+  .fare-summary-header h5 {
+    font-size: 1.1rem;
+  }
+  .fare-line-row {
+    font-size: 0.84rem;
+    padding: 5px 0;
+  }
+  .fare-total-amount {
+    font-size: 1.45rem;
+  }
+  .btn-whatsapp-dispatch {
+    padding: 12px 16px;
+    font-size: 0.92rem;
+  }
+
+  /* 5. Rider Section */
+  .rider-partner-section {
+    padding: 28px 14px;
+    margin: 20px 0 35px 0;
+    border-radius: 18px;
+    text-align: center;
+  }
+  .rider-partner-section h2 {
+    font-size: 1.45rem !important;
+    margin-bottom: 10px;
+  }
+  .rider-partner-section p {
+    font-size: 0.88rem !important;
+    margin-bottom: 16px;
+  }
+  .rider-partner-section .d-flex.flex-wrap.gap-4 {
+    justify-content: center;
+    gap: 16px !important;
+    margin-bottom: 20px !important;
+  }
+  .rider-partner-section .fs-4 {
+    font-size: 1.25rem !important;
+  }
+  .rider-earn-widget {
+    padding: 18px 12px;
+    border-radius: 14px;
+    margin-top: 14px;
+  }
+  .earnings-display-box {
+    padding: 12px 8px;
+    margin-bottom: 14px;
+  }
+  .earnings-amount {
+    font-size: 1.65rem;
+  }
+  .earnings-display-box .small {
+    font-size: 0.72rem;
+  }
+
+  /* 6. Tracking & Footer */
+  .tracking-banner-section {
+    padding: 24px 14px;
+    border-radius: 18px;
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  .delivery-partner-photo {
+    width: 170px;
+    height: 170px;
+    border-width: 4px;
+    margin-bottom: 16px;
+  }
+  .tracking-banner-section h2 {
+    font-size: 1.35rem !important;
+    margin-bottom: 10px;
+  }
+  .tracking-banner-section p {
+    font-size: 0.85rem !important;
+    margin-bottom: 18px;
+  }
+  .tracking-banner-section .d-flex {
+    justify-content: center;
+  }
+  .helpline-strip-bar {
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 0.86rem !important;
+    text-align: center;
+    gap: 10px;
+  }
+  .helpline-strip-bar .fs-5 {
+    font-size: 0.92rem !important;
+  }
+  .helpline-icon-wrap {
+    width: 38px;
+    height: 38px;
+    font-size: 1.1rem;
+  }
+  .brdg-footer {
+    padding: 30px 0 20px 0;
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .brdg-hero-h1 {
+    font-size: 1.6rem;
+  }
+  .hero-scooter-img {
+    max-width: 270px;
+  }
+  .delivery-partner-photo {
+    width: 150px;
+    height: 150px;
   }
 }
