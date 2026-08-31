@@ -477,33 +477,116 @@ ${dispatchUrl}`;
 }
 
 function showParcelBookingPreparedModal(booking, whatsappUrl) {
+  // Populate new premium overlay
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+  set('pclSuccessId', booking.parcel_id);
+  set('pclSuccessPickup', booking.pickup_address);
+  set('pclSuccessDrop', booking.drop_address);
+  set('pclSuccessFare', `₹${booking.total_amount}`);
+  set('pclSuccessPickupOtp', booking.pickup_otp || '----');
+  set('pclSuccessDeliveryOtp', booking.delivery_otp || '----');
+  set('pclSuccessStatusText', '🔍 Searching Nearby Riders...');
+
+  // WhatsApp button
+  const waBtn = document.getElementById('pclSuccessWhatsAppBtn');
+  if (waBtn) waBtn.href = whatsappUrl;
+
+  // Store booking reference globally for helper fns
+  window._lastParcelBooking = booking;
+
+  // Show overlay
+  const overlay = document.getElementById('parcelSuccessOverlay');
+  if (overlay) {
+    overlay.style.display = 'block';
+    overlay.scrollTop = 0;
+    document.body.style.overflow = 'hidden';
+  }
+
+  // Also update legacy modal compat elements
   document.getElementById('pclModalBookingId').innerText = booking.parcel_id;
   document.getElementById('pclModalSender').innerText = `${booking.sender_name} (+91 ${booking.sender_phone})`;
   document.getElementById('pclModalReceiver').innerText = `${booking.receiver_name} (+91 ${booking.receiver_phone})`;
-  document.getElementById('pclModalRoute').innerText = `${booking.pickup_address} ➔ ${booking.drop_address}`;
+  document.getElementById('pclModalRoute').innerText = `${booking.pickup_address} → ${booking.drop_address}`;
   document.getElementById('pclModalFare').innerText = `₹${booking.total_amount}`;
 
-  // WhatsApp Button
-  const btnWa = document.getElementById('btnModalLaunchWhatsApp');
-  if (btnWa) btnWa.href = whatsappUrl;
-
-  // Track Button
-  const btnTrack = document.getElementById('btnModalTrackParcel');
-  if (btnTrack) {
-    btnTrack.onclick = () => {
-      window.location.href = `track.html?id=${booking.parcel_id}`;
-    };
-  }
-
-  const modal = new bootstrap.Modal(document.getElementById('parcelRequestPreparedModal'));
-  modal.show();
+  // Start live status polling for this booking
+  startSuccessStatusPoll(booking.parcel_id);
 }
 
+// Live status polling — checks localStorage every 5s and updates the badge
+let _successStatusTimer = null;
+function startSuccessStatusPoll(parcelId) {
+  clearInterval(_successStatusTimer);
+  const statusLabels = {
+    searching_driver: '🔍 Searching Nearby Riders...',
+    driver_assigned: '🛵 Rider Assigned & Heading to Pickup!',
+    reached_pickup: '📍 Rider Reached Your Pickup Location!',
+    picked_up: '📦 Parcel Picked Up! In Transit...',
+    in_transit: '🛣️ In Transit — On the Way to Destination',
+    out_for_delivery: '🚀 Out for Delivery — Almost There!',
+    delivered: '🎉 Delivered Successfully!'
+  };
+  const statusColors = {
+    searching_driver: '#fbbf24',
+    driver_assigned: '#f97316',
+    reached_pickup: '#f97316',
+    picked_up: '#22c55e',
+    in_transit: '#22c55e',
+    out_for_delivery: '#38bdf8',
+    delivered: '#22c55e'
+  };
+
+  _successStatusTimer = setInterval(() => {
+    try {
+      const p1 = JSON.parse(localStorage.getItem('rudraksha_parcels') || '[]');
+      const p2 = JSON.parse(localStorage.getItem('rudraksha_parcels_history') || '[]');
+      const all = [...p1, ...p2];
+      const found = all.find(p => (p.parcel_id === parcelId || p.id === parcelId));
+      if (found) {
+        const st = found.booking_status || found.status || 'searching_driver';
+        const label = statusLabels[st] || st;
+        const color = statusColors[st] || '#fbbf24';
+        const statusEl = document.getElementById('pclSuccessStatusText');
+        if (statusEl) { statusEl.innerText = label; statusEl.style.color = color; }
+        if (st === 'delivered') clearInterval(_successStatusTimer);
+      }
+    } catch {}
+  }, 5000);
+}
+
+function copySuccessParcelId() {
+  const id = document.getElementById('pclSuccessId')?.innerText;
+  if (id) {
+    navigator.clipboard.writeText(id).then(() => {
+      const btn = document.getElementById('btnCopyPclId');
+      if (btn) { btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Copied!'; setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-copy me-1"></i> Copy'; }, 2000); }
+    }).catch(() => { alert(`Parcel ID: ${id}`); });
+  }
+}
+
+function goTrackParcel() {
+  const id = document.getElementById('pclSuccessId')?.innerText;
+  if (id) window.location.href = `track.html?id=${id}`;
+}
+
+function shareBookingToReceiver() {
+  const b = window._lastParcelBooking;
+  if (!b) return;
+  const trackUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}track.html?id=${b.parcel_id}`;
+  const msg = `📦 *Your Parcel is On the Way!*\n\nHi ${b.receiver_name},\n*${b.sender_name}* has sent you a parcel via Rudraksha Express.\n\n🆔 Parcel ID: *${b.parcel_id}*\n📍 From: ${b.pickup_address}\n📍 To: ${b.drop_address}\n💰 Fare: ₹${b.total_amount}\n\n🛡️ *Delivery OTP: ${b.delivery_otp}* (Share only with rider at delivery)\n\n🔍 Track live status here:\n${trackUrl}`;
+  const waUrl = `https://wa.me/91${b.receiver_phone}?text=${encodeURIComponent(msg)}`;
+  window.open(waUrl, '_blank');
+}
+
+function closeParcelSuccess() {
+  const overlay = document.getElementById('parcelSuccessOverlay');
+  if (overlay) overlay.style.display = 'none';
+  document.body.style.overflow = '';
+  clearInterval(_successStatusTimer);
+}
+
+// Keep legacy copy function working
 function copyParcelBookingId() {
-  const idText = document.getElementById('pclModalBookingId')?.innerText;
-  if (idText) {
-    navigator.clipboard.writeText(idText).then(() => {
-      alert(`Booking ID "${idText}" copied to clipboard!`);
-    });
-  }
+  copySuccessParcelId();
 }
+

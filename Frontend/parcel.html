@@ -104,7 +104,7 @@
 
           <div class="d-flex flex-wrap gap-3">
             <a href="#bookingCalculator" class="btn-brdg-orange">
-              <i class="fa-solid fa-magnifying-glass me-1"></i> Find an Errand Boy
+              <i class="fa-solid fa-magnifying-glass me-1"></i> Find a Delivery Boy
             </a>
             <button type="button" class="btn-brdg-outline" onclick="openRiderModal()">
               <i class="fa-solid fa-motorcycle me-1"></i> Become a Rider (Earn Upto ₹30k)
@@ -791,66 +791,140 @@
   <!-- ==========================================================================
        8. PARCEL BOOKING REQUEST PREPARED MODAL
        ========================================================================== -->
-  <div class="modal fade" id="parcelRequestPreparedModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content" style="border-radius: 24px; border: 1px solid var(--border-color); overflow: hidden;">
-        <div class="modal-body p-4 text-center">
+  <!-- ==========================================================================
+       8. BOOKING SUCCESS OVERLAY (Phase 3A — Premium Full-Screen Experience)
+       ========================================================================== -->
+  <div id="parcelSuccessOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(7,8,12,0.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);overflow-y:auto;padding:20px 16px 40px;">
+    <div style="max-width:480px;margin:0 auto;">
 
-          <div
-            style="width: 70px; height: 70px; border-radius: 50%; background: #DCFCE7; color: #16A34A; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem;"
-            class="mb-3">
+      <!-- Confetti animation area -->
+      <div id="successConfetti" style="height:60px;display:flex;justify-content:center;align-items:center;gap:12px;font-size:1.8rem;animation:popIn 0.5s ease;">
+        🎉 📦 ✅
+      </div>
+
+      <!-- Success Card -->
+      <div style="background:linear-gradient(135deg,#13141a,#0f1016);border:1px solid rgba(34,197,94,0.3);border-radius:24px;padding:24px;margin-bottom:16px;position:relative;overflow:hidden;">
+        <!-- Green glow top bar -->
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#22c55e,#16a34a);"></div>
+
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="width:64px;height:64px;border-radius:50%;background:rgba(34,197,94,0.12);border:2px solid rgba(34,197,94,0.4);display:inline-flex;align-items:center;justify-content:center;font-size:1.6rem;color:#22c55e;margin-bottom:12px;">
             <i class="fa-solid fa-circle-check"></i>
           </div>
-
-          <h4 class="fw-bold text-dark mb-1">Booking Request Prepared!</h4>
-          <p class="text-muted small mb-3">Your parcel delivery details are ready to be sent to our WhatsApp dispatch
-            team.</p>
-
-          <div class="p-3 rounded-3 mb-3 text-start bg-light border">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <span class="small text-muted">Parcel ID:</span>
-              <div class="d-flex align-items-center gap-2">
-                <strong class="text-warning" id="pclModalBookingId" style="font-size: 1.05rem;">RP-PCL-000123</strong>
-                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill"
-                  onclick="copyParcelBookingId()" title="Copy Booking ID" style="font-size: 0.72rem;">
-                  <i class="fa-solid fa-copy me-1"></i> Copy
-                </button>
-              </div>
-            </div>
-            <div class="d-flex justify-content-between mb-1">
-              <span class="small text-muted">Sender:</span>
-              <span class="small text-dark fw-semibold" id="pclModalSender">-</span>
-            </div>
-            <div class="d-flex justify-content-between mb-1">
-              <span class="small text-muted">Receiver:</span>
-              <span class="small text-dark fw-semibold" id="pclModalReceiver">-</span>
-            </div>
-            <div class="d-flex justify-content-between mb-2">
-              <span class="small text-muted">Route:</span>
-              <span class="small text-dark text-truncate" style="max-width: 200px;" id="pclModalRoute">-</span>
-            </div>
-            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-              <span class="small text-muted">Estimated Fare:</span>
-              <strong class="text-success fs-5" id="pclModalFare">₹150</strong>
-            </div>
-          </div>
-
-          <div class="d-flex flex-column gap-2">
-            <a href="#" id="btnModalLaunchWhatsApp" target="_blank" class="btn btn-success fw-bold py-2 rounded-pill">
-              <i class="fa-brands fa-whatsapp fa-lg me-1"></i> Send Request on WhatsApp
-            </a>
-            <button type="button" class="btn btn-outline-primary fw-bold py-2 rounded-pill" id="btnModalTrackParcel">
-              <i class="fa-solid fa-satellite-dish me-1"></i> Track Parcel Status
-            </button>
-            <button type="button" class="btn btn-outline-secondary py-2 rounded-pill small" data-bs-dismiss="modal">
-              Done / Back to Home
-            </button>
-          </div>
-
+          <h3 style="font-weight:900;color:#f1f5f9;margin-bottom:4px;font-size:1.3rem;">Booking Confirmed! 🚀</h3>
+          <p style="color:#64748b;font-size:0.82rem;margin:0;">Your parcel request is live. Searching for a nearby rider...</p>
         </div>
+
+        <!-- Parcel ID -->
+        <div style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.25);border-radius:14px;padding:14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:0.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Parcel ID</div>
+            <div style="font-size:1.1rem;font-weight:900;color:#f97316;letter-spacing:1px;" id="pclSuccessId">RP-PCL-000000</div>
+          </div>
+          <button onclick="copySuccessParcelId()" style="background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.3);border-radius:10px;padding:8px 12px;color:#f97316;font-size:0.75rem;font-weight:700;cursor:pointer;transition:all 0.2s;" id="btnCopyPclId">
+            <i class="fa-solid fa-copy me-1"></i> Copy
+          </button>
+        </div>
+
+        <!-- Live Status Badge -->
+        <div style="display:flex;align-items:center;gap:10px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:12px;padding:10px 14px;margin-bottom:12px;" id="pclSuccessStatusBar">
+          <span style="width:8px;height:8px;border-radius:50%;background:#fbbf24;animation:pulse-dot 1.5s ease infinite;flex-shrink:0;"></span>
+          <div>
+            <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Live Status</div>
+            <div style="font-size:0.85rem;font-weight:700;color:#fbbf24;" id="pclSuccessStatusText">🔍 Searching Nearby Riders...</div>
+          </div>
+        </div>
+
+        <!-- Route -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px;margin-bottom:12px;">
+          <div style="display:flex;gap:8px;align-items:flex-start;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.05);margin-bottom:8px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#f97316;margin-top:5px;flex-shrink:0;"></div>
+            <div>
+              <div style="font-size:0.62rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Pickup</div>
+              <div style="font-size:0.82rem;font-weight:600;color:#f1f5f9;" id="pclSuccessPickup">—</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;margin-top:5px;flex-shrink:0;"></div>
+            <div>
+              <div style="font-size:0.62rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Drop</div>
+              <div style="font-size:0.82rem;font-weight:600;color:#f1f5f9;" id="pclSuccessDrop">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fare Row -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:16px;">
+          <span style="font-size:0.8rem;color:#64748b;">Estimated Fare</span>
+          <span style="font-size:1.4rem;font-weight:900;color:#22c55e;" id="pclSuccessFare">₹0</span>
+        </div>
+
+        <!-- OTP Boxes — The KEY feature of Phase 3A -->
+        <div style="margin-bottom:16px;">
+          <div style="font-size:0.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;"><i class="fa-solid fa-shield-keyhole me-1" style="color:#f97316;"></i> Security OTPs — Share with Rider at Pickup & Delivery</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="background:rgba(249,115,22,0.08);border:1.5px solid rgba(249,115,22,0.3);border-radius:14px;padding:12px;text-align:center;">
+              <div style="font-size:0.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🔑 Pickup OTP</div>
+              <div style="font-size:2rem;font-weight:900;color:#f97316;letter-spacing:6px;" id="pclSuccessPickupOtp">----</div>
+              <div style="font-size:0.65rem;color:#64748b;margin-top:4px;">Share with rider at pickup</div>
+            </div>
+            <div style="background:rgba(34,197,94,0.08);border:1.5px solid rgba(34,197,94,0.3);border-radius:14px;padding:12px;text-align:center;">
+              <div style="font-size:0.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🛡️ Delivery OTP</div>
+              <div style="font-size:2rem;font-weight:900;color:#22c55e;letter-spacing:6px;" id="pclSuccessDeliveryOtp">----</div>
+              <div style="font-size:0.65rem;color:#64748b;margin-top:4px;">Share with rider at delivery</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <a id="pclSuccessWhatsAppBtn" href="#" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:14px;padding:14px;font-size:0.92rem;font-weight:800;color:#fff;text-decoration:none;transition:all 0.2s;">
+            <i class="fa-brands fa-whatsapp" style="font-size:1.1rem;"></i> Send to WhatsApp & Confirm Booking
+          </a>
+          <button onclick="goTrackParcel()" style="display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(249,115,22,0.1);border:1.5px solid rgba(249,115,22,0.35);border-radius:14px;padding:12px;font-size:0.88rem;font-weight:700;color:#f97316;cursor:pointer;transition:all 0.2s;" id="pclSuccessTrackBtn">
+            <i class="fa-solid fa-satellite-dish"></i> Track Live Parcel Status
+          </button>
+          <button onclick="shareBookingToReceiver()" style="display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:14px;padding:12px;font-size:0.85rem;font-weight:600;color:#38bdf8;cursor:pointer;transition:all 0.2s;">
+            <i class="fa-solid fa-share-nodes"></i> Share Tracking Link with Receiver
+          </button>
+          <button onclick="closeParcelSuccess()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:11px;font-size:0.8rem;color:#64748b;cursor:pointer;">
+            ✕ Close & Book Another Parcel
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Info note -->
+      <div style="text-align:center;font-size:0.72rem;color:#475569;line-height:1.6;">
+        <i class="fa-solid fa-circle-info me-1" style="color:#38bdf8;"></i>
+        Save your Parcel ID & OTPs. You'll need them to verify pickup and delivery.<br>
+        Track anytime at <strong style="color:#f97316;">track.html</strong> with your Parcel ID.
       </div>
     </div>
+
+    <style>
+      @keyframes popIn { from{opacity:0;transform:scale(0.85)} to{opacity:1;transform:scale(1)} }
+      @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.6)} }
+    </style>
   </div>
+
+  <!-- Legacy Bootstrap modal (kept for compat) hidden -->
+  <div class="modal fade" id="parcelRequestPreparedModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" style="display:none!important;visibility:hidden!important;">
+    <div class="modal-dialog"><div class="modal-content" style="display:none;">
+      <div class="modal-body">
+        <strong id="pclModalBookingId"></strong>
+        <span id="pclModalSender"></span>
+        <span id="pclModalReceiver"></span>
+        <span id="pclModalRoute"></span>
+        <span id="pclModalFare"></span>
+        <a id="btnModalLaunchWhatsApp" href="#"></a>
+        <button id="btnModalTrackParcel"></button>
+      </div>
+    </div></div>
+  </div>
+
+
+
 
   <!-- ==========================================================================
        9. FOOTER

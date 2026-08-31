@@ -276,6 +276,11 @@ function renderTrackingDashboard(b) {
 
   // Initialize and Render Map
   initLiveTrackMap(b, status);
+
+  // Phase 3B: Initialize parcel-specific OTP panel + auto-refresh for parcel bookings
+  if (b.isParcel) {
+    setTimeout(() => initParcelTrackingMode(b), 200);
+  }
 }
 
 function shareLiveTrackingWhatsApp() {
@@ -439,9 +444,139 @@ function recenterMap() {
 
 function copyBookingRef() {
   if (!currentBooking) return;
-  navigator.clipboard.writeText(currentBooking.id || '');
-  alert(`Booking Reference ID "${currentBooking.id}" copied to clipboard!`);
+  const id = currentBooking.id || '';
+  navigator.clipboard.writeText(id).then(() => {
+    const btn = document.querySelector('.btn-copy-ref');
+    if (btn) {
+      btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+      setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 2000);
+    }
+  }).catch(() => {});
 }
+
+/* ==========================================================================
+   3B. PARCEL-SPECIFIC TRACKING ENHANCEMENTS (Phase 3B)
+   ========================================================================== */
+let _trackAutoRefreshTimer = null;
+
+// Inject parcel OTP panel and start live auto-refresh when tracking a parcel
+function initParcelTrackingMode(booking) {
+  if (!booking.isParcel) return;
+
+  // Inject OTP panel below the banner card
+  const main = document.getElementById('trackerContent');
+  const existingOtpPanel = document.getElementById('parcelOtpTrackPanel');
+  if (existingOtpPanel) existingOtpPanel.remove();
+
+  const status = (booking.booking_status || booking.status || 'searching_driver').toLowerCase();
+  const isDelivered = status === 'delivered';
+  const pickupVerified = ['picked_up','in_transit','out_for_delivery','delivered'].includes(status);
+
+  const panel = document.createElement('div');
+  panel.id = 'parcelOtpTrackPanel';
+  panel.style.cssText = 'margin-bottom:20px;';
+  panel.innerHTML = `
+    <div style="background:linear-gradient(135deg,#13141a,#0f1016);border:1px solid rgba(249,115,22,0.25);border-radius:20px;padding:20px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#f97316,#fbbf24);"></div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:gap(8px);">
+        <div>
+          <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;"><i class="fa-solid fa-shield-keyhole" style="color:#f97316;margin-right:5px;"></i>Parcel Security OTPs</div>
+          <div style="font-size:0.8rem;color:#64748b;">Share these with your rider at pickup & delivery to verify handover.</div>
+        </div>
+        <span style="background:rgba(249,115,22,0.12);border:1px solid rgba(249,115,22,0.3);border-radius:20px;padding:3px 10px;font-size:0.68rem;font-weight:700;color:#f97316;">📦 PARCEL</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div style="background:${pickupVerified ? 'rgba(34,197,94,0.08)' : 'rgba(249,115,22,0.08)'};border:1.5px solid ${pickupVerified ? 'rgba(34,197,94,0.3)' : 'rgba(249,115,22,0.3)'};border-radius:14px;padding:12px;text-align:center;">
+          <div style="font-size:0.62rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">${pickupVerified ? '✅ Pickup Verified' : '🔑 Pickup OTP'}</div>
+          <div style="font-size:1.6rem;font-weight:900;color:${pickupVerified ? '#22c55e' : '#f97316'};letter-spacing:5px;">${booking.pickup_otp || '––––'}</div>
+          <div style="font-size:0.62rem;color:#64748b;margin-top:4px;">${pickupVerified ? 'OTP confirmed by rider' : 'Share with rider at pickup'}</div>
+        </div>
+        <div style="background:${isDelivered ? 'rgba(34,197,94,0.08)' : 'rgba(34,197,94,0.05)'};border:1.5px solid ${isDelivered ? 'rgba(34,197,94,0.4)' : 'rgba(34,197,94,0.2)'};border-radius:14px;padding:12px;text-align:center;">
+          <div style="font-size:0.62rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">${isDelivered ? '✅ Delivery Verified' : '🛡️ Delivery OTP'}</div>
+          <div style="font-size:1.6rem;font-weight:900;color:${isDelivered ? '#22c55e' : '#22c55e'};letter-spacing:5px;opacity:${isDelivered ? '1' : '0.8'};">${booking.delivery_otp || '––––'}</div>
+          <div style="font-size:0.62rem;color:#64748b;margin-top:4px;">${isDelivered ? 'OTP confirmed by rider' : 'Share with rider at delivery'}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a href="https://wa.me/917296831460?text=${encodeURIComponent(`📦 Help needed with parcel: ${booking.id || booking.parcel_id}\nStatus: ${status}`)}" target="_blank"
+           style="flex:1;min-width:120px;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:9px 12px;font-size:0.78rem;font-weight:600;color:#22c55e;text-decoration:none;">
+          <i class="fa-brands fa-whatsapp"></i> WhatsApp Support
+        </a>
+        <button onclick="shareParcelTrackingLink()" style="flex:1;min-width:120px;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:10px;padding:9px 12px;font-size:0.78rem;font-weight:600;color:#38bdf8;cursor:pointer;">
+          <i class="fa-solid fa-share-nodes me-1"></i> Share Tracking Link
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Insert after tracker-banner-card
+  const bannerCard = main?.querySelector('.tracker-banner-card');
+  if (bannerCard && bannerCard.nextSibling) {
+    main.insertBefore(panel, bannerCard.nextSibling);
+  } else if (main) {
+    main.insertBefore(panel, main.firstChild);
+  }
+
+  // Start auto-refresh polling every 15s for live status updates
+  startTrackAutoRefresh(booking.id || booking.parcel_id);
+}
+
+function startTrackAutoRefresh(parcelId) {
+  clearInterval(_trackAutoRefreshTimer);
+  _trackAutoRefreshTimer = setInterval(() => {
+    try {
+      const p1 = JSON.parse(localStorage.getItem('rudraksha_parcels') || '[]');
+      const p2 = JSON.parse(localStorage.getItem('rudraksha_parcels_history') || '[]');
+      const map = new Map();
+      [...p1, ...p2].forEach(p => { const id = p.parcel_id || p.id; if (id && !map.has(id)) map.set(id, p); });
+      const updated = map.get(parcelId);
+      if (updated) {
+        const oldStatus = (currentBooking?.booking_status || currentBooking?.status || '').toLowerCase();
+        const newStatus = (updated.booking_status || updated.status || '').toLowerCase();
+        if (oldStatus !== newStatus) {
+          // Status changed — re-render
+          const merged = { ...currentBooking, ...updated, id: parcelId, customer_name: updated.sender_name, customer_phone: updated.sender_phone, isParcel: true };
+          currentBooking = merged;
+          renderTrackingDashboard(merged);
+          showTrackToast(`📦 Status updated: ${newStatus.replace(/_/g,' ').toUpperCase()}`);
+        }
+      }
+    } catch {}
+  }, 15000);
+}
+
+function shareParcelTrackingLink() {
+  if (!currentBooking) return;
+  const id = currentBooking.id || currentBooking.parcel_id || '';
+  const trackUrl = `${window.location.origin}${window.location.pathname}?id=${id}`;
+  const msg = `📦 *Track my Rudraksha Express Parcel*\n\nParcel ID: *${id}*\n\n🔍 Live Tracking Link:\n${trackUrl}\n\n📞 Support: +91 72968 31460`;
+  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function showTrackToast(msg) {
+  let container = document.getElementById('trackToastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'trackToastContainer';
+    container.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;';
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement('div');
+  toast.style.cssText = 'background:#1c1d26;border:1px solid rgba(34,197,94,0.35);border-left:3px solid #22c55e;border-radius:10px;padding:10px 16px;font-size:0.82rem;font-weight:600;color:#f1f5f9;box-shadow:0 8px 32px rgba(0,0,0,0.5);animation:trackToastIn 0.3s ease;white-space:nowrap;';
+  toast.textContent = msg;
+  if (!document.getElementById('trackToastStyle')) {
+    const s = document.createElement('style'); s.id = 'trackToastStyle';
+    s.textContent = '@keyframes trackToastIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}';
+    document.head.appendChild(s);
+  }
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.transition = 'all 0.3s'; toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3500);
+}
+
+
 
 /* ==========================================================================
    5. TAX INVOICE PREVIEW MODAL
