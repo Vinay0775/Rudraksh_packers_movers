@@ -150,12 +150,15 @@ h1, h2, h3, h4, h5, h6 {
    2. HERO SECTION
    ========================================================================== */
 .brdg-hero {
-  background: var(--bg-dark-plum);
+  background-color: #2D1B2E;
   background-image: 
-    radial-gradient(circle at 10% 20%, rgba(255, 158, 27, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(67, 44, 68, 0.6) 0%, transparent 50%);
+    linear-gradient(180deg, rgba(53, 34, 54, 0.82) 0%, rgba(35, 20, 36, 0.94) 100%),
+    url('hero-skyline-bg.jpg');
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: cover;
   color: #FFFFFF;
-  padding: 55px 0 75px 0;
+  padding: 65px 0 85px 0;
   position: relative;
   overflow: hidden;
 }
@@ -246,11 +249,18 @@ h1, h2, h3, h4, h5, h6 {
   text-align: center;
 }
 
-.hero-scooter-svg {
+.hero-scooter-img {
   max-width: 100%;
+  width: 500px;
   height: auto;
-  filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.35));
-  animation: floatSmooth 4s ease-in-out infinite;
+  border-radius: 24px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  transition: transform 0.3s ease;
+}
+
+.hero-scooter-img:hover {
+  transform: translateY(-4px);
 }
 
 @keyframes floatSmooth {
@@ -710,6 +720,25 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 60px;
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border-color);
+}
+
+.partner-avatar-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.delivery-partner-photo {
+  width: 290px;
+  height: 290px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 6px solid #FFFFFF;
+  box-shadow: 0 16px 36px rgba(255, 158, 27, 0.25), 0 6px 18px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease;
+}
+
+.delivery-partner-photo:hover {
+  transform: scale(1.03);
 }
 
 .helpline-strip-bar {
