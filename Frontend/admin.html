@@ -171,7 +171,7 @@
               <button class="cyber-card-menu-btn" onclick="switchAdminTab('rates')"><i class="fa-solid fa-ellipsis-vertical"></i></button>
             </div>
 
-            <div class="small text-muted">Earning Volume</div>
+            <div class="small text-muted">Total Earning Volume</div>
             <div class="cyber-earning-amount">
               <span id="dashTotalRevenue">₹45,250</span>
               <!-- Mini vector sparkline -->
@@ -179,6 +179,7 @@
                 <path d="M2 28 C 15 28, 25 15, 40 22 C 55 29, 65 8, 78 5" stroke="#D0FD38" stroke-width="2.5" stroke-linecap="round"/>
               </svg>
             </div>
+            <div class="small text-muted mb-2" id="dashRevenueBreakdown" style="font-size: 0.7rem;">Movers: ₹45,250 • Parcels: ₹0</div>
 
             <button class="btn-cyber-neon w-100 py-2 mt-1" onclick="switchAdminTab('rates')">
               <i class="fa-solid fa-wallet me-1"></i> Manage Rates
@@ -870,8 +871,13 @@
                 <button class="btn btn-sm btn-outline-light px-3 rounded-pill" onclick="filterParcelsTable('in_transit', this)">In Transit</button>
                 <button class="btn btn-sm btn-outline-light px-3 rounded-pill" onclick="filterParcelsTable('delivered', this)">Delivered</button>
               </div>
-              <div style="min-width: 240px;">
-                <input type="text" class="cyber-input py-1 px-3" id="searchParcelInput" placeholder="Search Parcel ID, Phone, City..." oninput="searchParcelsTable(this.value)">
+              <div class="d-flex gap-2 align-items-center flex-wrap">
+                <button class="btn btn-sm btn-outline-warning px-3 rounded-pill fw-bold" onclick="broadcastOpenParcelsModal()" title="Broadcast all open orders to Rider WhatsApp Group">
+                  <i class="fa-solid fa-tower-broadcast me-1"></i> Broadcast Open Jobs
+                </button>
+                <div style="min-width: 220px;">
+                  <input type="text" class="cyber-input py-1 px-3" id="searchParcelInput" placeholder="Search Parcel ID, Phone, City..." oninput="searchParcelsTable(this.value)">
+                </div>
               </div>
             </div>
           </div>
@@ -1158,6 +1164,60 @@
               <i class="fa-solid fa-circle-check me-1"></i> Dispatch Rider & Notify Customer
             </button>
           </form>
+        </div>
+      </div>
+    </div>
+  <!-- ==========================================================================
+       MODAL 3: BROADCAST PARCEL TO RIDER GROUPS (Phase 3D)
+       ========================================================================== -->
+  <div class="modal fade" id="broadcastParcelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background: #17171A; border: 1px solid rgba(255, 158, 27, 0.35); border-radius: 20px; color: #ffffff; box-shadow: 0 20px 50px rgba(0,0,0,0.85), 0 0 35px rgba(255,158,27,0.18);">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold"><i class="fa-solid fa-tower-broadcast me-2" style="color: #FF9E1B;"></i>Broadcast Job to Rider Fleet</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="small text-muted mb-3">
+            Send an instant delivery alert to your <strong>WhatsApp Rider Group</strong> or rider contacts. The first rider to tap the dispatch link claims the ride!
+          </div>
+
+          <!-- Order Summary Card -->
+          <div style="background: #111113; border: 1px solid var(--border-subtle); border-radius: 14px; padding: 14px; margin-bottom: 16px;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="badge bg-warning text-dark fw-bold" id="bcastModalBadge">RP-PCL-XXXXXX</span>
+              <strong class="text-success fs-5" id="bcastModalFare">₹0</strong>
+            </div>
+            <div class="small text-white mb-1"><span class="text-muted">Route:</span> <strong id="bcastModalRoute">-</strong></div>
+            <div class="small text-muted"><span class="text-muted">Vehicle:</span> <span id="bcastModalVehicle" class="text-warning fw-bold">-</span> • Distance: <span id="bcastModalDist">-</span> KM</div>
+            <div class="small text-muted mt-1"><span class="text-muted">Estimated Rider Payout:</span> <strong id="bcastModalPayout" class="text-success">₹0</strong></div>
+          </div>
+
+          <!-- WhatsApp Message Preview Box -->
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label class="cyber-label mb-0">Formatted Announcement Message:</label>
+              <button type="button" onclick="copyBroadcastText()" class="btn btn-sm btn-outline-warning py-0 px-2 rounded-pill" style="font-size: 0.72rem;">
+                <i class="fa-regular fa-copy me-1"></i>Copy Text
+              </button>
+            </div>
+            <textarea class="cyber-input" id="bcastMessagePreview" rows="6" style="font-size: 0.78rem; font-family: monospace; line-height: 1.4; resize: none; background: #0c0d10;" readonly></textarea>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="d-flex flex-column gap-2">
+            <a href="#" id="btnLaunchWhatsAppBroadcast" target="_blank" class="btn btn-success fw-bold py-3 rounded-pill text-center d-flex align-items-center justify-content-center gap-2" style="background: linear-gradient(135deg, #22c55e, #16a34a); border: none; font-size: 0.92rem; text-decoration: none;">
+              <i class="fa-brands fa-whatsapp fa-lg"></i> Send to WhatsApp Group / Chats
+            </a>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-cyber-outline flex-fill py-2" onclick="copyBroadcastText()">
+                <i class="fa-solid fa-copy me-1"></i> Copy to Clipboard
+              </button>
+              <button type="button" class="btn btn-outline-secondary flex-fill py-2 rounded-pill small" data-bs-dismiss="modal">
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

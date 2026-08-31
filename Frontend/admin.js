@@ -1098,53 +1098,84 @@ async function saveAdminTheme() {
    10. METRICS & RECENT HISTORY SYNCHRONIZATION
    ========================================================================== */
 function updateDashboardMetrics() {
-  // 1. Calculate Total Revenue
-  let totalRevenue = 45250;
-  let totalKm = 1745;
+  // 1. Calculate Combined Revenue & Distance (Relocation + Parcels)
+  const relocationRev = adminBookings.reduce((acc, b) => acc + (Number(b.total_amount) || 0), 0);
+  const parcelRev = allAdminParcels.reduce((acc, p) => acc + (Number(p.total_amount) || 0), 0);
+  const totalRevenue = (relocationRev > 0 ? relocationRev : 45250) + parcelRev;
 
-  if (adminBookings.length > 0) {
-    const sumAmt = adminBookings.reduce((acc, b) => acc + (Number(b.total_amount) || 0), 0);
-    if (sumAmt > 0) totalRevenue = sumAmt;
-
-    const sumKm = adminBookings.reduce((acc, b) => acc + (Number(b.distance_km) || 25), 0);
-    if (sumKm > 0) totalKm = sumKm;
-  }
+  const relocationKm = adminBookings.reduce((acc, b) => acc + (Number(b.distance_km) || 25), 0);
+  const parcelKm = allAdminParcels.reduce((acc, p) => acc + (Number(p.distance_km) || 0), 0);
+  const totalKm = (relocationKm > 0 ? relocationKm : 1745) + Math.round(parcelKm);
 
   // Smooth Count-Up Animations
   animateCountUp('dashTotalRevenue', totalRevenue, 1500, '₹');
   animateCountUp('dashTotalKm', totalKm, 1400);
 
-  // 2. Next Dispatch Card
-  if (adminBookings.length > 0) {
-    const latest = adminBookings[0];
-    const dName = latest.assigned_driver_name || 'Mukesh Sharma';
-    const route = `${latest.pickup_address || 'Jaipur'} ➔ ${latest.drop_address || 'Delhi'}`;
+  // Revenue Breakdown Subtitle
+  const breakdownEl = document.getElementById('dashRevenueBreakdown');
+  if (breakdownEl) {
+    const rDisp = (relocationRev > 0 ? relocationRev : 45250).toLocaleString('en-IN');
+    const pDisp = parcelRev.toLocaleString('en-IN');
+    breakdownEl.innerText = `Movers: ₹${rDisp} • Parcels: ₹${pDisp}`;
+  }
 
+  // 2. Next Dispatch Card (Picks latest active relocation OR parcel dispatch)
+  const activeParcel = allAdminParcels.find(p => ['driver_assigned', 'reached_pickup', 'in_transit', 'out_for_delivery'].includes(p.booking_status || p.status));
+  if (activeParcel) {
+    const dName = activeParcel.assigned_driver_name || 'Rajesh Kumar (Express Rider)';
+    const route = `📦 ${activeParcel.pickup_address?.split(',')[0] || 'Jaipur'} ➔ ${activeParcel.drop_address?.split(',')[0] || 'Destination'}`;
+    if (document.getElementById('dashNextDriver')) document.getElementById('dashNextDriver').innerText = dName;
+    if (document.getElementById('dashNextRoute')) document.getElementById('dashNextRoute').innerText = route;
+  } else if (adminBookings.length > 0) {
+    const latest = adminBookings[0];
+    const dName = latest.assigned_driver_name || 'Mukesh Sharma (Fleet Captain)';
+    const route = `🏠 ${latest.pickup_address?.split(',')[0] || 'Jaipur'} ➔ ${latest.drop_address?.split(',')[0] || 'Delhi'}`;
     if (document.getElementById('dashNextDriver')) document.getElementById('dashNextDriver').innerText = dName;
     if (document.getElementById('dashNextRoute')) document.getElementById('dashNextRoute').innerText = route;
   }
 
-  // 3. Recent History List Widget
+  // 3. Merged Recent History List Widget (Relocations + Parcels)
   const historyContainer = document.getElementById('dashRecentHistoryList');
-  if (historyContainer && adminBookings.length > 0) {
-    const recentSlice = adminBookings.slice(0, 2);
-    historyContainer.innerHTML = recentSlice.map((b, idx) => {
-      const avatars = [
-        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop&q=80',
-        'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&auto=format&fit=crop&q=80'
-      ];
+  if (historyContainer) {
+    const unifiedHistory = [
+      ...adminBookings.map(b => ({
+        type: 'relocation',
+        title: `${b.pickup_address?.split(',')[0] || 'Jaipur'} ➔ ${b.drop_address?.split(',')[0] || 'Delhi'}`,
+        subtitle: `${b.shifting_date || 'Today'} • ${b.customer_name || 'Customer'}`,
+        amount: b.total_amount ? `₹${Number(b.total_amount).toLocaleString('en-IN')}` : '₹15,090',
+        detail: b.selected_vehicle || 'Dedicated Truck',
+        date: new Date(b.created_at || Date.now() - 40 * 60000)
+      })),
+      ...allAdminParcels.map(p => ({
+        type: 'parcel',
+        title: `📦 ${p.pickup_address?.split(',')[0] || 'Jaipur'} ➔ ${p.drop_address?.split(',')[0] || 'Drop'}`,
+        subtitle: `${p.parcel_id} • ${p.sender_name || 'Sender'}`,
+        amount: `₹${p.total_amount || 0}`,
+        detail: `${(p.vehicle_type || 'bike').toUpperCase()} • ${p.parcel_type || 'Package'}`,
+        date: new Date(p.created_at || Date.now() - 10 * 60000)
+      }))
+    ].sort((a, b) => b.date - a.date).slice(0, 3);
+
+    const avatars = [
+      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80'
+    ];
+
+    historyContainer.innerHTML = unifiedHistory.map((item, idx) => {
       const av = avatars[idx % avatars.length];
-      const route = `${b.pickup_address?.split(',')[0] || 'Jaipur'} ➔ ${b.drop_address?.split(',')[0] || 'Delhi'}`;
-      const amt = b.total_amount ? `₹${Number(b.total_amount).toLocaleString('en-IN')}` : '₹4,500';
+      const typeBadge = item.type === 'parcel'
+        ? `<span class="badge bg-warning text-dark py-0 px-1" style="font-size: 0.62rem;">PARCEL</span>`
+        : `<span class="badge bg-primary text-white py-0 px-1" style="font-size: 0.62rem;">RELOCATION</span>`;
 
       return `
-        <div class="cyber-history-item" onclick="switchAdminTab('bookings')">
+        <div class="cyber-history-item" onclick="switchAdminTab('${item.type === 'parcel' ? 'parcels' : 'bookings'}')">
           <div class="cyber-history-user">
-            <img src="${av}" alt="Customer" class="cyber-history-avatar">
+            <img src="${av}" alt="User" class="cyber-history-avatar">
             <div>
-              <div class="fw-bold text-white small">${route}</div>
-              <div class="text-muted" style="font-size: 0.7rem;">${b.shifting_date || 'Today'} • ${b.customer_name || 'Customer'}</div>
-              <div style="color: var(--accent-neon); font-size: 0.72rem;">${b.selected_vehicle || 'Dedicated Truck'} - ${amt}</div>
+              <div class="fw-bold text-white small d-flex align-items-center gap-1">${item.title} ${typeBadge}</div>
+              <div class="text-muted" style="font-size: 0.7rem;">${item.subtitle}</div>
+              <div style="color: var(--accent-neon); font-size: 0.72rem;">${item.detail} - ${item.amount}</div>
             </div>
           </div>
           <i class="fa-solid fa-chevron-right text-muted small"></i>
@@ -1153,24 +1184,8 @@ function updateDashboardMetrics() {
     }).join('');
   }
 
+  updateParcelMetrics();
   triggerDashboardAnimations();
-}
-
-function showAdminToast(msg) {
-  const container = document.getElementById('adminToastContainer');
-  if (!container) return;
-  container.innerHTML = `
-    <div style="background: rgba(23, 23, 26, 0.95); border: 1px solid #D0FD38; color: #ffffff; border-radius: 14px; padding: 12px 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 20px rgba(208, 253, 56, 0.25); display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px;">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <i class="fa-solid fa-circle-check" style="color: #D0FD38; font-size: 1.1rem;"></i>
-        <span style="font-size: 0.88rem; font-weight: 600;">${msg}</span>
-      </div>
-      <button type="button" onclick="this.parentElement.remove()" style="background: none; border: none; color: #8E8E93; cursor: pointer;">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-    </div>
-  `;
-  setTimeout(() => { if (container) container.innerHTML = ''; }, 4500);
 }
 
 async function refreshAdminAll() {
@@ -1568,10 +1583,13 @@ Please confirm pickup on your driver portal.`;
               <option value="delivered" ${status==='delivered'?'selected':''}>🟢 Delivered</option>
               <option value="cancelled" ${status==='cancelled'?'selected':''}>🔴 Cancelled</option>
             </select>
+            <button class="btn btn-sm btn-outline-warning py-0 px-2 fw-bold" style="font-size: 0.72rem;" onclick="openBroadcastModal('${pId}')" title="📢 Broadcast to Rider WhatsApp Group">
+              <i class="fa-solid fa-tower-broadcast text-warning me-1"></i>Broadcast
+            </button>
             <a href="https://wa.me/91${sPhone}?text=${encodeURIComponent(custWaMsg)}" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2" title="WhatsApp Customer">
               <i class="fa-brands fa-whatsapp"></i>
             </a>
-            <a href="https://wa.me/91${dPhone}?text=${encodeURIComponent(driverWaMsg)}" target="_blank" class="btn btn-sm btn-outline-warning py-0 px-2" title="Send to Driver">
+            <a href="https://wa.me/91${dPhone}?text=${encodeURIComponent(driverWaMsg)}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2" title="Direct WhatsApp Driver">
               <i class="fa-solid fa-paper-plane"></i>
             </a>
             <a href="track.html?id=${pId}" target="_blank" class="btn btn-sm btn-outline-info py-0 px-2" title="Live Tracking">
@@ -1724,4 +1742,149 @@ function exportParcelsToCSV() {
   document.body.removeChild(link);
   showAdminToast('📥 Exported Rudraksha Parcel Orders CSV!');
 }
+
+/* ==========================================================================
+   12. RIDER GROUP WHATSAPP BROADCAST CONTROLLER (Phase 3D)
+   ========================================================================== */
+function getDriverDispatchUrl(parcelId) {
+  const basePath = window.location.pathname.replace(/[^/]*$/, '');
+  return `${window.location.origin}${basePath}driver.html?jobId=${parcelId}`;
+}
+
+function generateBroadcastMessage(parcel) {
+  const pId = parcel.parcel_id || parcel.id;
+  const pickup = parcel.pickup_address || 'Pickup Location';
+  const drop = parcel.drop_address || 'Drop Location';
+  const dist = parcel.distance_km || 5;
+  const type = parcel.parcel_type || 'Package';
+  const weight = parcel.weight_category || 'Standard';
+  const veh = (parcel.vehicle_type || 'bike').toUpperCase();
+  const fare = parcel.total_amount || 100;
+  const payout = Math.round(Number(fare) * 0.85);
+  const payMethod = parcel.payment_method || 'Cash on Delivery';
+  const dispatchUrl = getDriverDispatchUrl(pId);
+
+  return (
+`🚨 *NEW PARCEL DELIVERY JOB AVAILABLE* 🚨
+━━━━━━━━━━━━━━━━━━━━
+🆔 *Order ID:* ${pId}
+📍 *Pickup:* ${pickup}
+📍 *Drop:* ${drop}
+📏 *Distance:* ${dist} KM
+📦 *Cargo:* ${type} (${weight})
+🛵 *Vehicle:* ${veh}
+💰 *Rider Payout:* ₹${payout} (Customer Bill: ₹${fare} via ${payMethod})
+
+⚡ *First rider to tap and accept gets the job:*
+👉 ${dispatchUrl}
+━━━━━━━━━━━━━━━━━━━━
+_Rudraksha Express Fleet Dispatch • Tap link to accept immediately_`
+  );
+}
+
+function openBroadcastModal(parcelId) {
+  const parcel = allAdminParcels.find(p => (p.parcel_id === parcelId || p.id === parcelId));
+  if (!parcel) {
+    showAdminToast('Parcel order not found', 'error');
+    return;
+  }
+
+  const pId = parcel.parcel_id || parcel.id;
+  const fare = parcel.total_amount || 0;
+  const payout = Math.round(Number(fare) * 0.85);
+  const route = `${parcel.pickup_address?.split(',')[0] || 'Pickup'} ➔ ${parcel.drop_address?.split(',')[0] || 'Drop'}`;
+  const veh = (parcel.vehicle_type || 'bike').toUpperCase();
+  const dist = parcel.distance_km || 5;
+  const broadcastMsg = generateBroadcastMessage(parcel);
+
+  if (document.getElementById('bcastModalBadge')) document.getElementById('bcastModalBadge').innerText = pId;
+  if (document.getElementById('bcastModalFare')) document.getElementById('bcastModalFare').innerText = `₹${fare}`;
+  if (document.getElementById('bcastModalRoute')) document.getElementById('bcastModalRoute').innerText = route;
+  if (document.getElementById('bcastModalVehicle')) document.getElementById('bcastModalVehicle').innerText = veh;
+  if (document.getElementById('bcastModalDist')) document.getElementById('bcastModalDist').innerText = dist;
+  if (document.getElementById('bcastModalPayout')) document.getElementById('bcastModalPayout').innerText = `₹${payout}`;
+
+  const previewEl = document.getElementById('bcastMessagePreview');
+  if (previewEl) previewEl.value = broadcastMsg;
+
+  // WhatsApp share link - opens WhatsApp share sheet so owner can pick their Rider WhatsApp Group!
+  const waBtn = document.getElementById('btnLaunchWhatsAppBroadcast');
+  if (waBtn) {
+    waBtn.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(broadcastMsg)}`;
+  }
+
+  const modalEl = document.getElementById('broadcastParcelModal');
+  if (modalEl) {
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+  }
+}
+
+function copyBroadcastText() {
+  const previewEl = document.getElementById('bcastMessagePreview');
+  const text = previewEl?.value;
+  if (text) {
+    navigator.clipboard.writeText(text).then(() => {
+      showAdminToast('📋 Broadcast announcement copied to clipboard!', 'success');
+    }).catch(() => {
+      previewEl.select();
+      document.execCommand('copy');
+      showAdminToast('📋 Copied to clipboard!', 'success');
+    });
+  }
+}
+
+function broadcastOpenParcelsModal() {
+  const openOrders = allAdminParcels.filter(p => (p.booking_status || p.status) === 'searching_driver');
+  if (openOrders.length === 0) {
+    showAdminToast('All current parcel jobs have already been assigned to riders!', 'info');
+    return;
+  }
+
+  if (openOrders.length === 1) {
+    openBroadcastModal(openOrders[0].parcel_id || openOrders[0].id);
+    return;
+  }
+
+  // Multiple open orders - create a combined digest
+  const totalVal = openOrders.reduce((a,c)=>a+(Number(c.total_amount)||0), 0);
+  const totalPayout = Math.round(totalVal * 0.85);
+
+  const digest = 
+`🚨 *RUDRAKSHA EXPRESS - ${openOrders.length} OPEN DELIVERY JOBS* 🚨
+━━━━━━━━━━━━━━━━━━━━
+Hey Fleet Team! Following orders are available for immediate pickup. Tap any link below to claim your job:
+
+` + openOrders.map((p, idx) => {
+    const pId = p.parcel_id || p.id;
+    const payout = Math.round((Number(p.total_amount) || 100) * 0.85);
+    const route = `${p.pickup_address?.split(',')[0]} ➔ ${p.drop_address?.split(',')[0]}`;
+    const url = getDriverDispatchUrl(pId);
+    return `*Job ${idx + 1} (${pId}):*\n📍 ${route} (${p.distance_km || 5} km)\n🛵 ${p.vehicle_type?.toUpperCase() || 'BIKE'} • ${p.parcel_type || 'Package'}\n💰 Rider Payout: *₹${payout}*\n👉 Claim Link: ${url}\n`;
+  }).join('\n━━━━━━━━━━━━━━━━━━━━\n') +
+`\n━━━━━━━━━━━━━━━━━━━━
+_First rider to accept on their driver portal gets the order!_`;
+
+  if (document.getElementById('bcastModalBadge')) document.getElementById('bcastModalBadge').innerText = `${openOrders.length} OPEN ORDERS`;
+  if (document.getElementById('bcastModalFare')) document.getElementById('bcastModalFare').innerText = `Total ₹${totalVal}`;
+  if (document.getElementById('bcastModalRoute')) document.getElementById('bcastModalRoute').innerText = `Multiple City Locations (${openOrders.length} Deliveries)`;
+  if (document.getElementById('bcastModalVehicle')) document.getElementById('bcastModalVehicle').innerText = 'FLEET';
+  if (document.getElementById('bcastModalDist')) document.getElementById('bcastModalDist').innerText = 'Various';
+  if (document.getElementById('bcastModalPayout')) document.getElementById('bcastModalPayout').innerText = `₹${totalPayout}`;
+
+  const previewEl = document.getElementById('bcastMessagePreview');
+  if (previewEl) previewEl.value = digest;
+
+  const waBtn = document.getElementById('btnLaunchWhatsAppBroadcast');
+  if (waBtn) {
+    waBtn.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(digest)}`;
+  }
+
+  const modalEl = document.getElementById('broadcastParcelModal');
+  if (modalEl) {
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+  }
+}
+
 
