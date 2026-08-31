@@ -1175,3 +1175,14 @@ body.cyber-dark-body {
   .cyber-grid-col-8 { grid-column: span 8; }
   .cyber-grid-col-12 { grid-column: span 12; }
 }
+
+/* Rudraksha Parcel Subtab Transition */
+.parcel-subtab-panel {
+  animation: fadeInSubtab 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInSubtab {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+

@@ -776,22 +776,25 @@
       </section>
 
       <!-- ======================================================================
-           TAB 7: ON-DEMAND PARCEL DELIVERY COMMAND (Porter-Style Logistics)
+           TAB 7: RUDRAKSHA PARCEL & HYPERLOCAL LOGISTICS COMMAND HUB
            ====================================================================== -->
       <section class="cyber-tab-panel" id="tab-parcels">
         <!-- Section Header -->
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
           <div>
-            <h4 class="fw-extrabold text-white mb-1"><i class="fa-solid fa-box-open me-2" style="color: #D0FD38;"></i>Parcel Delivery Command Hub</h4>
-            <div class="text-muted small">Real-time local & express courier deliveries, OTP verification, and rider dispatches.</div>
+            <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-2" style="background: rgba(255, 158, 27, 0.15); border: 1px solid rgba(255, 158, 27, 0.4); color: #FF9E1B; font-size: 0.8rem; font-weight: 700;">
+              <i class="fa-solid fa-bolt"></i> Rudraksha Express Logistics Vertical
+            </div>
+            <h4 class="fw-extrabold text-white mb-1"><i class="fa-solid fa-box-open me-2" style="color: #FF9E1B;"></i>Rudraksha Parcel Operations Hub</h4>
+            <div class="text-muted small">Manage on-demand city deliveries, rider onboarding applications, and courier tariff settings.</div>
           </div>
-          <div class="d-flex gap-2">
+          <div class="d-flex gap-2 flex-wrap">
             <a href="parcel.html" target="_blank" class="btn-cyber-outline py-2 px-3 small">
-              <i class="fa-solid fa-box-open text-warning me-1"></i> Customer Parcel Page
+              <i class="fa-solid fa-box-open text-warning me-1"></i> Customer Parcel Portal
             </a>
-            <a href="driver.html" target="_blank" class="btn-cyber-outline py-2 px-3 small">
-              <i class="fa-solid fa-motorcycle text-warning me-1"></i> Open Rider App
-            </a>
+            <button class="btn-cyber-outline py-2 px-3 small" onclick="exportParcelsToCSV()">
+              <i class="fa-solid fa-file-excel text-success me-1"></i> Export Orders CSV
+            </button>
             <button class="btn-cyber-neon py-2 px-3 small" onclick="loadAdminParcels()">
               <i class="fa-solid fa-rotate me-1"></i> Refresh Orders
             </button>
@@ -804,7 +807,7 @@
             <div class="cyber-card p-3">
               <div class="small text-muted mb-1">Total Parcel Orders</div>
               <div class="fs-4 fw-extrabold text-white" id="pclTotalCount">0</div>
-              <div class="small" style="color: #D0FD38; font-size: 0.72rem;"><i class="fa-solid fa-boxes-stacked me-1"></i> Lifetime Logged</div>
+              <div class="small" style="color: #FF9E1B; font-size: 0.72rem;"><i class="fa-solid fa-boxes-stacked me-1"></i> Lifetime Logged</div>
             </div>
           </div>
           <div class="col-6 col-md-3">
@@ -816,9 +819,9 @@
           </div>
           <div class="col-6 col-md-3">
             <div class="cyber-card p-3">
-              <div class="small text-muted mb-1">Pending Riders</div>
-              <div class="fs-4 fw-extrabold text-danger" id="pclPendingCount">0</div>
-              <div class="small text-muted" style="font-size: 0.72rem;"><i class="fa-solid fa-hourglass-half me-1"></i> Searching Drivers</div>
+              <div class="small text-muted mb-1">Registered Riders</div>
+              <div class="fs-4 fw-extrabold text-info" id="pclRidersCount">0</div>
+              <div class="small text-muted" style="font-size: 0.72rem;"><i class="fa-solid fa-motorcycle me-1"></i> Courier Partners</div>
             </div>
           </div>
           <div class="col-6 col-md-3">
@@ -830,50 +833,207 @@
           </div>
         </div>
 
-        <!-- Filter Bar -->
-        <div class="cyber-card p-3 mb-4">
-          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="d-flex gap-2 flex-wrap" id="parcelFilterPills">
-              <button class="btn btn-sm btn-outline-light active px-3 rounded-pill" onclick="filterParcelsTable('all', this)">All</button>
-              <button class="btn btn-sm btn-outline-light px-3 rounded-pill" onclick="filterParcelsTable('searching_driver', this)">Searching Rider</button>
-              <button class="btn btn-sm btn-outline-light px-3 rounded-pill" onclick="filterParcelsTable('driver_assigned', this)">Driver Assigned</button>
-              <button class="btn btn-sm btn-outline-light px-3 rounded-pill" onclick="filterParcelsTable('in_transit', this)">In Transit</button>
-              <button class="btn btn-sm btn-outline-light px-3 rounded-pill" onclick="filterParcelsTable('delivered', this)">Delivered</button>
+        <!-- Subtab Navigation Switcher -->
+        <div class="cyber-card p-2 mb-4">
+          <div class="d-flex gap-2 flex-wrap" id="parcelSubtabPills">
+            <button class="btn btn-sm btn-outline-warning active px-3 py-2 rounded-pill fw-bold" onclick="switchParcelSubtab('orders', this)">
+              <i class="fa-solid fa-list-check me-1"></i> 1. Live Parcel Orders
+            </button>
+            <button class="btn btn-sm btn-outline-light px-3 py-2 rounded-pill fw-bold" onclick="switchParcelSubtab('riders', this)">
+              <i class="fa-solid fa-motorcycle me-1"></i> 2. Rider Partner Onboarding (<span id="badgeRiderAppCount">0</span>)
+            </button>
+            <button class="btn btn-sm btn-outline-light px-3 py-2 rounded-pill fw-bold" onclick="switchParcelSubtab('tariff', this)">
+              <i class="fa-solid fa-sliders me-1"></i> 3. Parcel Tariff & Rates
+            </button>
+          </div>
+        </div>
+
+        <!-- SUBTAB 1: LIVE PARCEL ORDERS -->
+        <div id="subtabPanel-orders" class="parcel-subtab-panel">
+          <!-- Filter Bar -->
+          <div class="cyber-card p-3 mb-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div class="d-flex gap-2 flex-wrap" id="parcelFilterPills">
+                <button class="btn btn-sm btn-outline-light active px-3 rounded-pill" onclick="filterParcelsTable('all', this)">All</button>
+                <button class="btn btn-sm btn-outline-light px-3 rounded-pill" onclick="filterParcelsTable('searching_driver', this)">Searching Rider</button>
+                <button class="btn btn-sm btn-outline-light px-3 rounded-pill" onclick="filterParcelsTable('driver_assigned', this)">Driver Assigned</button>
+                <button class="btn btn-sm btn-outline-light px-3 rounded-pill" onclick="filterParcelsTable('in_transit', this)">In Transit</button>
+                <button class="btn btn-sm btn-outline-light px-3 rounded-pill" onclick="filterParcelsTable('delivered', this)">Delivered</button>
+              </div>
+              <div style="min-width: 240px;">
+                <input type="text" class="cyber-input py-1 px-3" id="searchParcelInput" placeholder="Search Parcel ID, Phone, City..." oninput="searchParcelsTable(this.value)">
+              </div>
             </div>
-            <div style="min-width: 200px;">
-              <input type="text" class="cyber-input py-1 px-3" id="searchParcelInput" placeholder="Search Parcel ID or Phone..." oninput="searchParcelsTable(this.value)">
+          </div>
+
+          <!-- Parcel Table Card -->
+          <div class="cyber-card p-3">
+            <div class="table-responsive">
+              <table class="cyber-table table-borderless text-white mb-0" style="width: 100%; min-width: 950px;">
+                <thead>
+                  <tr class="border-bottom border-secondary border-opacity-25 text-muted small">
+                    <th>Parcel ID</th>
+                    <th>Sender</th>
+                    <th>Receiver</th>
+                    <th>Route & Distance</th>
+                    <th>Category & Vehicle</th>
+                    <th>Fare & Payment</th>
+                    <th>Status</th>
+                    <th>Assigned Rider</th>
+                    <th>Quick Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="parcelsTableBody">
+                  <tr>
+                    <td colspan="9" class="text-center py-4 text-muted">
+                      <i class="fa-solid fa-spinner fa-spin me-1"></i> Loading parcel deliveries...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
 
-        <!-- Parcel Table Card -->
-        <div class="cyber-card p-3">
-          <div class="table-responsive">
-            <table class="cyber-table table-borderless text-white mb-0" style="width: 100%; min-width: 900px;">
-              <thead>
-                <tr class="border-bottom border-secondary border-opacity-25 text-muted small">
-                  <th>Parcel ID</th>
-                  <th>Sender</th>
-                  <th>Receiver</th>
-                  <th>Route & Distance</th>
-                  <th>Type & Vehicle</th>
-                  <th>Fare & Pay</th>
-                  <th>OTPs</th>
-                  <th>Status</th>
-                  <th>Assigned Rider</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody id="parcelsTableBody">
-                <tr>
-                  <td colspan="10" class="text-center py-4 text-muted">
-                    <i class="fa-solid fa-spinner fa-spin me-1"></i> Loading parcel deliveries...
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        <!-- SUBTAB 2: RIDER PARTNER APPLICATIONS ROSTER -->
+        <div id="subtabPanel-riders" class="parcel-subtab-panel d-none">
+          <div class="cyber-card p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <div>
+                <h6 class="fw-bold text-white mb-1"><i class="fa-solid fa-id-card text-warning me-2"></i>Rider Partner Registrations</h6>
+                <div class="small text-muted">Driver partners who registered via the "Become a Rider" portal on the website.</div>
+              </div>
+              <button class="btn-cyber-outline btn-sm" onclick="renderRiderApplicationsTable()">
+                <i class="fa-solid fa-rotate me-1"></i> Refresh Applications
+              </button>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="cyber-table table-borderless text-white mb-0" style="width: 100%; min-width: 900px;">
+                <thead>
+                  <tr class="border-bottom border-secondary border-opacity-25 text-muted small">
+                    <th>Applicant Name</th>
+                    <th>Phone / WhatsApp</th>
+                    <th>City / Zone</th>
+                    <th>Shift</th>
+                    <th>Vehicle Type</th>
+                    <th>Reg Number</th>
+                    <th>DL Number</th>
+                    <th>Applied Date</th>
+                    <th>Status / Action</th>
+                  </tr>
+                </thead>
+                <tbody id="riderApplicationsTableBody">
+                  <tr>
+                    <td colspan="9" class="text-center py-4 text-muted">
+                      <i class="fa-solid fa-spinner fa-spin me-1"></i> Loading driver applications...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
+
+        <!-- SUBTAB 3: PARCEL TARIFF & RATES CONTROLLER -->
+        <div id="subtabPanel-tariff" class="parcel-subtab-panel d-none">
+          <div class="cyber-card p-4">
+            <h5 class="fw-bold text-white mb-1"><i class="fa-solid fa-sliders text-warning me-2"></i>Rudraksha Parcel Pricing & Fare Controller</h5>
+            <p class="text-muted small mb-4">Changes made here instantly update live price quotes on the client parcel delivery calculator.</p>
+
+            <form id="parcelTariffForm" onsubmit="event.preventDefault(); saveAdminParcelRates();">
+              <!-- Base & Distance Rates -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-4 cyber-input-group">
+                  <label class="cyber-label">Base Courier Dispatch Fare (₹)</label>
+                  <input type="number" class="cyber-input" id="pclRateBase" value="40" required>
+                </div>
+                <div class="col-md-4 cyber-input-group">
+                  <label class="cyber-label">Per KM Road Delivery Rate (₹)</label>
+                  <input type="number" class="cyber-input" id="pclRatePerKm" value="10" required>
+                </div>
+                <div class="col-md-4 cyber-input-group">
+                  <label class="cyber-label">Handling & Dispatch Fee (₹)</label>
+                  <input type="number" class="cyber-input" id="pclRateHandling" value="10" required>
+                </div>
+              </div>
+
+              <!-- Weight Surcharges -->
+              <h6 class="fw-bold text-white border-bottom pb-2 mb-3" style="border-color: var(--border-subtle) !important;">
+                <i class="fa-solid fa-weight-hanging text-warning me-1"></i> Weight Tier Surcharges (₹)
+              </h6>
+              <div class="row g-3 mb-4">
+                <div class="col-6 col-md-2 cyber-input-group">
+                  <label class="cyber-label">Up to 1 KG (₹)</label>
+                  <input type="number" class="cyber-input" id="pclWeightUpto1" value="0">
+                </div>
+                <div class="col-6 col-md-2 cyber-input-group">
+                  <label class="cyber-label">1–5 KG (₹)</label>
+                  <input type="number" class="cyber-input" id="pclWeight1to5" value="20">
+                </div>
+                <div class="col-6 col-md-2 cyber-input-group">
+                  <label class="cyber-label">5–10 KG (₹)</label>
+                  <input type="number" class="cyber-input" id="pclWeight5to10" value="40">
+                </div>
+                <div class="col-6 col-md-2 cyber-input-group">
+                  <label class="cyber-label">10–20 KG (₹)</label>
+                  <input type="number" class="cyber-input" id="pclWeight10to20" value="70">
+                </div>
+                <div class="col-6 col-md-2 cyber-input-group">
+                  <label class="cyber-label">20–50 KG (₹)</label>
+                  <input type="number" class="cyber-input" id="pclWeight20to50" value="120">
+                </div>
+                <div class="col-6 col-md-2 cyber-input-group">
+                  <label class="cyber-label">50 KG+ (₹)</label>
+                  <input type="number" class="cyber-input" id="pclWeight50Plus" value="250">
+                </div>
+              </div>
+
+              <!-- Vehicle Surcharges -->
+              <h6 class="fw-bold text-white border-bottom pb-2 mb-3" style="border-color: var(--border-subtle) !important;">
+                <i class="fa-solid fa-motorcycle text-warning me-1"></i> Vehicle Option Surcharges (₹)
+              </h6>
+              <div class="row g-3 mb-4">
+                <div class="col-md-4 cyber-input-group">
+                  <label class="cyber-label">2-Wheeler / Bike Express (₹)</label>
+                  <input type="number" class="cyber-input" id="pclVehBike" value="0">
+                </div>
+                <div class="col-md-4 cyber-input-group">
+                  <label class="cyber-label">Auto / 3-Wheeler (₹)</label>
+                  <input type="number" class="cyber-input" id="pclVehAuto" value="50">
+                </div>
+                <div class="col-md-4 cyber-input-group">
+                  <label class="cyber-label">Mini Truck / Tata Ace (₹)</label>
+                  <input type="number" class="cyber-input" id="pclVehTruck" value="150">
+                </div>
+              </div>
+
+              <!-- Addon Protections -->
+              <h6 class="fw-bold text-white border-bottom pb-2 mb-3" style="border-color: var(--border-subtle) !important;">
+                <i class="fa-solid fa-shield-halved text-warning me-1"></i> Protection Addons Pricing (₹)
+              </h6>
+              <div class="row g-3 mb-4">
+                <div class="col-md-4 cyber-input-group">
+                  <label class="cyber-label">Fragile Handling Addon (₹)</label>
+                  <input type="number" class="cyber-input" id="pclAddonFragile" value="25">
+                </div>
+                <div class="col-md-4 cyber-input-group">
+                  <label class="cyber-label">Bubble Wrap Packaging (₹)</label>
+                  <input type="number" class="cyber-input" id="pclAddonPackaging" value="40">
+                </div>
+                <div class="col-md-4 cyber-input-group">
+                  <label class="cyber-label">Transit Insurance (₹)</label>
+                  <input type="number" class="cyber-input" id="pclAddonInsurance" value="49">
+                </div>
+              </div>
+
+              <button type="submit" class="btn-cyber-neon py-3 px-5">
+                <i class="fa-solid fa-floppy-disk me-2"></i> Save & Apply Parcel Rates
+              </button>
+            </form>
+          </div>
+        </div>
+
       </section>
 
     </main>

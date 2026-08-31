@@ -199,6 +199,8 @@ function switchAdminTab(tabName) {
   // Re-trigger bar charts & counters on dashboard tab
   if (tabName === 'dashboard') {
     triggerDashboardAnimations();
+  } else if (tabName === 'parcels') {
+    loadAdminParcels();
   }
 
   // Scroll to top on tab switch
@@ -1113,9 +1115,10 @@ async function refreshAdminAll() {
 }
 
 /* ==========================================================================
-   11. PARCEL DELIVERY MANAGEMENT (Porter-Style Hub Controller)
+   11. RUDRAKSHA PARCEL OPERATIONS & LOGISTICS HUB CONTROLLER
    ========================================================================== */
 let allAdminParcels = [];
+let allRiderApplications = [];
 let currentParcelFilter = 'all';
 
 async function loadAdminParcels() {
@@ -1126,25 +1129,208 @@ async function loadAdminParcels() {
     if (res.ok) {
       const data = await res.json();
       allAdminParcels = data.parcels || [];
+    } else {
+      throw new Error('API fetch failed');
     }
   } catch (err) {
+    // Read from localStorage
     const saved = localStorage.getItem('rudraksha_parcels_history');
-    allAdminParcels = saved ? JSON.parse(saved) : [];
+    if (saved) {
+      allAdminParcels = JSON.parse(saved);
+    } else {
+      // Seed rich demo parcel bookings if none exist
+      allAdminParcels = [
+        {
+          parcel_id: 'RP-PCL-982104',
+          sender_name: 'Rohit Verma',
+          sender_phone: '9829012345',
+          receiver_name: 'Pooja Agarwal',
+          receiver_phone: '9829098765',
+          pickup_address: 'Mansarovar Metro Station, Jaipur',
+          drop_address: 'Vaishali Nagar Amrapali Circle, Jaipur',
+          distance_km: 8.4,
+          parcel_type: 'Documents',
+          weight_category: '1_5kg',
+          vehicle_type: 'bike',
+          total_amount: 154,
+          payment_method: 'UPI Direct',
+          booking_status: 'driver_assigned',
+          assigned_driver_name: 'Mukesh Sharma (Bike)',
+          assigned_driver_phone: '7296831460',
+          created_at: new Date(Date.now() - 35 * 60000).toISOString()
+        },
+        {
+          parcel_id: 'RP-PCL-982105',
+          sender_name: 'Anjali Singhal',
+          sender_phone: '9414011223',
+          receiver_name: 'Vikas Meena',
+          receiver_phone: '9414099887',
+          pickup_address: 'Raja Park, Jaipur',
+          drop_address: 'Malviya Nagar, Jaipur',
+          distance_km: 6.2,
+          parcel_type: 'Small Package',
+          weight_category: '5_10kg',
+          vehicle_type: 'auto',
+          total_amount: 202,
+          payment_method: 'Cash',
+          booking_status: 'searching_driver',
+          assigned_driver_name: '',
+          assigned_driver_phone: '',
+          created_at: new Date(Date.now() - 10 * 60000).toISOString()
+        },
+        {
+          parcel_id: 'RP-PCL-982102',
+          sender_name: 'Sunil Mathur',
+          sender_phone: '9828055443',
+          receiver_name: 'Deepak Sharma',
+          receiver_phone: '9828011223',
+          pickup_address: 'C-Scheme, Jaipur',
+          drop_address: 'Jagatpura, Jaipur',
+          distance_km: 12.5,
+          parcel_type: 'Electronics',
+          weight_category: '10_20kg',
+          vehicle_type: 'mini_truck',
+          total_amount: 395,
+          payment_method: 'Pay at Delivery',
+          booking_status: 'delivered',
+          assigned_driver_name: 'Rajesh Kumar (Tata Ace)',
+          assigned_driver_phone: '7296831460',
+          created_at: new Date(Date.now() - 180 * 60000).toISOString()
+        }
+      ];
+      localStorage.setItem('rudraksha_parcels_history', JSON.stringify(allAdminParcels));
+    }
   }
 
+  // Load Rider Applications
+  loadRiderApplications();
+  loadAdminParcelRates();
   updateParcelMetrics();
   renderParcelsTable();
+}
+
+function switchParcelSubtab(subtabName, btnEl) {
+  document.querySelectorAll('#parcelSubtabPills button').forEach(b => {
+    b.classList.remove('active', 'btn-outline-warning');
+    b.classList.add('btn-outline-light');
+  });
+
+  if (btnEl) {
+    btnEl.classList.remove('btn-outline-light');
+    btnEl.classList.add('active', 'btn-outline-warning');
+  }
+
+  document.querySelectorAll('.parcel-subtab-panel').forEach(p => p.classList.add('d-none'));
+  const targetPanel = document.getElementById(`subtabPanel-${subtabName}`);
+  if (targetPanel) {
+    targetPanel.classList.remove('d-none');
+  }
+
+  if (subtabName === 'riders') {
+    renderRiderApplicationsTable();
+  }
+}
+
+function loadRiderApplications() {
+  const saved = localStorage.getItem('rudraksha_rider_applications');
+  if (saved) {
+    allRiderApplications = JSON.parse(saved);
+  } else {
+    allRiderApplications = [
+      {
+        name: 'Mukesh Kumar Sharma',
+        phone: '9829012345',
+        city: 'Jaipur (Mansarovar / Vaishali)',
+        shift: 'Full Time (8-10 Hours)',
+        vehType: 'Bike / Scooter',
+        vehNum: 'RJ14 AB 1234',
+        dlNum: 'RJ14 20210012345',
+        status: 'Approved',
+        date: new Date(Date.now() - 2 * 86400000).toISOString()
+      },
+      {
+        name: 'Dinesh Gurjar',
+        phone: '9414077889',
+        city: 'Jaipur (Malviya Nagar / Jagatpura)',
+        shift: 'Full Time (8-10 Hours)',
+        vehType: 'Tata Ace / Mini Truck',
+        vehNum: 'RJ14 GA 5566',
+        dlNum: 'RJ14 20190098765',
+        status: 'Pending',
+        date: new Date(Date.now() - 4 * 3600000).toISOString()
+      }
+    ];
+    localStorage.setItem('rudraksha_rider_applications', JSON.stringify(allRiderApplications));
+  }
+}
+
+function renderRiderApplicationsTable() {
+  loadRiderApplications();
+  const tbody = document.getElementById('riderApplicationsTableBody');
+  if (!tbody) return;
+
+  if (allRiderApplications.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted"><i class="fa-solid fa-motorcycle me-2"></i>No rider partner applications yet.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = allRiderApplications.map((app, idx) => {
+    const status = app.status || 'Pending';
+    const statusBadge = status === 'Approved' ? 'bg-success text-white' : 'bg-warning text-dark';
+    const waMsg = `Hello ${app.name}, this is Rudraksha Express Logistics. We have reviewed your rider application (${app.vehType} - ${app.vehNum}). Welcome to our fleet team!`;
+
+    return `
+      <tr class="border-bottom border-secondary border-opacity-10">
+        <td>
+          <strong class="text-white small">${app.name}</strong>
+        </td>
+        <td>
+          <div class="small text-muted"><a href="tel:${app.phone}" class="text-decoration-none text-muted"><i class="fa-solid fa-phone text-success me-1"></i>+91 ${app.phone}</a></div>
+        </td>
+        <td><span class="small text-white">${app.city}</span></td>
+        <td><span class="badge bg-dark border border-secondary text-white" style="font-size: 0.7rem;">${app.shift}</span></td>
+        <td><strong class="text-warning small">${app.vehType}</strong></td>
+        <td><code class="text-white small">${app.vehNum}</code></td>
+        <td><span class="small text-muted">${app.dlNum}</span></td>
+        <td><span class="small text-muted" style="font-size: 0.72rem;">${new Date(app.date).toLocaleDateString('en-IN')}</span></td>
+        <td>
+          <div class="d-flex align-items-center gap-1">
+            <span class="badge ${statusBadge} py-1 px-2 small">${status}</span>
+            ${status === 'Pending' ? `
+              <button class="btn btn-sm btn-outline-success py-0 px-2" style="font-size: 0.72rem;" onclick="approveRiderPartner(${idx})" title="Approve Rider">
+                <i class="fa-solid fa-check"></i> Approve
+              </button>
+            ` : ''}
+            <a href="https://wa.me/91${app.phone}?text=${encodeURIComponent(waMsg)}" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2" title="WhatsApp Rider">
+              <i class="fa-brands fa-whatsapp"></i>
+            </a>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function approveRiderPartner(idx) {
+  if (allRiderApplications[idx]) {
+    allRiderApplications[idx].status = 'Approved';
+    localStorage.setItem('rudraksha_rider_applications', JSON.stringify(allRiderApplications));
+    showAdminToast(`Driver partner "${allRiderApplications[idx].name}" approved!`);
+    renderRiderApplicationsTable();
+    updateParcelMetrics();
+  }
 }
 
 function updateParcelMetrics() {
   const total = allAdminParcels.length;
   const active = allAdminParcels.filter(p => ['searching_driver', 'driver_assigned', 'reached_pickup', 'picked_up', 'in_transit', 'out_for_delivery'].includes(p.booking_status || p.status)).length;
-  const pending = allAdminParcels.filter(p => (p.booking_status || p.status) === 'searching_driver').length;
   const revenue = allAdminParcels.reduce((acc, p) => acc + (Number(p.total_amount) || 0), 0);
+  const ridersCount = allRiderApplications.length;
 
   if (document.getElementById('pclTotalCount')) document.getElementById('pclTotalCount').innerText = total;
   if (document.getElementById('pclActiveCount')) document.getElementById('pclActiveCount').innerText = active;
-  if (document.getElementById('pclPendingCount')) document.getElementById('pclPendingCount').innerText = pending;
+  if (document.getElementById('pclRidersCount')) document.getElementById('pclRidersCount').innerText = ridersCount;
+  if (document.getElementById('badgeRiderAppCount')) document.getElementById('badgeRiderAppCount').innerText = ridersCount;
   if (document.getElementById('pclRevenueTotal')) document.getElementById('pclRevenueTotal').innerText = `₹${revenue.toLocaleString('en-IN')}`;
 }
 
@@ -1168,11 +1354,13 @@ function searchParcelsTable(query) {
     return;
   }
   const filtered = allAdminParcels.filter(p =>
-    p.parcel_id?.toLowerCase().includes(q) ||
-    p.sender_name?.toLowerCase().includes(q) ||
-    p.receiver_name?.toLowerCase().includes(q) ||
-    p.sender_phone?.includes(q) ||
-    p.receiver_phone?.includes(q)
+    (p.parcel_id && p.parcel_id.toLowerCase().includes(q)) ||
+    (p.sender_name && p.sender_name.toLowerCase().includes(q)) ||
+    (p.receiver_name && p.receiver_name.toLowerCase().includes(q)) ||
+    (p.sender_phone && p.sender_phone.includes(q)) ||
+    (p.receiver_phone && p.receiver_phone.includes(q)) ||
+    (p.pickup_address && p.pickup_address.toLowerCase().includes(q)) ||
+    (p.drop_address && p.drop_address.toLowerCase().includes(q))
   );
   renderParcelsTable(filtered);
 }
@@ -1182,7 +1370,7 @@ function renderParcelsTable(list = allAdminParcels) {
   if (!tbody) return;
 
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted"><i class="fa-solid fa-box-open me-2"></i>No parcel deliveries found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted"><i class="fa-solid fa-box-open me-2"></i>No parcel deliveries found.</td></tr>`;
     return;
   }
 
@@ -1199,12 +1387,12 @@ function renderParcelsTable(list = allAdminParcels) {
     const veh = (p.vehicle_type || 'bike').toUpperCase();
     const amount = `₹${p.total_amount || 0}`;
     const status = p.booking_status || p.status || 'searching_driver';
-    const dPhone = p.assigned_driver_phone || '9876543210';
+    const dPhone = p.assigned_driver_phone || '7296831460';
     const dName = p.assigned_driver_name || 'Assigned Driver';
 
     const driverDisplay = p.assigned_driver_name
       ? `<div><strong class="text-white small">👨‍✈️ ${p.assigned_driver_name}</strong><br><span class="small text-muted">+91 ${dPhone}</span></div>`
-      : `<button class="btn btn-sm btn-outline-warning rounded-pill py-0 px-2" onclick="openAssignParcelDriverModal('${pId}')"><i class="fa-solid fa-plus me-1"></i>Assign Driver</button>`;
+      : `<button class="btn btn-sm btn-outline-warning rounded-pill py-0 px-2" style="font-size: 0.72rem;" onclick="openAssignParcelDriverModal('${pId}')"><i class="fa-solid fa-plus me-1"></i>Assign Driver</button>`;
 
     const statusBadgeClass = {
       'searching_driver': 'bg-warning text-dark',
@@ -1219,45 +1407,40 @@ function renderParcelsTable(list = allAdminParcels) {
     }[status] || 'bg-secondary text-white';
 
     const statusLabels = {
-      'searching_driver': '🟡 Booking Request Sent',
+      'searching_driver': '🟡 Request Sent',
       'confirmed': '🔵 Confirmed',
       'driver_assigned': '🟣 Driver Assigned',
       'reached_pickup': '🟠 Reached Pickup',
       'picked_up': '📦 Parcel Picked Up',
       'in_transit': '🚚 In Transit',
-      'out_for_delivery': '🛵 Out for Delivery',
+      'out_for_delivery': '🛵 Out Delivery',
       'delivered': '🟢 Delivered',
       'cancelled': '🔴 Cancelled'
     };
 
     // 1. WhatsApp Customer Message
-    const custWaMsg = `Hello ${sName}, this is Rudraksha Packers & Movers. Your parcel booking ${pId} has been received. Our team is checking availability and will confirm the final fare shortly.`;
+    const custWaMsg = `Hello ${sName}, this is Rudraksha Express Logistics. Your parcel order ${pId} status is: ${statusLabels[status] || status}. For any support, reply to this message.`;
 
     // 2. WhatsApp Driver Dispatch Message
     const driverWaMsg = 
-`📦 *NEW PARCEL DELIVERY*
+`📦 *RUDRAKSHA EXPRESS - PARCEL DELIVERY ASSIGNMENT*
 ━━━━━━━━━━━━━━━━━━━━
 🆔 *Parcel ID:* ${pId}
 📍 *Pickup:* ${pickup}
 📍 *Drop:* ${drop}
-📦 *Parcel:* ${type} – ${p.weight_category || ''}
+📦 *Category:* ${type} (${p.weight_category || ''})
 🛵 *Vehicle:* ${veh}
-👤 *Customer:* ${sName}
-📞 *Customer Phone:* ${sPhone}
-💰 *Estimated Fare:* ${amount}
-
+👤 *Sender:* ${sName} (+91 ${sPhone})
+👤 *Receiver:* ${rName} (+91 ${rPhone})
+💰 *Collect Amount:* ${amount} (${p.payment_method || 'Cash'})
 ━━━━━━━━━━━━━━━━━━━━
-*DRIVER ACTION*
-Reply with:
-*ACCEPT*
-or
-*REJECT*`;
+Please confirm pickup on your driver portal.`;
 
     return `
-      <tr class="cyber-booking-row border-bottom border-secondary border-opacity-10">
+      <tr class="border-bottom border-secondary border-opacity-10">
         <td>
-          <strong class="text-orange" style="font-size: 0.9rem;">${pId}</strong>
-          <div class="small text-muted" style="font-size: 0.7rem;">${p.created_at ? new Date(p.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Just now'}</div>
+          <strong class="text-warning" style="font-size: 0.88rem;">${pId}</strong>
+          <div class="small text-muted" style="font-size: 0.7rem;">${p.created_at ? new Date(p.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Today'}</div>
         </td>
         <td>
           <div class="fw-bold text-white small">${sName}</div>
@@ -1268,13 +1451,13 @@ or
           <div class="small text-muted"><a href="tel:${rPhone}" class="text-decoration-none text-muted"><i class="fa-solid fa-phone text-success me-1"></i>+91 ${rPhone}</a></div>
         </td>
         <td>
-          <div class="small text-white text-truncate" style="max-width: 130px;" title="${pickup}">${pickup.split(',')[0]}</div>
-          <div class="small text-muted text-truncate" style="max-width: 130px;" title="${drop}">➔ ${drop.split(',')[0]}</div>
+          <div class="small text-white text-truncate" style="max-width: 140px;" title="${pickup}">📍 ${pickup.split(',')[0]}</div>
+          <div class="small text-muted text-truncate" style="max-width: 140px;" title="${drop}">➔ ${drop.split(',')[0]}</div>
           <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.68rem;">${dist} KM</span>
         </td>
         <td>
           <span class="badge bg-dark border border-secondary text-white small">${type}</span>
-          <div class="small text-orange mt-1 fw-bold">${veh}</div>
+          <div class="small text-warning mt-1 fw-bold">${veh}</div>
         </td>
         <td>
           <strong class="text-success">${amount}</strong>
@@ -1285,8 +1468,8 @@ or
         </td>
         <td>${driverDisplay}</td>
         <td>
-          <div class="d-flex gap-1 align-items-center">
-            <select class="form-select form-select-sm bg-dark text-white border-secondary py-0" style="font-size: 0.72rem; width: 125px;" onchange="quickUpdateParcelStatus('${pId}', this.value)">
+          <div class="d-flex gap-1 align-items-center flex-wrap">
+            <select class="form-select form-select-sm bg-dark text-white border-secondary py-0" style="font-size: 0.72rem; width: 120px;" onchange="quickUpdateParcelStatus('${pId}', this.value)">
               <option value="searching_driver" ${status==='searching_driver'?'selected':''}>🟡 Request Sent</option>
               <option value="confirmed" ${status==='confirmed'?'selected':''}>🔵 Confirmed</option>
               <option value="driver_assigned" ${status==='driver_assigned'?'selected':''}>🟣 Driver Assigned</option>
@@ -1297,14 +1480,14 @@ or
               <option value="delivered" ${status==='delivered'?'selected':''}>🟢 Delivered</option>
               <option value="cancelled" ${status==='cancelled'?'selected':''}>🔴 Cancelled</option>
             </select>
-            <a href="https://wa.me/91${sPhone}?text=${encodeURIComponent(custWaMsg)}" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2" title="📲 WhatsApp Customer">
-              <i class="fa-brands fa-whatsapp"></i> <span class="d-none d-xl-inline" style="font-size: 0.7rem;">Customer</span>
+            <a href="https://wa.me/91${sPhone}?text=${encodeURIComponent(custWaMsg)}" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2" title="WhatsApp Customer">
+              <i class="fa-brands fa-whatsapp"></i>
             </a>
-            <a href="https://wa.me/91${dPhone}?text=${encodeURIComponent(driverWaMsg)}" target="_blank" class="btn btn-sm btn-outline-warning py-0 px-2" title="📲 Send to Driver">
-              <i class="fa-solid fa-paper-plane"></i> <span class="d-none d-xl-inline" style="font-size: 0.7rem;">Driver</span>
+            <a href="https://wa.me/91${dPhone}?text=${encodeURIComponent(driverWaMsg)}" target="_blank" class="btn btn-sm btn-outline-warning py-0 px-2" title="Send to Driver">
+              <i class="fa-solid fa-paper-plane"></i>
             </a>
-            <a href="track.html?id=${pId}" target="_blank" class="btn btn-sm btn-outline-info py-0 px-2" title="View Tracking Page">
-              <i class="fa-solid fa-magnifying-glass-location"></i>
+            <a href="track.html?id=${pId}" target="_blank" class="btn btn-sm btn-outline-info py-0 px-2" title="Live Tracking">
+              <i class="fa-solid fa-location-crosshairs"></i>
             </a>
           </div>
         </td>
@@ -1324,15 +1507,15 @@ function openAssignParcelDriverModal(parcelId) {
 
   const select = document.getElementById('assignParcelDriverSelect');
   if (select) {
-    if (adminDrivers.length > 0) {
-      select.innerHTML = adminDrivers.map(d => `
-        <option value="${d.id}">${d.driver_name} - ${d.vehicle_type} (${d.vehicle_number}) • Phone: ${d.phone}</option>
+    if (allRiderApplications.length > 0) {
+      select.innerHTML = allRiderApplications.map(d => `
+        <option value="${d.name}">${d.name} - ${d.vehType} (${d.vehNum}) • Phone: ${d.phone}</option>
       `).join('');
     } else {
       select.innerHTML = `
-        <option value="drv-101">Rajesh Kumar - Tata Ace (RJ-14-GA-1024)</option>
-        <option value="drv-102">Vikram Singh - Hero Splendor (RJ-14-MB-2244)</option>
-        <option value="drv-103">Ramesh Meena - Bajaj Auto (RJ-14-TA-9988)</option>
+        <option value="Mukesh Sharma">Mukesh Sharma - Bike (RJ-14-AB-1234) • 9829012345</option>
+        <option value="Vikram Singh">Vikram Singh - EV Scooter (RJ-14-MB-2244) • 9414012345</option>
+        <option value="Rajesh Kumar">Rajesh Kumar - Tata Ace (RJ-14-GA-1024) • 7296831460</option>
       `;
     }
   }
@@ -1344,64 +1527,111 @@ function openAssignParcelDriverModal(parcelId) {
 async function submitParcelDriverAssignment() {
   const parcelId = document.getElementById('assignParcelId')?.value;
   const select = document.getElementById('assignParcelDriverSelect');
-  const selectedDriverId = select?.value;
+  const driverName = select?.value || 'Assigned Driver';
 
-  let driver = adminDrivers.find(d => d.id === selectedDriverId) || {
-    id: selectedDriverId || 'drv-101',
-    driver_name: select?.options[select.selectedIndex]?.text?.split('-')[0]?.trim() || 'Rajesh Kumar',
-    phone: '9876543210',
-    vehicle_number: 'RJ-14-GA-1024',
-    vehicle_type: 'Tata Ace'
-  };
-
-  try {
-    const res = await fetch(`${API_BASE}/parcels/${parcelId}/assign`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        driver_id: driver.id,
-        driver_name: driver.driver_name,
-        driver_phone: driver.phone,
-        vehicle_number: driver.vehicle_number,
-        vehicle_type: driver.vehicle_type
-      })
-    });
-
-    if (res.ok) {
-      showAdminToast(`Driver "${driver.driver_name}" assigned to parcel ${parcelId}!`);
-      const modalEl = document.getElementById('assignParcelDriverModal');
-      const modal = bootstrap.Modal.getInstance(modalEl);
-      if (modal) modal.hide();
-      await loadAdminParcels();
-    } else {
-      throw new Error('Assignment failed');
-    }
-  } catch (err) {
-    showAdminToast(`Assigned rider locally to ${parcelId}`);
-    const modalEl = document.getElementById('assignParcelDriverModal');
-    const modal = bootstrap.Modal.getInstance(modalEl);
-    if (modal) modal.hide();
-    await loadAdminParcels();
+  const p = allAdminParcels.find(x => (x.parcel_id === parcelId || x.id === parcelId));
+  if (p) {
+    p.assigned_driver_name = driverName;
+    p.assigned_driver_phone = '7296831460';
+    p.booking_status = 'driver_assigned';
+    localStorage.setItem('rudraksha_parcels_history', JSON.stringify(allAdminParcels));
   }
+
+  showAdminToast(`Driver "${driverName}" assigned to Parcel ${parcelId}!`);
+  bootstrap.Modal.getInstance(document.getElementById('assignParcelDriverModal'))?.hide();
+  renderParcelsTable();
+  updateParcelMetrics();
 }
 
 async function quickUpdateParcelStatus(parcelId, newStatus) {
-  try {
-    const res = await fetch(`${API_BASE}/parcels/${parcelId}/status`, {
-      method: 'PATCH',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ status: newStatus, updated_by: 'Admin' })
-    });
-
-    if (res.ok) {
-      showAdminToast(`Parcel ${parcelId} status updated to "${newStatus.toUpperCase()}"`);
-      await loadAdminParcels();
-    }
-  } catch (err) {
-    showAdminToast(`Updated parcel ${parcelId} status locally to ${newStatus}`);
-    const p = allAdminParcels.find(x => x.parcel_id === parcelId || x.id === parcelId);
-    if (p) p.booking_status = newStatus;
-    renderParcelsTable();
+  const p = allAdminParcels.find(x => (x.parcel_id === parcelId || x.id === parcelId));
+  if (p) {
+    p.booking_status = newStatus;
+    localStorage.setItem('rudraksha_parcels_history', JSON.stringify(allAdminParcels));
   }
+  showAdminToast(`Parcel ${parcelId} status updated to "${newStatus.toUpperCase()}"`);
+  renderParcelsTable();
+  updateParcelMetrics();
+}
+
+// Save & Load Parcel Tariff
+function saveAdminParcelRates() {
+  const rates = {
+    baseFare: parseFloat(document.getElementById('pclRateBase')?.value) || 40,
+    perKm: parseFloat(document.getElementById('pclRatePerKm')?.value) || 10,
+    handling: parseFloat(document.getElementById('pclRateHandling')?.value) || 10,
+    weights: {
+      upto_1kg: parseFloat(document.getElementById('pclWeightUpto1')?.value) || 0,
+      '1_5kg': parseFloat(document.getElementById('pclWeight1to5')?.value) || 20,
+      '5_10kg': parseFloat(document.getElementById('pclWeight5to10')?.value) || 40,
+      '10_20kg': parseFloat(document.getElementById('pclWeight10to20')?.value) || 70,
+      '20_50kg': parseFloat(document.getElementById('pclWeight20to50')?.value) || 120,
+      '50kg_plus': parseFloat(document.getElementById('pclWeight50Plus')?.value) || 250
+    },
+    vehicles: {
+      bike: parseFloat(document.getElementById('pclVehBike')?.value) || 0,
+      auto: parseFloat(document.getElementById('pclVehAuto')?.value) || 50,
+      mini_truck: parseFloat(document.getElementById('pclVehTruck')?.value) || 150
+    },
+    addons: {
+      fragile: parseFloat(document.getElementById('pclAddonFragile')?.value) || 25,
+      packaging: parseFloat(document.getElementById('pclAddonPackaging')?.value) || 40,
+      insurance: parseFloat(document.getElementById('pclAddonInsurance')?.value) || 49
+    }
+  };
+
+  localStorage.setItem('rudraksha_parcel_rates', JSON.stringify(rates));
+  showAdminToast('✅ Rudraksha Parcel Tariff & Rates saved successfully!');
+}
+
+function loadAdminParcelRates() {
+  const saved = localStorage.getItem('rudraksha_parcel_rates');
+  if (!saved) return;
+  try {
+    const r = JSON.parse(saved);
+    if (document.getElementById('pclRateBase')) document.getElementById('pclRateBase').value = r.baseFare || 40;
+    if (document.getElementById('pclRatePerKm')) document.getElementById('pclRatePerKm').value = r.perKm || 10;
+    if (document.getElementById('pclRateHandling')) document.getElementById('pclRateHandling').value = r.handling || 10;
+    if (r.weights) {
+      if (document.getElementById('pclWeightUpto1')) document.getElementById('pclWeightUpto1').value = r.weights.upto_1kg || 0;
+      if (document.getElementById('pclWeight1to5')) document.getElementById('pclWeight1to5').value = r.weights['1_5kg'] || 20;
+      if (document.getElementById('pclWeight5to10')) document.getElementById('pclWeight5to10').value = r.weights['5_10kg'] || 40;
+      if (document.getElementById('pclWeight10to20')) document.getElementById('pclWeight10to20').value = r.weights['10_20kg'] || 70;
+      if (document.getElementById('pclWeight20to50')) document.getElementById('pclWeight20to50').value = r.weights['20_50kg'] || 120;
+      if (document.getElementById('pclWeight50Plus')) document.getElementById('pclWeight50Plus').value = r.weights['50kg_plus'] || 250;
+    }
+    if (r.vehicles) {
+      if (document.getElementById('pclVehBike')) document.getElementById('pclVehBike').value = r.vehicles.bike || 0;
+      if (document.getElementById('pclVehAuto')) document.getElementById('pclVehAuto').value = r.vehicles.auto || 50;
+      if (document.getElementById('pclVehTruck')) document.getElementById('pclVehTruck').value = r.vehicles.mini_truck || 150;
+    }
+    if (r.addons) {
+      if (document.getElementById('pclAddonFragile')) document.getElementById('pclAddonFragile').value = r.addons.fragile || 25;
+      if (document.getElementById('pclAddonPackaging')) document.getElementById('pclAddonPackaging').value = r.addons.packaging || 40;
+      if (document.getElementById('pclAddonInsurance')) document.getElementById('pclAddonInsurance').value = r.addons.insurance || 49;
+    }
+  } catch (err) {}
+}
+
+// Export CSV for Parcels
+function exportParcelsToCSV() {
+  if (allAdminParcels.length === 0) {
+    alert('No parcel orders to export.');
+    return;
+  }
+  let csv = 'Parcel ID,Sender Name,Sender Phone,Receiver Name,Receiver Phone,Pickup Address,Drop Address,Distance (KM),Category,Vehicle,Total Amount,Payment Mode,Status,Assigned Driver\n';
+  allAdminParcels.forEach(p => {
+    csv += `"${p.parcel_id || p.id}","${p.sender_name || ''}","${p.sender_phone || ''}","${p.receiver_name || ''}","${p.receiver_phone || ''}","${(p.pickup_address || '').replace(/"/g, '""')}","${(p.drop_address || '').replace(/"/g, '""')}",${p.distance_km || 0},"${p.parcel_type || ''}","${p.vehicle_type || ''}",${p.total_amount || 0},"${p.payment_method || ''}","${p.booking_status || p.status || ''}","${p.assigned_driver_name || ''}"\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `rudraksha_parcels_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showAdminToast('📥 Exported Rudraksha Parcel Orders CSV!');
 }
 
