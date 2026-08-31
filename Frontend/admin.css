@@ -284,6 +284,13 @@ body.cyber-dark-body {
   gap: 20px;
 }
 
+.cyber-grid-col-12 { grid-column: span 12; }
+.cyber-grid-col-8 { grid-column: span 8; }
+.cyber-grid-col-6 { grid-column: span 6; }
+.cyber-grid-col-5 { grid-column: span 5; }
+.cyber-grid-col-4 { grid-column: span 4; }
+.cyber-grid-col-3 { grid-column: span 3; }
+
 /* Staggered entrance animation classes */
 .cyber-card {
   background: var(--bg-card);

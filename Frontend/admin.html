@@ -60,7 +60,7 @@
 
         <div class="d-flex justify-content-between align-items-center mb-4">
           <label class="d-flex align-items-center gap-2 small text-muted cursor-pointer" style="cursor: pointer;">
-            <input type="checkbox" id="rememberAdminCheck" checked style="accent-color: #D0FD38;"> Remember session
+            <input type="checkbox" id="rememberAdminCheck" style="accent-color: #D0FD38;"> Remember session
           </label>
           <span class="cyber-badge-pill">256-Bit Encrypted</span>
         </div>
@@ -68,6 +68,10 @@
         <button type="submit" class="btn-cyber-neon w-100 py-3" id="btnLoginSubmit">
           <i class="fa-solid fa-bolt me-1"></i> Unlock Dashboard
         </button>
+
+        <div style="font-size: 0.72rem; color: #94a3b8; text-align: center; margin-top: 12px;">
+          Master Key: <strong class="text-white">rudraksha@admin2026</strong> or <strong class="text-white">admin123</strong>
+        </div>
       </form>
 
       <div class="mt-4 pt-3 border-top border-secondary text-center">
@@ -128,6 +132,10 @@
               <span class="cyber-profile-rating"><i class="fa-solid fa-star"></i> 4.9 rating</span>
             </div>
           </div>
+
+          <button type="button" class="btn-cyber-outline" onclick="logoutAdmin()" style="border-color: rgba(239, 68, 68, 0.4); color: #f87171;" title="Log Out from Admin Hub">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> <span class="d-none d-sm-inline">Logout</span>
+          </button>
         </div>
       </header>
 
@@ -226,6 +234,58 @@
                 <span>4h 30m</span>
                 <span>46m</span>
               </div>
+            </div>
+          </div>
+
+          <!-- WIDGET: NEW DRIVER PARTNER REGISTRATIONS (Dedicated Prominent Showcase on Dashboard) -->
+          <div class="cyber-card cyber-grid-col-12" id="dashRiderAppsWidget" style="border: 1.5px solid rgba(249, 115, 22, 0.35); background: linear-gradient(180deg, rgba(249,115,22,0.06) 0%, rgba(20,20,26,0.98) 100%);">
+            <div class="cyber-card-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+              <div class="d-flex align-items-center gap-3">
+                <div style="width: 44px; height: 44px; border-radius: 14px; background: rgba(249,115,22,0.15); border: 1.5px solid rgba(249,115,22,0.35); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(249,115,22,0.2);">
+                  <i class="fa-solid fa-id-card text-warning fs-5"></i>
+                </div>
+                <div>
+                  <div class="fw-bold text-white fs-6 d-flex align-items-center gap-2">
+                    <span>New Driver Partner Applications</span>
+                    <span class="badge bg-warning text-dark px-2 py-1 fw-bold" id="dashRiderBadge" style="font-size: 0.72rem;">0 Pending</span>
+                  </div>
+                  <div class="small text-muted" style="font-size: 0.75rem;">Prospective delivery partners who registered via website's "Become a Rider" form</div>
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn-cyber-outline py-1 px-3" style="font-size: 0.75rem;" onclick="renderDashboardRiderApps()">
+                  <i class="fa-solid fa-rotate me-1"></i> Refresh
+                </button>
+                <button type="button" class="btn-cyber-neon py-1 px-3" style="font-size: 0.75rem;" onclick="switchAdminTab('riders')">
+                  <span>Manage All Driver Apps</span> <i class="fa-solid fa-arrow-right ms-1"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Table of recent applications -->
+            <div class="table-responsive">
+              <table class="cyber-table table-borderless text-white mb-0" style="width: 100%;">
+                <thead>
+                  <tr class="border-bottom border-secondary border-opacity-25 text-muted small" style="font-size: 0.75rem;">
+                    <th>Applicant Name</th>
+                    <th>Phone / WhatsApp</th>
+                    <th>City / Zone</th>
+                    <th>Vehicle Details</th>
+                    <th>Reg Number</th>
+                    <th>DL Number</th>
+                    <th>Applied Date</th>
+                    <th>Status</th>
+                    <th class="text-end">Quick Action</th>
+                  </tr>
+                </thead>
+                <tbody id="dashRiderApplicationsTableBody">
+                  <tr>
+                    <td colspan="9" class="text-center py-4 text-muted">
+                      <i class="fa-solid fa-spinner fa-spin me-1"></i> Loading driver applications...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -1052,6 +1112,97 @@
 
       </section>
 
+      <!-- ======================================================================
+           TAB 8: DEDICATED DRIVER PARTNER ONBOARDING HUB
+           ====================================================================== -->
+      <section class="cyber-tab-panel" id="tab-riders">
+        <div class="cyber-card mb-4" style="border: 1.5px solid rgba(249, 115, 22, 0.35); background: linear-gradient(180deg, rgba(249,115,22,0.06) 0%, rgba(20,20,26,0.98) 100%);">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+              <div style="width: 52px; height: 52px; border-radius: 16px; background: rgba(249,115,22,0.18); border: 1.5px solid rgba(249,115,22,0.4); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(249,115,22,0.25);">
+                <i class="fa-solid fa-motorcycle text-warning fa-xl"></i>
+              </div>
+              <div>
+                <h4 class="fw-bold text-white mb-1">Driver Partner Onboarding & Applications Hub</h4>
+                <div class="text-muted small">Review, approve, and auto-dispatch security PINs to new delivery drivers via WhatsApp.</div>
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <button class="btn-cyber-outline" onclick="renderRiderApplicationsTable()">
+                <i class="fa-solid fa-rotate me-1"></i> Refresh Applications
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Metrics Row -->
+          <div class="row g-3 mt-3">
+            <div class="col-6 col-md-3">
+              <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);">
+                <div class="small text-muted mb-1" style="font-size: 0.72rem;">Total Registrations</div>
+                <div class="fs-4 fw-extrabold text-white" id="statRiderTotal">0</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-3 rounded-3" style="background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.25);">
+                <div class="small text-warning mb-1" style="font-size: 0.72rem;"><i class="fa-solid fa-clock me-1"></i> Pending Review</div>
+                <div class="fs-4 fw-extrabold text-warning" id="statRiderPending">0</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-3 rounded-3" style="background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25);">
+                <div class="small text-success mb-1" style="font-size: 0.72rem;"><i class="fa-solid fa-circle-check me-1"></i> Active Approved</div>
+                <div class="fs-4 fw-extrabold text-success" id="statRiderApproved">0</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-3 rounded-3" style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);">
+                <div class="small text-danger mb-1" style="font-size: 0.72rem;"><i class="fa-solid fa-ban me-1"></i> Rejected</div>
+                <div class="fs-4 fw-extrabold text-danger" id="statRiderRejected">0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter & Applicant List Card -->
+        <div class="cyber-card">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+              <button class="btn btn-sm btn-outline-warning active px-3 rounded-pill fw-bold" id="btnFilterRiderAll" onclick="filterRiderApps('all')">All (<span id="countFilterAll">0</span>)</button>
+              <button class="btn btn-sm btn-outline-warning px-3 rounded-pill fw-bold" id="btnFilterRiderPending" onclick="filterRiderApps('Pending')">Pending (<span id="countFilterPending">0</span>)</button>
+              <button class="btn btn-sm btn-outline-success px-3 rounded-pill fw-bold" id="btnFilterRiderApproved" onclick="filterRiderApps('Approved')">Approved (<span id="countFilterApproved">0</span>)</button>
+            </div>
+            <div class="small text-muted">
+              Approving a driver automatically generates their Driver PIN & opens WhatsApp with their login credentials.
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="cyber-table table-borderless text-white mb-0" style="width: 100%; min-width: 950px;">
+              <thead>
+                <tr class="border-bottom border-secondary border-opacity-25 text-muted small">
+                  <th>Applicant Name & ID</th>
+                  <th>Phone / WhatsApp</th>
+                  <th>City / Operating Area</th>
+                  <th>Shift</th>
+                  <th>Vehicle Details</th>
+                  <th>DL Number</th>
+                  <th>Applied Date</th>
+                  <th>Status</th>
+                  <th class="text-end">Verification Actions</th>
+                </tr>
+              </thead>
+              <tbody id="riderApplicationsTableBody">
+                <tr>
+                  <td colspan="9" class="text-center py-4 text-muted">
+                    <i class="fa-solid fa-spinner fa-spin me-1"></i> Loading driver applications...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
     </main>
 
     <!-- ======================================================================
@@ -1069,6 +1220,11 @@
       <button class="cyber-dock-btn" id="dock-parcels" onclick="switchAdminTab('parcels')" title="On-Demand Parcel Delivery">
         <i class="fa-solid fa-box-open"></i>
         <span>Parcels</span>
+      </button>
+      <button class="cyber-dock-btn position-relative" id="dock-riders" onclick="switchAdminTab('riders')" title="Driver Partner Applications">
+        <i class="fa-solid fa-id-badge text-warning"></i>
+        <span>Driver Apps</span>
+        <span class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle d-none" id="dockRiderBadgeCount" style="font-size: 0.62rem; padding: 2px 5px;">0</span>
       </button>
       <button class="cyber-dock-btn" id="dock-fleet" onclick="switchAdminTab('fleet')" title="Transport Fleet & Drivers">
         <i class="fa-solid fa-truck-fast"></i>
