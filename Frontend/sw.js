@@ -3,7 +3,7 @@
  * Ultra-resilient, crash-proof caching with live network priority
  */
 
-const CACHE_NAME = 'rudraksha-pwa-v2.1.0';
+const CACHE_NAME = 'rudraksha-pwa-v2.3.0';
 const STATIC_ASSETS = [
   './index.html',
   './parcel.html',
@@ -109,7 +109,7 @@ self.addEventListener('fetch', (event) => {
 
   // 4. Static Assets (CSS, JS, Images, Fonts): Cache-first with Network Fallback
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
+    caches.match(request, { ignoreSearch: true }).then((cachedResponse) => {
       if (cachedResponse) {
         // Revalidate in background
         fetch(request)
