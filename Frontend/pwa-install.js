@@ -27,7 +27,7 @@
   const isAdmin = window.location.pathname.includes('admin.html');
   const appName = isAdmin ? 'Rudraksha Admin Control' : 'Rudraksha Packers & Movers';
   const appDesc = isAdmin ? 'Live Fleets, Bookings & Rates' : 'Fast Shifting & Parcel Delivery App';
-  const appIcon = 'icon-192.png';
+  const appIcon = 'favicon.ico';
 
   let deferredPrompt = null;
 
