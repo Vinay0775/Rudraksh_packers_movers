@@ -36,6 +36,10 @@
   <!-- Global & Parcel BRDG ERRAND Theme Styles & PWA Styles -->
   <link rel="stylesheet" href="parcel.css">
   <link rel="stylesheet" href="pwa-install.css">
+
+  <!-- Leaflet CSS & JS (Free OpenStreetMap & Commercial GPS Routing Engine) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 
 <body>
@@ -230,10 +234,21 @@
                     <i class="fa-solid fa-location-crosshairs"></i> Use My Location
                   </button>
                 </div>
-                <div class="brdg-input-group">
+                <div class="brdg-input-group position-relative">
                   <i class="fa-solid fa-circle-dot brdg-input-icon icon-pickup"></i>
                   <input type="text" class="brdg-input-control" id="pclPickupInput"
-                    placeholder="Enter pickup address (e.g. Mansarovar, Jaipur)" required>
+                    placeholder="Colony, area or city (e.g. Mansarovar, Jaipur)"
+                    autocomplete="off" onfocus="setParcelMapPinMode('pickup')" required>
+                  <div class="parcel-autocomplete-dropdown" id="pclPickupSuggestions"></div>
+                </div>
+                <!-- Quick Pickup Chips -->
+                <div class="parcel-quick-chips mt-2">
+                  <span class="chips-label">Quick:</span>
+                  <button type="button" class="parcel-chip-btn" onclick="selectParcelQuickArea('pickup', 'Mansarovar, Jaipur')">📍 Mansarovar</button>
+                  <button type="button" class="parcel-chip-btn" onclick="selectParcelQuickArea('pickup', 'Vaishali Nagar, Jaipur')">📍 Vaishali</button>
+                  <button type="button" class="parcel-chip-btn" onclick="selectParcelQuickArea('pickup', 'Malviya Nagar, Jaipur')">📍 Malviya Nagar</button>
+                  <button type="button" class="parcel-chip-btn" onclick="selectParcelQuickArea('pickup', 'Sirsi Road, Jaipur')">📍 Sirsi Road</button>
+                  <button type="button" class="parcel-chip-btn" onclick="selectParcelQuickArea('pickup', 'Raja Park, Jaipur')">📍 Raja Park</button>
                 </div>
               </div>
 
@@ -241,25 +256,83 @@
               <div class="col-md-6">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                   <label class="small fw-bold text-muted">Drop Location <span class="text-danger">*</span></label>
-                  <button type="button" class="btn-gps-action"
-                    onclick="recalculateDistance(); calculateFreeParcelFare();">
-                    <i class="fa-solid fa-route"></i> Estimate Distance
+                  <button type="button" class="btn-gps-action" onclick="calculateParcelOSRMRoute(true)">
+                    <i class="fa-solid fa-arrows-rotate"></i> Recalculate Route
                   </button>
                 </div>
-                <div class="brdg-input-group">
+                <div class="brdg-input-group position-relative">
                   <i class="fa-solid fa-location-dot brdg-input-icon icon-drop"></i>
                   <input type="text" class="brdg-input-control" id="pclDropInput"
-                    placeholder="Enter drop address (e.g. Vaishali Nagar, Jaipur)" required>
+                    placeholder="Colony, area or city (e.g. Vaishali Nagar, Jaipur)"
+                    autocomplete="off" onfocus="setParcelMapPinMode('drop')" required>
+                  <div class="parcel-autocomplete-dropdown" id="pclDropSuggestions"></div>
+                </div>
+                <!-- Quick Drop Chips -->
+                <div class="parcel-quick-chips mt-2">
+                  <span class="chips-label">Quick:</span>
+                  <button type="button" class="parcel-chip-btn" onclick="selectParcelQuickArea('drop', 'Vaishali Nagar, Jaipur')">🏁 Vaishali</button>
+                  <button type="button" class="parcel-chip-btn" onclick="selectParcelQuickArea('drop', 'Mansarovar, Jaipur')">🏁 Mansarovar</button>
+                  <button type="button" class="parcel-chip-btn" onclick="selectParcelQuickArea('drop', 'Malviya Nagar, Jaipur')">🏁 Malviya Nagar</button>
+                  <button type="button" class="parcel-chip-btn" onclick="selectParcelQuickArea('drop', 'C-Scheme, Jaipur')">🏁 C-Scheme</button>
+                  <button type="button" class="parcel-chip-btn" onclick="selectParcelQuickArea('drop', 'Gurugram, Delhi NCR')">🏁 Gurgaon</button>
+                  <button type="button" class="parcel-chip-btn" onclick="selectParcelQuickArea('drop', 'Noida, Delhi NCR')">🏁 Noida</button>
                 </div>
               </div>
 
-              <div class="col-12">
-                <div class="p-2 px-3 rounded-3 d-flex justify-content-between align-items-center bg-light border small"
-                  id="pclDistanceDisplay">
-                  <div>
-                    <i class="fa-solid fa-route text-warning me-1"></i> Estimated Road Distance: <strong>8.4 KM</strong>
+              <!-- Interactive Live OpenStreetMap & Real GPS Routing -->
+              <div class="col-12 mt-3">
+                <div class="parcel-map-toolbar d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                  <div class="btn-group btn-group-sm parcel-pin-mode-group shadow-xs" role="group">
+                    <button type="button" class="btn btn-parcel-pin active" id="btnPclPinPickup" onclick="setParcelMapPinMode('pickup')">
+                      <i class="fa-solid fa-location-dot me-1 text-success"></i> Set Pickup 📍
+                    </button>
+                    <button type="button" class="btn btn-parcel-pin" id="btnPclPinDrop" onclick="setParcelMapPinMode('drop')">
+                      <i class="fa-solid fa-flag-checkered me-1 text-danger"></i> Set Drop 🏁
+                    </button>
                   </div>
-                  <span class="badge bg-secondary text-white" style="font-size: 0.7rem;">Live Calculated</span>
+                  <div class="parcel-route-status-pill" id="pclRouteMapStatus">
+                    <i class="fa-solid fa-satellite-dish text-warning me-1"></i> Live OSRM Road Distance Engine Ready
+                  </div>
+                </div>
+
+                <!-- Leaflet Map Canvas -->
+                <div id="parcelRouteMap" class="parcel-route-map-canvas"></div>
+
+                <div class="parcel-map-tip d-flex justify-content-between align-items-center flex-wrap gap-2 mt-2">
+                  <span><i class="fa-solid fa-hand-pointer text-warning me-1"></i> <strong>Pro Tip:</strong> Click the map or drag 📍 Pickup / 🏁 Drop markers to pinpoint exact street or building!</span>
+                  <span class="badge bg-warning-subtle text-dark border border-warning-subtle"><i class="fa-solid fa-shield-halved text-success me-1"></i> Live Road Verified</span>
+                </div>
+              </div>
+
+              <!-- Commercial Live Distance & Time Card -->
+              <div class="col-12 mt-2">
+                <div class="parcel-live-distance-card" id="pclDistanceCard">
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="distance-metric-icon">
+                      <i class="fa-solid fa-route"></i>
+                    </div>
+                    <div>
+                      <div class="distance-metric-label">LIVE ROAD DISTANCE</div>
+                      <div class="distance-metric-value" id="pclDistanceVal">8.4 KM</div>
+                    </div>
+                  </div>
+
+                  <div class="d-flex align-items-center gap-3 border-start ps-3 d-none d-sm-flex">
+                    <div class="distance-metric-icon bg-time">
+                      <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div>
+                      <div class="distance-metric-label">ESTIMATED TRANSIT</div>
+                      <div class="distance-metric-time" id="pclTransitTimeVal">~22 Mins</div>
+                    </div>
+                  </div>
+
+                  <div class="ms-auto text-end">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-bold" id="pclRoutingQualityBadge">
+                      <i class="fa-solid fa-circle-check me-1"></i> Live GPS Road Route
+                    </span>
+                    <div class="text-muted small mt-1" style="font-size: 0.72rem;">Dynamic ₹10 / KM pricing</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -486,8 +559,8 @@
               <strong id="pclFareBase">₹40</strong>
             </div>
             <div class="fare-line-row">
-              <span>Distance Charge:</span>
-              <strong id="pclFareDistance">₹80</strong>
+              <span id="pclFareDistanceLabel">Distance Charge (8.4 KM):</span>
+              <strong id="pclFareDistance">₹84</strong>
             </div>
             <div class="fare-line-row">
               <span>Weight Charge:</span>

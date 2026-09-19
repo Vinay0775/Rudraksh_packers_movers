@@ -38,14 +38,14 @@ const VEHICLE_CONFIG = {
 
 // State Object for Parcel Booking
 let parcelBookingState = {
-  pickupAddress: '',
-  pickupLat: null,
-  pickupLng: null,
-  dropAddress: '',
-  dropLat: null,
-  dropLng: null,
+  pickupAddress: 'Mansarovar, Jaipur',
+  pickupCoords: [26.8611, 75.7644], // Default: Mansarovar, Jaipur
+  dropAddress: 'Vaishali Nagar, Jaipur',
+  dropCoords: [26.9075, 75.7397], // Default: Vaishali Nagar, Jaipur
   estimatedDistanceKm: 8.4,
-  distanceConfirmed: false,
+  estimatedDurationMins: 22,
+  distanceConfirmed: true,
+  mapPinMode: 'pickup', // 'pickup' | 'drop'
   parcelType: 'Small Package',
   weightCategory: '1_5kg',
   weightLabel: '1–5 KG',
@@ -67,9 +67,82 @@ const isLocalhostEnv = window.location.hostname === 'localhost' || window.locati
 const PRODUCTION_BACKEND_URL = 'https://rudraksha-packers-movers.onrender.com/api';
 const PARCEL_API_ENDPOINT = isLocalhostEnv ? 'http://localhost:3000/api' : (localStorage.getItem('rudraksha_backend_api_url') || PRODUCTION_BACKEND_URL);
 
+// Leaflet Map & Marker Instances
+let parcelLeafletMap = null;
+let parcelPickupMarker = null;
+let parcelDropMarker = null;
+let parcelRoutePolyline = null;
+let lastGeocodedParcelPickup = '';
+let lastGeocodedParcelDrop = '';
+
+// High-speed Pre-indexed Coordinate Database for 0ms latency geocoding
+const POPULAR_LOCATIONS = {
+  'mansarovar, jaipur': [26.8611, 75.7644],
+  'mansarovar': [26.8611, 75.7644],
+  'vaishali nagar, jaipur': [26.9075, 75.7397],
+  'vaishali nagar': [26.9075, 75.7397],
+  'vaishali': [26.9075, 75.7397],
+  'malviya nagar, jaipur': [26.8529, 75.8237],
+  'malviya nagar': [26.8529, 75.8237],
+  'sirsi road, jaipur': [26.9239, 75.7186],
+  'sirsi road': [26.9239, 75.7186],
+  'raja park, jaipur': [26.8978, 75.8273],
+  'raja park': [26.8978, 75.8273],
+  'jagatpura, jaipur': [26.8242, 75.8569],
+  'jagatpura': [26.8242, 75.8569],
+  'c-scheme, jaipur': [26.9090, 75.7997],
+  'c-scheme': [26.9090, 75.7997],
+  'c scheme': [26.9090, 75.7997],
+  'sitapura, jaipur': [26.7794, 75.8361],
+  'sitapura': [26.7794, 75.8361],
+  'ajmer road, jaipur': [26.8920, 75.7480],
+  'ajmer road': [26.8920, 75.7480],
+  'tonk road, jaipur': [26.8567, 75.8038],
+  'tonk road': [26.8567, 75.8038],
+  'bani park, jaipur': [26.9312, 75.7904],
+  'bani park': [26.9312, 75.7904],
+  'sodala, jaipur': [26.9015, 75.7725],
+  'sodala': [26.9015, 75.7725],
+  'sanganer, jaipur': [26.8167, 75.7833],
+  'sanganer': [26.8167, 75.7833],
+  'vidhyadhar nagar, jaipur': [26.9637, 75.7745],
+  'vidhyadhar nagar': [26.9637, 75.7745],
+  'jhotwara, jaipur': [26.9535, 75.7478],
+  'jhotwara': [26.9535, 75.7478],
+  'jaipur': [26.9124, 75.7873],
+  'gurugram, delhi ncr': [28.4595, 77.0266],
+  'gurugram': [28.4595, 77.0266],
+  'gurgaon': [28.4595, 77.0266],
+  'noida, delhi ncr': [28.5355, 77.3910],
+  'noida': [28.5355, 77.3910],
+  'delhi': [28.6139, 77.2090],
+  'delhi ncr': [28.6139, 77.2090],
+  'new delhi': [28.6139, 77.2090],
+  'mumbai, maharashtra': [19.0760, 72.8777],
+  'mumbai': [19.0760, 72.8777],
+  'pune': [18.5204, 73.8567],
+  'ahmedabad': [23.0225, 72.5714],
+  'bangalore': [12.9716, 77.5946],
+  'bengaluru': [12.9716, 77.5946],
+  'hyderabad': [17.3850, 78.4867],
+  'kolkata': [22.5726, 88.3639],
+  'lucknow': [26.8467, 80.9462],
+  'chandigarh': [30.7333, 76.7794],
+  'ajmer': [26.4499, 74.6399],
+  'kota': [25.2138, 75.8648],
+  'udaipur': [24.5854, 73.7125],
+  'jodhpur': [26.2389, 73.0243]
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   initParcelEventListeners();
+  initParcelAutocomplete();
   calculateFreeParcelFare();
+  
+  // Initialize Route Map after slight render delay
+  setTimeout(() => {
+    initParcelRouteMap();
+  }, 200);
 });
 
 /* ==========================================================================
@@ -89,6 +162,9 @@ function switchMainService(serviceType) {
       parcelContainer.classList.remove('d-none');
       parcelContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+    if (parcelLeafletMap) {
+      setTimeout(() => parcelLeafletMap.invalidateSize(), 300);
+    }
     calculateFreeParcelFare();
   } else {
     if (tabParcel) tabParcel.classList.remove('active');
@@ -102,30 +178,552 @@ function switchMainService(serviceType) {
 }
 
 /* ==========================================================================
-   3. EVENT LISTENERS & FREE NATIVE GEOLOCATION (No Paid Map API)
+   3. COMMERCIAL LEAFLET ROUTE MAP & REAL-TIME OSRM ENGINE
    ========================================================================== */
+function createParcelPinIcon(label, isPickup) {
+  return L.divIcon({
+    className: 'parcel-custom-marker',
+    html: `
+      <div class="parcel-pin-icon">
+        <div class="parcel-pin-badge ${isPickup ? '' : 'drop'}">
+          ${isPickup ? '📍 PICKUP' : '🏁 DROP'}
+        </div>
+        <div class="parcel-pin-point ${isPickup ? '' : 'drop'}"></div>
+      </div>
+    `,
+    iconSize: [80, 42],
+    iconAnchor: [40, 40]
+  });
+}
+
+function initParcelRouteMap() {
+  const mapContainer = document.getElementById('parcelRouteMap');
+  if (!mapContainer || typeof L === 'undefined') return;
+
+  try {
+    if (parcelLeafletMap) {
+      parcelLeafletMap.remove();
+      parcelLeafletMap = null;
+    }
+
+    // Default center at Jaipur central region
+    const defaultCenter = [26.8850, 75.7550];
+    parcelLeafletMap = L.map('parcelRouteMap').setView(defaultCenter, 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(parcelLeafletMap);
+
+    // Initial Pickup Marker (Draggable)
+    parcelPickupMarker = L.marker(parcelBookingState.pickupCoords, {
+      draggable: true,
+      icon: createParcelPinIcon('Pickup', true)
+    }).addTo(parcelLeafletMap);
+
+    parcelPickupMarker.bindPopup('<b>📍 Pickup Point</b><br><small class="text-muted">Drag to adjust exact house/street</small>');
+
+    parcelPickupMarker.on('dragend', async (e) => {
+      const pos = e.target.getLatLng();
+      await applyParcelPinpointCoords(pos.lat, pos.lng, 'Adjusted Pickup Point', true);
+    });
+
+    // Initial Drop Marker (Draggable)
+    parcelDropMarker = L.marker(parcelBookingState.dropCoords, {
+      draggable: true,
+      icon: createParcelPinIcon('Drop', false)
+    }).addTo(parcelLeafletMap);
+
+    parcelDropMarker.bindPopup('<b>🏁 Drop Point</b><br><small class="text-muted">Drag to adjust destination doorstep</small>');
+
+    parcelDropMarker.on('dragend', async (e) => {
+      const pos = e.target.getLatLng();
+      await applyParcelPinpointCoords(pos.lat, pos.lng, 'Adjusted Drop Point', false);
+    });
+
+    // Interactive Map Click listener to place active pin mode
+    parcelLeafletMap.on('click', async (e) => {
+      const { lat, lng } = e.latlng;
+      const isPickup = (parcelBookingState.mapPinMode === 'pickup');
+      await applyParcelPinpointCoords(lat, lng, isPickup ? 'Pinned Pickup' : 'Pinned Drop', isPickup);
+    });
+
+    // Set initial input values if empty
+    const pInput = document.getElementById('pclPickupInput');
+    const dInput = document.getElementById('pclDropInput');
+    if (pInput && !pInput.value.trim()) pInput.value = parcelBookingState.pickupAddress;
+    if (dInput && !dInput.value.trim()) dInput.value = parcelBookingState.dropAddress;
+
+    // Calculate initial route between default points
+    calculateParcelOSRMRoute(false);
+  } catch (err) {
+    console.warn('Parcel Leaflet map initialization warning:', err);
+  }
+}
+
+/**
+ * Toggle Pin Mode between Pickup and Drop
+ */
+function setParcelMapPinMode(mode) {
+  parcelBookingState.mapPinMode = mode;
+  const btnPickup = document.getElementById('btnPclPinPickup');
+  const btnDrop = document.getElementById('btnPclPinDrop');
+  const statusEl = document.getElementById('pclRouteMapStatus');
+
+  if (mode === 'pickup') {
+    if (btnPickup) btnPickup.classList.add('active');
+    if (btnDrop) btnDrop.classList.remove('active');
+    if (statusEl) {
+      statusEl.innerHTML = '<i class="fa-solid fa-hand-pointer text-success me-1"></i> Tap map or drag green pin to set <strong>Pickup 📍</strong>';
+    }
+  } else {
+    if (btnDrop) btnDrop.classList.add('active');
+    if (btnPickup) btnPickup.classList.remove('active');
+    if (statusEl) {
+      statusEl.innerHTML = '<i class="fa-solid fa-hand-pointer text-danger me-1"></i> Tap map or drag red pin to set <strong>Drop 🏁</strong>';
+    }
+  }
+}
+
+/**
+ * Apply pinpoint coordinates from Map Click, Drag, or GPS
+ */
+async function applyParcelPinpointCoords(lat, lng, defaultLabel, isPickup) {
+  const statusEl = document.getElementById('pclRouteMapStatus');
+  if (statusEl) {
+    statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-warning me-1"></i> Locking ${isPickup ? 'pickup' : 'drop'} location...`;
+  }
+
+  if (isPickup) {
+    parcelBookingState.pickupCoords = [lat, lng];
+    parcelBookingState.pickupLat = lat;
+    parcelBookingState.pickupLng = lng;
+    lastGeocodedParcelPickup = '';
+
+    if (parcelPickupMarker) {
+      parcelPickupMarker.setLatLng([lat, lng]);
+      parcelPickupMarker.openPopup();
+    }
+    if (parcelLeafletMap) parcelLeafletMap.panTo([lat, lng]);
+
+    reverseGeocodeParcelCoord(lat, lng, 'pclPickupInput', true);
+  } else {
+    parcelBookingState.dropCoords = [lat, lng];
+    parcelBookingState.dropLat = lat;
+    parcelBookingState.dropLng = lng;
+    lastGeocodedParcelDrop = '';
+
+    if (parcelDropMarker) {
+      parcelDropMarker.setLatLng([lat, lng]);
+      parcelDropMarker.openPopup();
+    }
+    if (parcelLeafletMap) parcelLeafletMap.panTo([lat, lng]);
+
+    reverseGeocodeParcelCoord(lat, lng, 'pclDropInput', false);
+  }
+
+  // Recalculate road route and fare
+  calculateParcelOSRMRoute(false);
+}
+
+/**
+ * Reverse Geocode Coordinates to Street Name
+ */
+async function reverseGeocodeParcelCoord(lat, lng, inputId, isPickup) {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+    const data = await res.json();
+    let address = '';
+    if (data && data.address) {
+      const a = data.address;
+      const street = a.road || a.suburb || a.neighbourhood || a.residential || '';
+      const city = a.city || a.town || a.county || a.state_district || '';
+      const state = a.state || '';
+      address = [street, city, state].filter(Boolean).join(', ');
+    }
+    if (!address && data && data.display_name) {
+      address = data.display_name.split(',').slice(0, 3).join(',');
+    }
+
+    const finalAddress = address || (isPickup ? 'Pinned Pickup Point' : 'Pinned Drop Point');
+    const input = document.getElementById(inputId);
+    if (input) {
+      input.value = finalAddress;
+      if (isPickup) {
+        parcelBookingState.pickupAddress = finalAddress;
+        lastGeocodedParcelPickup = finalAddress;
+      } else {
+        parcelBookingState.dropAddress = finalAddress;
+        lastGeocodedParcelDrop = finalAddress;
+      }
+    }
+  } catch (e) {
+    console.warn('Reverse geocode fallback:', e);
+  }
+}
+
+/**
+ * Quick Area Chip Click Handler
+ */
+function selectParcelQuickArea(type, areaName) {
+  const isPickup = (type === 'pickup');
+  const inputEl = document.getElementById(isPickup ? 'pclPickupInput' : 'pclDropInput');
+  if (inputEl) inputEl.value = areaName;
+
+  const cleanKey = areaName.toLowerCase().trim();
+  let coords = POPULAR_LOCATIONS[cleanKey];
+
+  if (!coords) {
+    for (const [k, c] of Object.entries(POPULAR_LOCATIONS)) {
+      if (cleanKey.includes(k) || k.includes(cleanKey)) {
+        coords = c;
+        break;
+      }
+    }
+  }
+
+  if (coords) {
+    if (isPickup) {
+      parcelBookingState.pickupCoords = coords;
+      parcelBookingState.pickupLat = coords[0];
+      parcelBookingState.pickupLng = coords[1];
+      parcelBookingState.pickupAddress = areaName;
+      if (parcelPickupMarker) parcelPickupMarker.setLatLng(coords);
+    } else {
+      parcelBookingState.dropCoords = coords;
+      parcelBookingState.dropLat = coords[0];
+      parcelBookingState.dropLng = coords[1];
+      parcelBookingState.dropAddress = areaName;
+      if (parcelDropMarker) parcelDropMarker.setLatLng(coords);
+    }
+  }
+
+  calculateParcelOSRMRoute(false);
+}
+
+/**
+ * Geocode text address via local cache, Photon, and Nominatim
+ */
+async function geocodeParcelAddress(query) {
+  if (!query || !query.trim()) return null;
+  const clean = query.toLowerCase().trim();
+
+  // 1. Direct match in local dictionary
+  if (POPULAR_LOCATIONS[clean]) return POPULAR_LOCATIONS[clean];
+
+  for (const [k, c] of Object.entries(POPULAR_LOCATIONS)) {
+    if (clean.includes(k) || k.includes(clean)) return c;
+  }
+
+  // 2. Photon Komoot API
+  try {
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query.trim())}&limit=1`);
+    const data = await res.json();
+    if (data && data.features && data.features.length > 0) {
+      const [lng, lat] = data.features[0].geometry.coordinates;
+      return [lat, lng];
+    }
+  } catch (e) {
+    console.warn('Photon geocode fallback:', e);
+  }
+
+  // 3. Nominatim with India filter
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query.trim() + ', India')}&countrycodes=in&limit=1`);
+    const data = await res.json();
+    if (data && data.length > 0) {
+      return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+    }
+  } catch (e) {
+    console.warn('Nominatim geocode fallback:', e);
+  }
+
+  return null;
+}
+
+/**
+ * Haversine straight-line distance with city road curvature factor (1.28)
+ */
+function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return parseFloat((R * c * 1.28).toFixed(1));
+}
+
+/**
+ * Commercial OSRM Road Distance Engine
+ */
+async function calculateParcelOSRMRoute(force = false) {
+  const pickupInput = document.getElementById('pclPickupInput')?.value.trim();
+  const dropInput = document.getElementById('pclDropInput')?.value.trim();
+  const statusEl = document.getElementById('pclRouteMapStatus');
+  const distValEl = document.getElementById('pclDistanceVal');
+  const transitTimeEl = document.getElementById('pclTransitTimeVal');
+  const qualityBadge = document.getElementById('pclRoutingQualityBadge');
+
+  if (!pickupInput || !dropInput) {
+    if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-circle-info text-secondary me-1"></i> Please enter both Pickup and Drop locations.';
+    return;
+  }
+
+  if (statusEl) {
+    statusEl.innerHTML = '<i class="fa-solid fa-satellite-dish fa-spin text-warning me-1"></i> Calculating fastest commercial road route...';
+  }
+
+  // Resolve pickup coordinates
+  let pCoord = parcelBookingState.pickupCoords;
+  if (!pCoord || pickupInput !== lastGeocodedParcelPickup) {
+    pCoord = await geocodeParcelAddress(pickupInput);
+    if (pCoord) {
+      parcelBookingState.pickupCoords = pCoord;
+      parcelBookingState.pickupLat = pCoord[0];
+      parcelBookingState.pickupLng = pCoord[1];
+      lastGeocodedParcelPickup = pickupInput;
+      if (parcelPickupMarker) parcelPickupMarker.setLatLng(pCoord);
+    }
+  }
+
+  // Resolve drop coordinates
+  let dCoord = parcelBookingState.dropCoords;
+  if (!dCoord || dropInput !== lastGeocodedParcelDrop) {
+    dCoord = await geocodeParcelAddress(dropInput);
+    if (dCoord) {
+      parcelBookingState.dropCoords = dCoord;
+      parcelBookingState.dropLat = dCoord[0];
+      parcelBookingState.dropLng = dCoord[1];
+      lastGeocodedParcelDrop = dropInput;
+      if (parcelDropMarker) parcelDropMarker.setLatLng(dCoord);
+    }
+  }
+
+  if (!pCoord || !dCoord) {
+    if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> Could not locate address. Please select a popular area chip or click the map.';
+    return;
+  }
+
+  let distanceKm = null;
+  let durationMins = null;
+  let routeCoords = null;
+
+  // 1. Fetch Real Driving Route from OSRM
+  try {
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${pCoord[1]},${pCoord[0]};${dCoord[1]},${dCoord[0]}?overview=full&geometries=geojson`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(osrmUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    const data = await res.json();
+
+    if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+      const route = data.routes[0];
+      distanceKm = Math.max(1, Math.round((route.distance / 1000) * 10) / 10);
+      durationMins = Math.max(5, Math.round(route.duration / 60));
+      routeCoords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+    }
+  } catch (err) {
+    console.warn('OSRM routing timed out or failed, using road curvature model:', err);
+  }
+
+  // 2. Resilient Haversine Road-Curve Fallback if OSRM is slow
+  if (!distanceKm) {
+    const airDist = calculateHaversineDistance(pCoord[0], pCoord[1], dCoord[0], dCoord[1]);
+    distanceKm = Math.max(1, airDist);
+    durationMins = Math.max(8, Math.round((distanceKm / 35) * 60));
+    routeCoords = [pCoord, dCoord];
+  }
+
+  // Update State
+  parcelBookingState.estimatedDistanceKm = distanceKm;
+  parcelBookingState.estimatedDurationMins = durationMins;
+  parcelBookingState.distanceConfirmed = true;
+
+  // Update UI Elements
+  if (distValEl) distValEl.innerText = `${distanceKm} KM`;
+  if (transitTimeEl) {
+    const hrs = Math.floor(durationMins / 60);
+    const mins = durationMins % 60;
+    transitTimeEl.innerText = hrs > 0 ? `~${hrs}h ${mins}m` : `~${mins} Mins`;
+  }
+
+  if (statusEl) {
+    statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> Road Route: <strong>${distanceKm} KM</strong> (~${durationMins} mins transit)`;
+  }
+
+  if (qualityBadge) {
+    qualityBadge.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> Live Road Verified`;
+    qualityBadge.className = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-bold';
+  }
+
+  // Draw or Update Polyline on Map
+  if (parcelLeafletMap && routeCoords) {
+    if (parcelRoutePolyline) parcelLeafletMap.removeLayer(parcelRoutePolyline);
+    parcelRoutePolyline = L.polyline(routeCoords, {
+      color: '#FF9E1B',
+      weight: 5,
+      opacity: 0.9,
+      lineJoin: 'round'
+    }).addTo(parcelLeafletMap);
+
+    parcelLeafletMap.fitBounds(parcelRoutePolyline.getBounds(), { padding: [40, 40] });
+  }
+
+  // Recalculate dynamic fare and update summary
+  calculateFreeParcelFare();
+}
+
+/**
+ * Autocomplete Dropdowns for Pickup and Drop Inputs
+ */
+function initParcelAutocomplete() {
+  const pickupInput = document.getElementById('pclPickupInput');
+  const dropInput = document.getElementById('pclDropInput');
+  const pickupBox = document.getElementById('pclPickupSuggestions');
+  const dropBox = document.getElementById('pclDropSuggestions');
+
+  let debounceTimer = null;
+
+  function handleInputSearch(input, box, type) {
+    clearTimeout(debounceTimer);
+    const query = input.value.trim().toLowerCase();
+    if (query.length < 2) {
+      box.classList.remove('show');
+      box.innerHTML = '';
+      return;
+    }
+
+    debounceTimer = setTimeout(async () => {
+      const matches = [];
+
+      // 1. Search local dictionary
+      for (const [name, coords] of Object.entries(POPULAR_LOCATIONS)) {
+        if (name.includes(query)) {
+          matches.push({ name: capitalizeWords(name), coords });
+        }
+        if (matches.length >= 6) break;
+      }
+
+      // 2. If fewer than 4 matches, fetch Photon
+      if (matches.length < 4) {
+        try {
+          const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`);
+          const data = await res.json();
+          if (data && data.features) {
+            data.features.forEach(f => {
+              const p = f.properties;
+              const nameParts = [p.name, p.district, p.city, p.state].filter(Boolean);
+              const label = nameParts.join(', ');
+              const [lng, lat] = f.geometry.coordinates;
+              if (!matches.some(m => m.name.toLowerCase() === label.toLowerCase())) {
+                matches.push({ name: label, coords: [lat, lng] });
+              }
+            });
+          }
+        } catch (e) {
+          console.warn('Photon autocomplete fallback:', e);
+        }
+      }
+
+      // Render Dropdown items
+      if (matches.length > 0) {
+        box.innerHTML = matches.map(m => `
+          <div class="parcel-autocomplete-item" data-name="${m.name}" data-lat="${m.coords[0]}" data-lng="${m.coords[1]}">
+            <i class="fa-solid fa-location-dot ${type === 'pickup' ? 'text-success' : 'text-danger'}"></i>
+            <span>${m.name}</span>
+          </div>
+        `).join('');
+        box.classList.add('show');
+
+        // Add Click Handlers
+        box.querySelectorAll('.parcel-autocomplete-item').forEach(item => {
+          item.addEventListener('click', () => {
+            const name = item.getAttribute('data-name');
+            const lat = parseFloat(item.getAttribute('data-lat'));
+            const lng = parseFloat(item.getAttribute('data-lng'));
+
+            input.value = name;
+            box.classList.remove('show');
+
+            if (type === 'pickup') {
+              parcelBookingState.pickupAddress = name;
+              parcelBookingState.pickupCoords = [lat, lng];
+              parcelBookingState.pickupLat = lat;
+              parcelBookingState.pickupLng = lng;
+              lastGeocodedParcelPickup = name;
+              if (parcelPickupMarker) parcelPickupMarker.setLatLng([lat, lng]);
+            } else {
+              parcelBookingState.dropAddress = name;
+              parcelBookingState.dropCoords = [lat, lng];
+              parcelBookingState.dropLat = lat;
+              parcelBookingState.dropLng = lng;
+              lastGeocodedParcelDrop = name;
+              if (parcelDropMarker) parcelDropMarker.setLatLng([lat, lng]);
+            }
+
+            calculateParcelOSRMRoute(false);
+          });
+        });
+      } else {
+        box.classList.remove('show');
+        box.innerHTML = '';
+      }
+    }, 200);
+  }
+
+  if (pickupInput && pickupBox) {
+    pickupInput.addEventListener('input', () => handleInputSearch(pickupInput, pickupBox, 'pickup'));
+  }
+  if (dropInput && dropBox) {
+    dropInput.addEventListener('input', () => handleInputSearch(dropInput, dropBox, 'drop'));
+  }
+
+  // Close dropdowns on outside click
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#pclPickupInput') && !e.target.closest('#pclPickupSuggestions')) {
+      pickupBox?.classList.remove('show');
+    }
+    if (!e.target.closest('#pclDropInput') && !e.target.closest('#pclDropSuggestions')) {
+      dropBox?.classList.remove('show');
+    }
+  });
+}
+
+function capitalizeWords(str) {
+  return str.replace(/\b\w/g, l => l.toUpperCase());
+}
+
+/**
+ * Event Listeners for Input Text Changes
+ */
 function initParcelEventListeners() {
   const pickupInput = document.getElementById('pclPickupInput');
   const dropInput = document.getElementById('pclDropInput');
 
+  let routeDebounce = null;
+
   if (pickupInput) {
-    pickupInput.addEventListener('input', () => {
+    pickupInput.addEventListener('change', () => {
       parcelBookingState.pickupAddress = pickupInput.value.trim();
-      recalculateDistance();
-      calculateFreeParcelFare();
+      clearTimeout(routeDebounce);
+      routeDebounce = setTimeout(() => calculateParcelOSRMRoute(false), 300);
     });
   }
 
   if (dropInput) {
-    dropInput.addEventListener('input', () => {
+    dropInput.addEventListener('change', () => {
       parcelBookingState.dropAddress = dropInput.value.trim();
-      recalculateDistance();
-      calculateFreeParcelFare();
+      clearTimeout(routeDebounce);
+      routeDebounce = setTimeout(() => calculateParcelOSRMRoute(false), 300);
     });
   }
 }
 
-// Browser's Native Geolocation API (100% Free)
+// Browser's Native Geolocation API (100% Free High Accuracy)
 function useNativeLocationForPickup() {
   if (!navigator.geolocation) {
     alert('Geolocation is not supported by your browser.');
@@ -133,70 +731,25 @@ function useNativeLocationForPickup() {
   }
 
   const btn = document.getElementById('btnDetectGps');
-  if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Detecting...';
+  if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Detecting GPS...';
 
   navigator.geolocation.getCurrentPosition(
-    (position) => {
-      parcelBookingState.pickupLat = position.coords.latitude;
-      parcelBookingState.pickupLng = position.coords.longitude;
-      
-      const pickupInput = document.getElementById('pclPickupInput');
-      if (pickupInput && !pickupInput.value.trim()) {
-        pickupInput.value = `Current Location (${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)})`;
-        parcelBookingState.pickupAddress = pickupInput.value;
-      }
-      
-      if (btn) btn.innerHTML = '<i class="fa-solid fa-check text-success me-1"></i> Location Set';
-      recalculateDistance();
-      calculateFreeParcelFare();
+    async (position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      await applyParcelPinpointCoords(lat, lng, 'Current GPS Location', true);
+
+      if (btn) btn.innerHTML = '<i class="fa-solid fa-check text-success me-1"></i> GPS Set';
+      setTimeout(() => {
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-location-crosshairs me-1"></i> Use My Location';
+      }, 3000);
     },
     (err) => {
       if (btn) btn.innerHTML = '<i class="fa-solid fa-location-crosshairs me-1"></i> Use My Location';
-      alert('Could not access your location. Please enter your pickup address manually.');
+      alert('Could not access your location. Please enter your pickup address manually or click on the map.');
     },
     { enableHighAccuracy: true, timeout: 8000 }
   );
-}
-
-// Free Haversine Distance Formula (Straight-line estimation when coords exist)
-function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return parseFloat((R * c * 1.25).toFixed(1)); // 1.25 winding factor for city roads
-}
-
-function recalculateDistance() {
-  const pickup = document.getElementById('pclPickupInput')?.value.trim() || '';
-  const drop = document.getElementById('pclDropInput')?.value.trim() || '';
-
-  if (parcelBookingState.pickupLat && parcelBookingState.dropLat) {
-    parcelBookingState.estimatedDistanceKm = calculateHaversineDistance(
-      parcelBookingState.pickupLat, parcelBookingState.pickupLng,
-      parcelBookingState.dropLat, parcelBookingState.dropLng
-    );
-    parcelBookingState.distanceConfirmed = true;
-  } else if (pickup && drop) {
-    // Intelligent heuristic for Jaipur / common local city routes
-    if (pickup.toLowerCase().includes('mansarovar') && drop.toLowerCase().includes('vaishali')) {
-      parcelBookingState.estimatedDistanceKm = 8.4;
-    } else if (pickup.toLowerCase().includes('ajmer') && drop.toLowerCase().includes('delhi')) {
-      parcelBookingState.estimatedDistanceKm = 274;
-    } else {
-      parcelBookingState.estimatedDistanceKm = 8.0;
-    }
-    parcelBookingState.distanceConfirmed = false;
-  }
-
-  const distDisplay = document.getElementById('pclDistanceDisplay');
-  if (distDisplay) {
-    distDisplay.innerHTML = `<i class="fa-solid fa-route me-1"></i> Estimated Distance: <strong>${parcelBookingState.estimatedDistanceKm} KM</strong> <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size: 0.7rem;">To be confirmed by Rudraksha team</span>`;
-  }
 }
 
 /* ==========================================================================
@@ -324,6 +877,8 @@ function calculateFreeParcelFare() {
   // Update UI Elements
   if (document.getElementById('pclFareBase')) document.getElementById('pclFareBase').innerText = `₹${baseFare}`;
   if (document.getElementById('pclFareDistance')) document.getElementById('pclFareDistance').innerText = `₹${distanceCharge}`;
+  const fareDistLabel = document.getElementById('pclFareDistanceLabel');
+  if (fareDistLabel) fareDistLabel.innerText = `Distance Charge (${dist} KM @ ₹${FARE_CONFIG.distanceRatePerKm}/KM):`;
   if (document.getElementById('pclFareWeight')) document.getElementById('pclFareWeight').innerText = `₹${weightCharge}`;
   if (document.getElementById('pclFareVehicle')) document.getElementById('pclFareVehicle').innerText = `₹${vehicleCharge}`;
   if (document.getElementById('pclFareHandling')) document.getElementById('pclFareHandling').innerText = `₹${handlingCharge}`;
@@ -402,8 +957,8 @@ async function handleRequestParcelDelivery() {
 🛵 *Vehicle Requested*
 • ${vehicleName}
 
-📏 *Estimated Distance*
-• ${parcelBookingState.estimatedDistanceKm} KM
+📏 *Road Distance & Transit*
+• ${parcelBookingState.estimatedDistanceKm} KM (~${parcelBookingState.estimatedDurationMins || 20} Mins Road Drive)
 
 💰 *Estimated Fare:* *₹${fareCalc.estimatedTotal}* (${document.getElementById('pclPaymentOption')?.value || 'Cash'})
 

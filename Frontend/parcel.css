@@ -1127,3 +1127,251 @@ section[id], div[id] {
     height: 150px;
   }
 }
+
+/* ==========================================================================
+   COMMERCIAL LIVE DISTANCE, ROUTE MAP & AUTOCOMPLETE STYLES (BRDG THEME)
+   ========================================================================== */
+
+/* Autocomplete Dropdown */
+.parcel-autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 14px 30px rgba(53, 34, 54, 0.16);
+  border: 1px solid #e5e7eb;
+  z-index: 1060;
+  max-height: 240px;
+  overflow-y: auto;
+  display: none;
+  margin-top: 4px;
+}
+
+.parcel-autocomplete-dropdown.show {
+  display: block;
+}
+
+.parcel-autocomplete-item {
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  color: var(--text-dark, #1f2937);
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.15s ease, color 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.parcel-autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.parcel-autocomplete-item:hover {
+  background: #fff8eb;
+  color: var(--primary-orange, #ea580c);
+}
+
+.parcel-autocomplete-item i {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+/* Quick Area Chips */
+.parcel-quick-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.parcel-quick-chips .chips-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #9ca3af;
+  margin-right: 2px;
+}
+
+.parcel-chip-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.parcel-chip-btn:hover {
+  background: #fff7ed;
+  border-color: var(--primary-orange, #ff9e1b);
+  color: #c2410c;
+  transform: translateY(-1px);
+}
+
+/* Interactive Map Toolbar */
+.parcel-map-toolbar {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 8px 14px;
+  border-radius: 12px;
+}
+
+.parcel-pin-mode-group .btn-parcel-pin {
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 5px 14px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  transition: all 0.2s ease;
+}
+
+.parcel-pin-mode-group .btn-parcel-pin.active {
+  background: var(--bg-dark-plum, #352236);
+  border-color: var(--bg-dark-plum, #352236);
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(53, 34, 54, 0.25);
+}
+
+.parcel-pin-mode-group .btn-parcel-pin.active#btnPclPinPickup {
+  background: #059669;
+  border-color: #059669;
+}
+
+.parcel-pin-mode-group .btn-parcel-pin.active#btnPclPinDrop {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.parcel-route-status-pill {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  background: #ffffff;
+  padding: 4px 12px;
+  border-radius: 50px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Leaflet Map Canvas */
+.parcel-route-map-canvas {
+  height: 310px;
+  width: 100%;
+  border-radius: 16px;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+  z-index: 10;
+  background: #e2e8f0;
+}
+
+.parcel-map-tip {
+  font-size: 0.78rem;
+  color: #64748b;
+  padding: 0 4px;
+}
+
+/* Commercial Live Distance Card */
+.parcel-live-distance-card {
+  background: linear-gradient(135deg, #ffffff 0%, #fffbf2 100%);
+  border: 1.5px solid #fed7aa;
+  border-radius: 16px;
+  padding: 14px 20px;
+  box-shadow: 0 8px 24px rgba(255, 158, 27, 0.08);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  transition: all 0.25s ease;
+}
+
+.parcel-live-distance-card:hover {
+  box-shadow: 0 12px 28px rgba(255, 158, 27, 0.14);
+  border-color: var(--primary-orange, #ff9e1b);
+}
+
+.distance-metric-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ff9e1b 0%, #ea580c 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+  flex-shrink: 0;
+}
+
+.distance-metric-icon.bg-time {
+  background: linear-gradient(135deg, var(--bg-dark-plum, #352236) 0%, #523154 100%);
+  box-shadow: 0 4px 12px rgba(53, 34, 54, 0.25);
+}
+
+.distance-metric-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #9a3412;
+  text-transform: uppercase;
+}
+
+.distance-metric-value {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #1e293b;
+  line-height: 1.1;
+  font-family: var(--font-display, 'Outfit', sans-serif);
+}
+
+.distance-metric-time {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--bg-dark-plum, #352236);
+  line-height: 1.1;
+  font-family: var(--font-display, 'Outfit', sans-serif);
+}
+
+/* Custom Marker Pins */
+.parcel-pin-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, -100%);
+}
+
+.parcel-pin-badge {
+  background: #059669;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+  margin-bottom: 2px;
+}
+
+.parcel-pin-badge.drop {
+  background: #dc2626;
+}
+
+.parcel-pin-point {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid #ffffff;
+  background: #059669;
+  box-shadow: 0 0 10px rgba(5, 150, 105, 0.6);
+}
+
+.parcel-pin-point.drop {
+  background: #dc2626;
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.6);
+}
