@@ -37,16 +37,22 @@
   <!-- ==========================================================================
        1. AUTHENTICATION LOCK OVERLAY (Cyber Dark UI)
        ========================================================================== -->
-  <div id="adminLoginOverlay" style="position: fixed; inset: 0; background: rgba(13, 13, 15, 0.95); backdrop-filter: blur(20px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
+  <div id="adminLoginOverlay" style="position: fixed; inset: 0; background: rgba(13, 13, 15, 0.98); backdrop-filter: blur(25px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
     <div style="background: #17171A; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; width: 100%; max-width: 420px; padding: 36px; box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(208, 253, 56, 0.15);">
       <div class="text-center mb-4">
-        <div style="width: 56px; height: 56px; background: rgba(208, 253, 56, 0.1); border: 1px solid #D0FD38; border-radius: 18px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; box-shadow: 0 0 20px rgba(208, 253, 56, 0.3);">
+        <div style="width: 58px; height: 58px; background: rgba(208, 253, 56, 0.1); border: 1px solid #D0FD38; border-radius: 18px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; box-shadow: 0 0 20px rgba(208, 253, 56, 0.3);">
           <i class="fa-solid fa-shield-halved fa-xl" style="color: #D0FD38;"></i>
         </div>
         <h4 class="fw-bold text-white mb-1">Rudraksha <span style="color: #D0FD38;">Admin</span></h4>
-        <p class="small text-muted mb-0">Futuristic Enterprise Control Hub</p>
+        <p class="small text-muted mb-0">Enterprise Identity & Access Management</p>
       </div>
 
+      <!-- Cooldown Lockout Alert -->
+      <div id="loginCooldownAlert" class="alert alert-warning py-2 px-3 small rounded-3 d-none mb-3" style="background: rgba(234, 179, 8, 0.15); border-color: #eab308; color: #fde047;">
+        <i class="fa-solid fa-clock-rotate-left me-1"></i> <span id="loginCooldownMsg">Security cooldown active</span>
+      </div>
+
+      <!-- Error Alert -->
       <div id="loginErrorAlert" class="alert alert-danger py-2 px-3 small rounded-3 d-none mb-3" style="background: rgba(239, 68, 68, 0.15); border-color: #ef4444; color: #fca5a5;">
         <i class="fa-solid fa-circle-exclamation me-1"></i> <span id="loginErrorMsg">Invalid credentials</span>
       </div>
@@ -54,13 +60,13 @@
       <form id="adminLoginForm" onsubmit="event.preventDefault(); submitAdminLogin();">
         <div class="mb-3">
           <label class="cyber-label">Admin Username</label>
-          <input type="text" class="cyber-input" id="adminUsernameInput" placeholder="Enter username" required>
+          <input type="text" class="cyber-input" id="adminUsernameInput" placeholder="Enter Admin ID" autocomplete="username" required>
         </div>
 
         <div class="mb-3">
           <label class="cyber-label">Security Key / Password</label>
           <div class="position-relative">
-            <input type="password" class="cyber-input" id="adminPasswordInput" placeholder="Enter password" required style="padding-right: 42px;">
+            <input type="password" class="cyber-input" id="adminPasswordInput" placeholder="••••••••••••" autocomplete="current-password" required style="padding-right: 42px;">
             <button type="button" onclick="toggleAdminPassVisibility()" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;">
               <i class="fa-solid fa-eye" id="passToggleIcon"></i>
             </button>
@@ -71,15 +77,16 @@
           <label class="d-flex align-items-center gap-2 small text-muted cursor-pointer" style="cursor: pointer;">
             <input type="checkbox" id="rememberAdminCheck" style="accent-color: #D0FD38;"> Remember session
           </label>
-          <span class="cyber-badge-pill">256-Bit Encrypted</span>
+          <span class="cyber-badge-pill"><i class="fa-solid fa-lock text-success me-1"></i> 256-Bit SSL</span>
         </div>
 
         <button type="submit" class="btn-cyber-neon w-100 py-3" id="btnLoginSubmit">
           <i class="fa-solid fa-bolt me-1"></i> Unlock Dashboard
         </button>
 
-        <div style="font-size: 0.72rem; color: #94a3b8; text-align: center; margin-top: 12px;">
-          Master Key: <strong class="text-white">rudraksha@admin2026</strong> or <strong class="text-white">admin123</strong>
+        <div class="d-flex justify-content-between align-items-center mt-3 small text-muted" style="font-size: 0.72rem;">
+          <span><i class="fa-solid fa-shield-halved text-success me-1"></i> Restricted Access</span>
+          <span>v2.4 Enterprise Portal</span>
         </div>
       </form>
 
@@ -92,9 +99,9 @@
   </div>
 
   <!-- ==========================================================================
-       2. FULL-WIDTH CYBERPUNK MAIN LAYOUT (With Floating Bottom Dock)
+       2. FULL-WIDTH CYBERPUNK MAIN LAYOUT (Hidden until verified)
        ========================================================================== -->
-  <div class="cyber-admin-layout" id="cyberAdminLayout">
+  <div class="cyber-admin-layout" id="cyberAdminLayout" style="display: none;">
 
     <!-- MAIN CONTENT WRAPPER -->
     <main class="cyber-main-content" id="cyberMainContent">
