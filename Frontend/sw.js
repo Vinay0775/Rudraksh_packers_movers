@@ -3,7 +3,7 @@
  * Ultra-resilient, crash-proof caching with live network priority
  */
 
-const CACHE_NAME = 'rudraksha-pwa-v2.3.0';
+const CACHE_NAME = 'rudraksha-pwa-v3.0.0';
 const STATIC_ASSETS = [
   './index.html',
   './parcel.html',
