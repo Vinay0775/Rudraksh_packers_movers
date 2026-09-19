@@ -46,7 +46,7 @@
 
   <!-- Ultra-Stylish Modern Glassmorphism Navbar -->
   <nav class="navbar navbar-expand-lg main-navbar sticky-top">
-    <div class="container navbar-container">
+    <div class="container-fluid px-3 px-xl-5 navbar-container">
       
       <!-- Brand Logo (Far Left) -->
       <a class="brand-logo-container" href="index.html">
@@ -444,7 +444,7 @@
                         </button>
                       </div>
                       <div class="location-input-wrap">
-                        <input type="text" class="form-control form-control-lg" id="pickupCity" placeholder="Type colony, area or city (e.g. Sirsi Road, Jaipur)" autocomplete="off" required>
+                        <input type="text" class="form-control form-control-lg" id="pickupCity" placeholder="Type colony, area or city (e.g. Sirsi Road, Jaipur)" autocomplete="off" onfocus="setMapPinMode('pickup')" required>
                         <div class="autocomplete-dropdown" id="pickupSuggestions"></div>
                       </div>
                       <!-- Quick Local Chips -->
@@ -467,7 +467,7 @@
                         </button>
                       </div>
                       <div class="location-input-wrap">
-                        <input type="text" class="form-control form-control-lg" id="dropCity" placeholder="Type destination area or city (e.g. Noida, Delhi NCR)" autocomplete="off" required>
+                        <input type="text" class="form-control form-control-lg" id="dropCity" placeholder="Type destination area or city (e.g. Noida, Delhi NCR)" autocomplete="off" onfocus="setMapPinMode('drop')" required>
                         <div class="autocomplete-dropdown" id="dropSuggestions"></div>
                       </div>
                       <!-- Quick Drop Chips -->
@@ -481,11 +481,24 @@
                       </div>
                     </div>
 
-                    <!-- Interactive OpenStreetMap Preview with Click-To-Set Guidance -->
+                    <!-- Interactive OpenStreetMap Preview with Click-To-Set Guidance & Drop Selector -->
                     <div class="col-12">
+                      <div class="map-target-selector d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                        <div class="btn-group btn-group-sm map-pin-mode-group shadow-xs" role="group" aria-label="Map Mode">
+                          <button type="button" class="btn btn-outline-primary active map-pin-toggle-btn" id="btnPinPickup" data-mode="pickup" onclick="setMapPinMode('pickup')">
+                            <i class="fa-solid fa-location-dot me-1"></i> Click to Set Pickup 📍
+                          </button>
+                          <button type="button" class="btn btn-outline-secondary map-pin-toggle-btn" id="btnPinDrop" data-mode="drop" onclick="setMapPinMode('drop')">
+                            <i class="fa-solid fa-flag-checkered me-1"></i> Click to Set Destination 🏁
+                          </button>
+                        </div>
+                        <span class="badge bg-light text-dark border py-2 px-3 fw-normal" id="mapActiveTip">
+                          <i class="fa-solid fa-hand-pointer text-primary-custom me-1"></i> Click map to place <strong>Pickup 📍</strong>
+                        </span>
+                      </div>
                       <div id="routeMap"></div>
                       <div class="map-helper-tip">
-                        <span><i class="fa-solid fa-hand-pointer text-primary-custom me-1"></i> <strong>Pro Tip:</strong> Click anywhere on the map or drag the 📍 marker to pinpoint your exact street or house!</span>
+                        <span><i class="fa-solid fa-hand-pointer text-primary-custom me-1"></i> <strong>Pro Tip:</strong> Click the buttons above to choose whether you're setting 📍 Pickup or 🏁 Destination. You can also drag both markers!</span>
                         <span class="badge bg-light text-secondary border">Interactive Map</span>
                       </div>
                     </div>

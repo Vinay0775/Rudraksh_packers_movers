@@ -114,7 +114,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  width: 100%;
 }
 
 .brand-logo-container {
@@ -341,6 +342,82 @@ body {
 .nav-phone-link:hover {
   border-color: var(--primary-color);
   color: var(--primary-color);
+}
+
+/* Desktop Navbar: Strictly Single-Row, Never Falls or Breaks */
+@media (min-width: 992px) {
+  .navbar-container {
+    flex-wrap: nowrap !important;
+  }
+  .main-navbar .navbar-collapse {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
+    width: auto !important;
+    flex: 1 1 auto;
+  }
+  .nav-menu-list {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    margin: 0 auto !important;
+    gap: 2px;
+  }
+  .nav-link-custom {
+    padding: 6px 11px !important;
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+  .navbar-action-cluster {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+    margin-left: auto;
+  }
+  .navbar-action-cluster a,
+  .navbar-action-cluster button {
+    white-space: nowrap;
+  }
+}
+
+/* Compact adjustments between 992px and 1240px */
+@media (min-width: 992px) and (max-width: 1240px) {
+  .brand-title-text {
+    font-size: 1.15rem;
+  }
+  .brand-subtitle-text {
+    font-size: 0.58rem;
+  }
+  .brand-logo-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+    border-radius: 10px;
+  }
+  .nav-link-custom {
+    padding: 5px 7px !important;
+    font-size: 0.82rem;
+  }
+  .navbar-action-cluster {
+    gap: 4px !important;
+  }
+  .btn-nav-parcel,
+  .btn-nav-track {
+    padding: 5px 8px;
+    font-size: 0.78rem;
+  }
+  .btn-calc-nav {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  .nav-phone-link {
+    font-size: 0.8rem;
+    padding: 5px 8px;
+  }
 }
 
 /* ==========================================================================
@@ -2351,6 +2428,30 @@ body {
   color: #ffffff;
   border-color: var(--primary-color, #f97316);
   transform: translateY(-1px);
+}
+
+/* Map Pinpoint Target Switcher */
+.map-target-selector {
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.map-pin-toggle-btn {
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px !important;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.map-pin-toggle-btn.active {
+  background: var(--primary-color, #ea580c) !important;
+  border-color: var(--primary-color, #ea580c) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
 }
 
 .map-helper-tip {

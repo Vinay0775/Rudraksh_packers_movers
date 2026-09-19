@@ -226,11 +226,44 @@ document.addEventListener('DOMContentLoaded', async () => {
    1. MAP & ROUTE ENGINE (OpenStreetMap, Leaflet, Live Autocomplete, OSRM)
    ========================================================================== */
 
+// Active Map Pin Mode: 'pickup' or 'drop'
+let mapPinMode = 'pickup';
+
+function setMapPinMode(mode) {
+  mapPinMode = mode === 'drop' ? 'drop' : 'pickup';
+  document.querySelectorAll('.map-pin-toggle-btn').forEach(btn => {
+    const isActive = btn.dataset.mode === mapPinMode;
+    btn.classList.toggle('active', isActive);
+    if (isActive) {
+      btn.classList.add('btn-primary');
+      btn.classList.remove('btn-outline-primary', 'btn-outline-secondary');
+    } else {
+      btn.classList.remove('btn-primary');
+      if (btn.dataset.mode === 'pickup') btn.classList.add('btn-outline-primary');
+      else btn.classList.add('btn-outline-secondary');
+    }
+  });
+
+  const tip = document.getElementById('mapActiveTip');
+  if (tip) {
+    if (mapPinMode === 'pickup') {
+      tip.innerHTML = '<i class="fa-solid fa-hand-pointer text-primary-custom me-1"></i> Click map to place <strong>Pickup 📍</strong>';
+    } else {
+      tip.innerHTML = '<i class="fa-solid fa-hand-pointer text-success me-1"></i> Click map to place <strong>Destination 🏁</strong>';
+    }
+  }
+}
+
 function initRouteMap() {
   const mapEl = document.getElementById('routeMap');
   if (!mapEl || typeof L === 'undefined') return;
 
   try {
+    if (leafletMap) {
+      leafletMap.remove();
+      leafletMap = null;
+    }
+
     // Default center at Jaipur (Company Headquarter & Hub: 26.9124, 75.7873)
     leafletMap = L.map('routeMap').setView([26.9124, 75.7873], 12);
 
@@ -239,10 +272,11 @@ function initRouteMap() {
       attribution: '© OpenStreetMap contributors'
     }).addTo(leafletMap);
 
-    // Allow user to click anywhere on map to pinpoint their exact location
+    // Allow user to click anywhere on map to pinpoint either pickup or drop destination
     leafletMap.on('click', async (e) => {
       const { lat, lng } = e.latlng;
-      await applyPinpointCoords(lat, lng, 'Pinned on Map', true);
+      const isPickup = (mapPinMode === 'pickup');
+      await applyPinpointCoords(lat, lng, isPickup ? 'Pinned Pickup' : 'Pinned Destination', isPickup);
     });
   } catch (err) {
     console.warn('Leaflet map initialization skipped or map container not ready:', err);
@@ -254,10 +288,13 @@ function initRouteMap() {
  */
 async function applyPinpointCoords(lat, lng, defaultLabel = 'Selected Point', isPickup = true) {
   const statusEl = document.getElementById('routeMapStatus');
-  if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary-custom me-1"></i> Pinpointing exact location on map...';
+  if (statusEl) {
+    statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-primary-custom me-1"></i> Pinpointing ${isPickup ? 'pickup' : 'destination'} on map...`;
+  }
 
   if (isPickup) {
     pickupCoords = [lat, lng];
+    lastGeocodedPickup = '';
 
     if (leafletMap) {
       if (pickupMarker) {
@@ -266,43 +303,78 @@ async function applyPinpointCoords(lat, lng, defaultLabel = 'Selected Point', is
         pickupMarker = L.marker([lat, lng], { draggable: true }).addTo(leafletMap);
         pickupMarker.on('dragend', async (e) => {
           const newPos = e.target.getLatLng();
-          await applyPinpointCoords(newPos.lat, newPos.lng, 'Dragged Pin', true);
+          await applyPinpointCoords(newPos.lat, newPos.lng, 'Adjusted Pickup', true);
         });
       }
       pickupMarker.bindPopup('<b>📍 Your Pickup Location</b><br><small class="text-muted">Drag to adjust</small>').openPopup();
       leafletMap.panTo([lat, lng]);
     }
 
-    // High precision reverse geocode to get exact street/colony
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
-      const data = await res.json();
-      let address = '';
-      if (data && data.address) {
-        const a = data.address;
-        const street = a.road || a.suburb || a.neighbourhood || a.residential || '';
-        const city = a.city || a.town || a.county || a.state_district || '';
-        const state = a.state || '';
-        address = [street, city, state].filter(Boolean).join(', ');
-      }
-      if (!address && data && data.display_name) {
-        address = data.display_name.split(',').slice(0, 3).join(',');
-      }
+    reverseGeocodeAndFill(lat, lng, 'pickupCity', defaultLabel, statusEl, true);
 
-      const finalAddress = address || defaultLabel;
-      const pickupInput = document.getElementById('pickupCity');
-      if (pickupInput) {
-        pickupInput.value = finalAddress;
-        updateSummaryTexts();
-      }
-      if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> Exact Location Set: <strong>${finalAddress}</strong>`;
-    } catch (e) {
-      if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> Location pinned at [${lat.toFixed(4)}, ${lng.toFixed(4)}]`;
-    }
-
-    // Auto calculate route if drop is filled
     const dropVal = document.getElementById('dropCity')?.value.trim();
     if (dropVal) calculateOSRMRoute(false);
+  } else {
+    dropCoords = [lat, lng];
+    lastGeocodedDrop = '';
+
+    if (leafletMap) {
+      if (dropMarker) {
+        dropMarker.setLatLng([lat, lng]);
+      } else {
+        dropMarker = L.marker([lat, lng], { draggable: true }).addTo(leafletMap);
+        dropMarker.on('dragend', async (e) => {
+          const newPos = e.target.getLatLng();
+          await applyPinpointCoords(newPos.lat, newPos.lng, 'Adjusted Destination', false);
+        });
+      }
+      dropMarker.bindPopup('<b>🏁 Your Destination / Drop</b><br><small class="text-muted">Drag to adjust</small>').openPopup();
+      leafletMap.panTo([lat, lng]);
+    }
+
+    reverseGeocodeAndFill(lat, lng, 'dropCity', defaultLabel, statusEl, false);
+
+    const pickupVal = document.getElementById('pickupCity')?.value.trim();
+    if (pickupVal) calculateOSRMRoute(false);
+  }
+}
+
+async function reverseGeocodeAndFill(lat, lng, inputId, defaultLabel, statusEl, isPickup) {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+    const data = await res.json();
+    let address = '';
+    if (data && data.address) {
+      const a = data.address;
+      const street = a.road || a.suburb || a.neighbourhood || a.residential || '';
+      const city = a.city || a.town || a.county || a.state_district || '';
+      const state = a.state || '';
+      address = [street, city, state].filter(Boolean).join(', ');
+    }
+    if (!address && data && data.display_name) {
+      address = data.display_name.split(',').slice(0, 3).join(',');
+    }
+
+    const finalAddress = address || defaultLabel;
+    const input = document.getElementById(inputId);
+    if (input) {
+      input.value = finalAddress;
+      if (isPickup) lastGeocodedPickup = finalAddress;
+      else lastGeocodedDrop = finalAddress;
+      updateSummaryTexts();
+    }
+    if (statusEl) {
+      statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> ${isPickup ? 'Pickup' : 'Destination'} Set: <strong>${finalAddress}</strong>`;
+    }
+  } catch (e) {
+    const input = document.getElementById(inputId);
+    if (input && !input.value.trim()) {
+      input.value = defaultLabel;
+      updateSummaryTexts();
+    }
+    if (statusEl) {
+      statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> ${isPickup ? 'Pickup' : 'Destination'} pinned at [${lat.toFixed(4)}, ${lng.toFixed(4)}]`;
+    }
   }
 }
 
@@ -398,25 +470,49 @@ function initLocationAutocomplete(inputId, dropdownId, type) {
  * 1-Click Quick Location Chip Selector
  */
 async function selectQuickArea(type, fullAddress) {
-  const input = document.getElementById(type === 'pickup' ? 'pickupCity' : 'dropCity');
+  const isPickup = (type === 'pickup');
+  const input = document.getElementById(isPickup ? 'pickupCity' : 'dropCity');
   if (input) input.value = fullAddress;
+
+  if (isPickup) {
+    pickupCoords = null;
+    lastGeocodedPickup = fullAddress;
+    setMapPinMode('pickup');
+  } else {
+    dropCoords = null;
+    lastGeocodedDrop = fullAddress;
+    setMapPinMode('drop');
+  }
 
   const coords = await geocodeAddress(fullAddress);
   if (coords) {
-    if (type === 'pickup') {
+    if (isPickup) {
       pickupCoords = coords;
       if (leafletMap) {
         if (pickupMarker) pickupMarker.setLatLng(coords);
-        else pickupMarker = L.marker(coords, { draggable: true }).addTo(leafletMap);
+        else {
+          pickupMarker = L.marker(coords, { draggable: true }).addTo(leafletMap);
+          pickupMarker.on('dragend', async (e) => {
+            const p = e.target.getLatLng();
+            await applyPinpointCoords(p.lat, p.lng, 'Adjusted Pickup', true);
+          });
+        }
         pickupMarker.bindPopup(`<b>📍 ${fullAddress}</b>`).openPopup();
-        leafletMap.setView(coords, 14);
+        leafletMap.panTo(coords);
       }
     } else {
       dropCoords = coords;
       if (leafletMap) {
         if (dropMarker) dropMarker.setLatLng(coords);
-        else dropMarker = L.marker(coords).addTo(leafletMap);
-        dropMarker.bindPopup(`<b>🏁 ${fullAddress}</b>`);
+        else {
+          dropMarker = L.marker(coords, { draggable: true }).addTo(leafletMap);
+          dropMarker.on('dragend', async (e) => {
+            const p = e.target.getLatLng();
+            await applyPinpointCoords(p.lat, p.lng, 'Adjusted Destination', false);
+          });
+        }
+        dropMarker.bindPopup(`<b>🏁 ${fullAddress}</b>`).openPopup();
+        leafletMap.panTo(coords);
       }
     }
   }
@@ -608,88 +704,206 @@ async function useNetworkLocationFallback() {
 }
 
 /**
- * Free OSRM Road Distance & Routing Engine
+ * Free OSRM Road Distance & Routing Engine with Instant Haversine Fallback
  */
+let lastGeocodedPickup = '';
+let lastGeocodedDrop = '';
+
+function getHaversineDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 async function calculateOSRMRoute(showAlert = true) {
   const pickup = document.getElementById('pickupCity')?.value.trim();
   const drop = document.getElementById('dropCity')?.value.trim();
   const statusEl = document.getElementById('routeMapStatus');
-  const distBadge = document.getElementById('routeDistanceCalculated');
 
   if (!pickup || !drop) {
     if (showAlert) alert('Please enter both Pickup and Drop locations to find route.');
     return;
   }
 
-  if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary-custom me-1"></i> Calculating real road distance via OSRM...';
+  if (pickup !== lastGeocodedPickup) {
+    pickupCoords = null;
+  }
+  if (drop !== lastGeocodedDrop) {
+    dropCoords = null;
+  }
+
+  if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary-custom me-1"></i> Calculating road distance...';
 
   try {
-    // 1. Geocode Pickup if not already coordinates
-    let pCoord = pickupCoords;
-    if (!pCoord) {
-      pCoord = await geocodeAddress(pickup);
-      pickupCoords = pCoord;
+    if (!pickupCoords) {
+      pickupCoords = await geocodeAddress(pickup);
+      if (pickupCoords) lastGeocodedPickup = pickup;
     }
 
-    // 2. Geocode Drop
-    let dCoord = dropCoords;
-    if (!dCoord) {
-      dCoord = await geocodeAddress(drop);
-      dropCoords = dCoord;
+    if (!dropCoords) {
+      dropCoords = await geocodeAddress(drop);
+      if (dropCoords) lastGeocodedDrop = drop;
     }
 
-    if (!pCoord || !dCoord) {
+    if (!pickupCoords || !dropCoords) {
       if (statusEl) {
-        statusEl.innerHTML = '<i class="fa-solid fa-circle-exclamation text-warning me-1"></i> Could not pinpoint location. Please check city name (e.g. Delhi, Jaipur, Mumbai).';
+        statusEl.innerHTML = '<i class="fa-solid fa-circle-exclamation text-warning me-1"></i> Could not pinpoint location. Please check area or city name.';
       }
       return;
     }
 
-    // 3. Call Free OSRM Routing API (lng,lat order)
-    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${pCoord[1]},${pCoord[0]};${dCoord[1]},${dCoord[0]}?overview=full&geometries=geojson`;
-    const res = await fetch(osrmUrl);
-    const data = await res.json();
+    const pCoord = pickupCoords;
+    const dCoord = dropCoords;
 
-    if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-      const route = data.routes[0];
-      const distanceKm = Math.max(1, Math.round(route.distance / 1000));
-      const durationMins = Math.round(route.duration / 60);
-
-      // Update distance input and badge
-      setDistance(distanceKm);
-      if (distBadge) distBadge.innerText = `${distanceKm} KM (${durationMins} mins drive)`;
-      if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> Road route found: <strong>${distanceKm} KM</strong> (${durationMins} min drive)`;
-
-      // Draw markers and route on Leaflet map
-      if (leafletMap) {
-        if (pickupMarker) leafletMap.removeLayer(pickupMarker);
-        if (dropMarker) leafletMap.removeLayer(dropMarker);
-        if (routePolyline) leafletMap.removeLayer(routePolyline);
-
-        pickupMarker = L.marker(pCoord).addTo(leafletMap).bindPopup(`<b>📍 Pickup:</b> ${pickup}`).openPopup();
-        dropMarker = L.marker(dCoord).addTo(leafletMap).bindPopup(`<b>🏁 Drop:</b> ${drop}`);
-
-        const routeCoords = route.geometry.coordinates.map(c => [c[1], c[0]]);
-        routePolyline = L.polyline(routeCoords, { color: '#f97316', weight: 5, opacity: 0.85 }).addTo(leafletMap);
-
-        leafletMap.fitBounds(routePolyline.getBounds(), { padding: [30, 30] });
+    if (leafletMap) {
+      if (pickupMarker) pickupMarker.setLatLng(pCoord);
+      else {
+        pickupMarker = L.marker(pCoord, { draggable: true }).addTo(leafletMap);
+        pickupMarker.on('dragend', async (e) => {
+          const p = e.target.getLatLng();
+          await applyPinpointCoords(p.lat, p.lng, 'Adjusted Pickup', true);
+        });
       }
-    } else {
-      throw new Error('No driving route found between these points.');
+      pickupMarker.bindPopup(`<b>📍 Pickup:</b> ${pickup}`);
+
+      if (dropMarker) dropMarker.setLatLng(dCoord);
+      else {
+        dropMarker = L.marker(dCoord, { draggable: true }).addTo(leafletMap);
+        dropMarker.on('dragend', async (e) => {
+          const p = e.target.getLatLng();
+          await applyPinpointCoords(p.lat, p.lng, 'Adjusted Destination', false);
+        });
+      }
+      dropMarker.bindPopup(`<b>🏁 Destination:</b> ${drop}`);
+    }
+
+    let distanceKm = null;
+    let durationMins = null;
+    let routeCoords = null;
+
+    try {
+      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${pCoord[1]},${pCoord[0]};${dCoord[1]},${dCoord[0]}?overview=full&geometries=geojson`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(osrmUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      const data = await res.json();
+      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        distanceKm = Math.max(1, Math.round(route.distance / 1000));
+        durationMins = Math.round(route.duration / 60);
+        routeCoords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+      }
+    } catch (osrmErr) {
+      console.warn('OSRM routing timeout/error, using highway calculation fallback:', osrmErr);
+    }
+
+    if (!distanceKm) {
+      const airDistKm = getHaversineDistanceKm(pCoord[0], pCoord[1], dCoord[0], dCoord[1]);
+      distanceKm = Math.max(5, Math.round(airDistKm * 1.28));
+      const estHours = (distanceKm / 45);
+      durationMins = Math.round(estHours * 60);
+      routeCoords = [pCoord, dCoord];
+    }
+
+    setDistance(distanceKm);
+
+    const timeBadge = document.getElementById('routeTimeDisplay');
+    if (timeBadge) {
+      const hrs = Math.floor(durationMins / 60);
+      const mins = durationMins % 60;
+      timeBadge.innerText = hrs > 0 ? `~${hrs}h ${mins}m Drive` : `~${mins} Mins Drive`;
+    }
+
+    if (statusEl) {
+      statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> Route: <strong>${distanceKm} KM</strong> (~${Math.round(durationMins / 60 * 10) / 10} hrs)`;
+    }
+
+    if (leafletMap && routeCoords) {
+      if (routePolyline) leafletMap.removeLayer(routePolyline);
+      routePolyline = L.polyline(routeCoords, { color: '#ea580c', weight: 5, opacity: 0.9 }).addTo(leafletMap);
+      leafletMap.fitBounds(routePolyline.getBounds(), { padding: [40, 40] });
     }
   } catch (err) {
-    console.warn('OSRM routing fallback:', err);
-    if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-circle-info text-secondary me-1"></i> Approx estimate mode active.`;
+    console.warn('Route calculation error:', err);
   }
 }
 
+const POPULAR_LOCATIONS = {
+  'sirsi road, jaipur': [26.9239, 75.7186],
+  'sirsi road': [26.9239, 75.7186],
+  'vaishali nagar, jaipur': [26.9075, 75.7397],
+  'vaishali nagar': [26.9075, 75.7397],
+  'mansarovar, jaipur': [26.8611, 75.7644],
+  'mansarovar': [26.8611, 75.7644],
+  'malviya nagar, jaipur': [26.8529, 75.8237],
+  'malviya nagar': [26.8529, 75.8237],
+  'ajmer road, jaipur': [26.8920, 75.7480],
+  'ajmer road': [26.8920, 75.7480],
+  'jagatpura, jaipur': [26.8242, 75.8569],
+  'jagatpura': [26.8242, 75.8569],
+  'gurugram, delhi ncr': [28.4595, 77.0266],
+  'gurugram': [28.4595, 77.0266],
+  'gurgaon': [28.4595, 77.0266],
+  'noida, delhi ncr': [28.5355, 77.3910],
+  'noida': [28.5355, 77.3910],
+  'mumbai, maharashtra': [19.0760, 72.8777],
+  'mumbai': [19.0760, 72.8777],
+  'delhi': [28.6139, 77.2090],
+  'delhi ncr': [28.6139, 77.2090],
+  'new delhi': [28.6139, 77.2090],
+  'jaipur': [26.9124, 75.7873],
+  'ajmer': [26.4499, 74.6399],
+  'jodhpur': [26.2389, 73.0243],
+  'kota': [25.2138, 75.8648],
+  'udaipur': [24.5854, 73.7125],
+  'pune': [18.5204, 73.8567],
+  'bangalore': [12.9716, 77.5946],
+  'bengaluru': [12.9716, 77.5946],
+  'hyderabad': [17.3850, 78.4867],
+  'ahmedabad': [23.0225, 72.5714],
+  'kolkata': [22.5726, 88.3639],
+  'lucknow': [26.8467, 80.9462],
+  'chandigarh': [30.7333, 76.7794]
+};
+
 async function geocodeAddress(query) {
   if (!query || !query.trim()) return null;
-  const cleanQuery = query.trim();
+  const cleanQuery = query.trim().toLowerCase();
 
-  // 1. Nominatim with clean query in India
+  // 1. Instant match in local database
+  if (POPULAR_LOCATIONS[cleanQuery]) {
+    return POPULAR_LOCATIONS[cleanQuery];
+  }
+
+  // Check partial key matches
+  for (const [key, coords] of Object.entries(POPULAR_LOCATIONS)) {
+    if (cleanQuery.includes(key) || key.includes(cleanQuery)) {
+      return coords;
+    }
+  }
+
+  // 2. Photon Komoot API
   try {
-    const encoded = encodeURIComponent(cleanQuery + ', India');
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query.trim())}&limit=1`);
+    const data = await res.json();
+    if (data && data.features && data.features.length > 0) {
+      const [lng, lat] = data.features[0].geometry.coordinates;
+      return [lat, lng];
+    }
+  } catch (e) {
+    console.warn('Photon geocode fallback:', e);
+  }
+
+  // 3. Nominatim with clean query in India
+  try {
+    const encoded = encodeURIComponent(query.trim() + ', India');
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&countrycodes=in&limit=1`);
     const results = await res.json();
     if (results && results.length > 0) {
@@ -699,27 +913,15 @@ async function geocodeAddress(query) {
     console.warn('Nominatim geocode primary failed:', e);
   }
 
-  // 2. Try searching without adding ', India'
+  // 4. Try searching without adding ', India'
   try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQuery)}&limit=1`);
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query.trim())}&limit=1`);
     const results = await res.json();
     if (results && results.length > 0) {
       return [parseFloat(results[0].lat), parseFloat(results[0].lon)];
     }
   } catch (e) {
     console.warn('Nominatim fallback failed:', e);
-  }
-
-  // 3. Photon Komoot API fallback
-  try {
-    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(cleanQuery)}&limit=1`);
-    const data = await res.json();
-    if (data.features && data.features.length > 0) {
-      const [lng, lat] = data.features[0].geometry.coordinates;
-      return [lat, lng];
-    }
-  } catch (e) {
-    console.warn('Photon fallback failed:', e);
   }
 
   return null;
@@ -1112,18 +1314,6 @@ function setDistance(km) {
   if (distDisplay) distDisplay.innerText = `${km} KM (Confirmed Route)`;
   recalculateTotal();
   updateSummaryTexts();
-}
-
-function selectQuickArea(type, value) {
-  if (type === 'pickup') {
-    const el = document.getElementById('pickupCity');
-    if (el) el.value = value;
-  } else if (type === 'drop') {
-    const el = document.getElementById('dropCity');
-    if (el) el.value = value;
-  }
-  updateSummaryTexts();
-  calculateOSRMRoute(false);
 }
 
 function selectVehicleType(type) {
