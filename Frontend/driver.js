@@ -265,31 +265,73 @@ function initPwaInstallIcon() {
   });
 }
 
-function triggerPwaInstall() {
-  if (deferredInstallPrompt) {
-    deferredInstallPrompt.prompt();
-    deferredInstallPrompt.userChoice.then((choice) => {
-      if (choice.outcome === 'accepted') {
+async function triggerPwaInstall() {
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (isStandalone) {
+    showToast('✅ App pehle se hi phone me installed hai!', 'success');
+    return;
+  }
+
+  // Use the native prompt captured by our early <head> interceptor
+  const nativePrompt = window._driverInstallPrompt || deferredInstallPrompt;
+
+  if (nativePrompt) {
+    try {
+      await nativePrompt.prompt();
+      const choice = await nativePrompt.userChoice;
+      if (choice && choice.outcome === 'accepted') {
+        showToast('🎉 Rudraksha Driver App successfully installed!', 'success');
         document.querySelectorAll('#btnInstallRiderApp, #cardInstallRiderApp, #loginInstallContainer').forEach(el => {
           if (el) el.style.display = 'none';
         });
       }
+      window._driverInstallPrompt = null;
       deferredInstallPrompt = null;
-    });
-  } else {
-    window._riderWaitingForInstall = true;
-    showPwaInstallModal();
+      return;
+    } catch (err) {
+      console.warn('Native install prompt error:', err);
+    }
   }
-}
 
-function showPwaInstallModal() {
-  const modal = document.getElementById('pwaInstallGuideModal');
-  if (modal) modal.style.display = 'flex';
-}
+  // If prompt is warming up, wait briefly and trigger
+  showToast('⏳ App installer start ho raha hai...', 'info');
+  window._waitingForDriverInstall = true;
 
-function closePwaInstallModal() {
-  const modal = document.getElementById('pwaInstallGuideModal');
-  if (modal) modal.style.display = 'none';
+  for (let i = 0; i < 15; i++) {
+    await new Promise(r => setTimeout(r, 150));
+    const promptNow = window._driverInstallPrompt || deferredInstallPrompt;
+    if (promptNow) {
+      try {
+        await promptNow.prompt();
+        const choice = await promptNow.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          showToast('🎉 Rudraksha Driver App successfully installed!', 'success');
+          document.querySelectorAll('#btnInstallRiderApp, #cardInstallRiderApp, #loginInstallContainer').forEach(el => {
+            if (el) el.style.display = 'none';
+          });
+        }
+        window._driverInstallPrompt = null;
+        deferredInstallPrompt = null;
+        return;
+      } catch (err) {}
+    }
+  }
+
+  // Check if opened inside WhatsApp / in-app browser
+  const isWebview = /FBAN|FBAV|Instagram|WhatsApp|Line|Twitter|Telegram/i.test(navigator.userAgent);
+  if (isWebview) {
+    alert('⚠️ WhatsApp browser me direct download allow nahi hota.\n\nKripya is link ko Chrome Browser me kholein aur Install App dabayein!');
+    return;
+  }
+
+  // Check iOS
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  if (isIOS) {
+    showToast('📲 iPhone: Niche Share button (⬆) dabakar "Add to Home Screen" karein', 'info');
+    return;
+  }
+
+  showToast('🚀 Screen par "Install" dabayein app download shuru karne ke liye!', 'success');
 }
 
 /* ==========================================================================

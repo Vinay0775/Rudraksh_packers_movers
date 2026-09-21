@@ -18,6 +18,37 @@
   <meta name="apple-mobile-web-app-title" content="Rudraksha Rider">
   <meta name="mobile-web-app-capable" content="yes">
 
+  <!-- Immediate PWA Prompt Interceptor & Service Worker Loader (Zero delay) -->
+  <script>
+    window._driverInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      window._driverInstallPrompt = e;
+      console.log('⚡ [Rider PWA] Native 1-Click Install Prompt captured!');
+      if (window._waitingForDriverInstall && typeof window.triggerPwaInstall === 'function') {
+        window._waitingForDriverInstall = false;
+        window.triggerPwaInstall();
+      }
+    });
+
+    window.addEventListener('appinstalled', function() {
+      window._driverInstallPrompt = null;
+      var btns = document.querySelectorAll('#btnInstallRiderApp, #cardInstallRiderApp, #loginInstallContainer');
+      btns.forEach(function(b) { if (b) b.style.display = 'none'; });
+      if (typeof window.showToast === 'function') {
+        window.showToast('🚀 Rudraksha Driver App successfully installed!', 'success');
+      }
+    });
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').then(function(reg) {
+        console.log('[Rider SW] Active scope:', reg.scope);
+      }).catch(function(err) {
+        console.warn('[Rider SW] Registration error:', err);
+      });
+    }
+  </script>
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -935,38 +966,7 @@
     </div>
   </div>
 
-  <!-- PWA Install Guide Modal (Native fallback for iOS / Android / Desktop) -->
-  <div id="pwaInstallGuideModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 10000; align-items: center; justify-content: center; padding: 20px;">
-    <div style="background: #13141a; border: 1.5px solid rgba(249,115,22,0.45); border-radius: 24px; padding: 26px 22px; width: 100%; max-width: 420px; box-shadow: 0 25px 60px rgba(0,0,0,0.9); animation: zoomIn 0.25s ease;">
-      <div style="text-align: center; margin-bottom: 14px;">
-        <img src="driver-icon-192.png" alt="Rudraksha Driver" style="width: 72px; height: 72px; border-radius: 18px; border: 2px solid #f97316; box-shadow: 0 8px 24px rgba(249,115,22,0.45); object-fit: cover;">
-      </div>
-      <h4 style="font-weight: 800; color: #fff; text-align: center; margin-bottom: 6px; font-size: 1.15rem;">Download Rudraksha Driver App</h4>
-      <p style="font-size: 0.8rem; color: #94a3b8; text-align: center; margin-bottom: 18px;">
-        App ko phone ki home screen par install karein taaki aap bina browser khole direct 1-tap me orders accept kar sakein:
-      </p>
-
-      <div id="pwaAndroidSteps" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px; margin-bottom: 14px; font-size: 0.82rem; color: #cbd5e1; line-height: 1.6;">
-        <div style="font-weight: 700; color: #f97316; margin-bottom: 6px;"><i class="fa-brands fa-android me-1"></i> Android (Chrome / Samsung) Par Install:</div>
-        <div>1. Browser ke upar ya niche <strong>3 Dots (⋮)</strong> ya Menu par tap karein.</div>
-        <div>2. <strong>'Install app'</strong> ya <strong>'Add to Home screen'</strong> (होम स्क्रीन पर जोड़ें) select karein.</div>
-        <div>3. <strong>Install</strong> dabayein — Driver App icon phone me aa jayega!</div>
-      </div>
-
-      <div id="pwaIosSteps" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px; margin-bottom: 18px; font-size: 0.82rem; color: #cbd5e1; line-height: 1.6;">
-        <div style="font-weight: 700; color: #38bdf8; margin-bottom: 6px;"><i class="fa-brands fa-apple me-1"></i> iPhone (Safari) Par Install:</div>
-        <div>1. Niche Safari bar me <strong>Share Button (<i class="fa-solid fa-arrow-up-from-bracket"></i>)</strong> par tap karein.</div>
-        <div>2. Scroll karke <strong>'Add to Home Screen' (<i class="fa-regular fa-square-plus"></i>)</strong> select karein.</div>
-        <div>3. Upar <strong>'Add'</strong> dabayein!</div>
-      </div>
-
-      <button type="button" onclick="closePwaInstallModal()" style="width: 100%; background: linear-gradient(135deg, #f97316, #ea580c); border: none; color: #fff; border-radius: 14px; padding: 13px; font-size: 0.9rem; font-weight: 800; cursor: pointer; box-shadow: 0 4px 14px rgba(249,115,22,0.4);">
-        <i class="fa-solid fa-check me-1"></i> Samajh Gaya (Got It)
-      </button>
-    </div>
-  </div>
-
   <!-- Dedicated Rider Partner Engine JS -->
-  <script src="driver.js?v=2.6"></script>
+  <script src="driver.js?v=2.7"></script>
 </body>
 </html>
