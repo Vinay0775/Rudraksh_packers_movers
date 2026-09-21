@@ -8,7 +8,20 @@ const DRIVER_API_BASE = isLocalhostDriver ? 'http://localhost:3000/api' : 'https
 
 const RIDER_TOKEN_KEY = 'rudraksha_rider_token';
 const RIDER_SESSION_KEY = 'rudraksha_driver_session';
-const AVATAR_PREFIX = 'rudraksha_rider_avatar_';
+
+// Bulletproof Global Avatar Storage Identifier
+window.AVATAR_PREFIX = window.AVATAR_PREFIX || 'rudraksha_rider_avatar_';
+window.Avatar_prefix = window.Avatar_prefix || 'rudraksha_rider_avatar_';
+var AVATAR_PREFIX = window.AVATAR_PREFIX;
+var Avatar_prefix = window.Avatar_prefix;
+
+function getAvatarStoragePrefix() {
+  try {
+    return window.AVATAR_PREFIX || window.Avatar_prefix || 'rudraksha_rider_avatar_';
+  } catch {
+    return 'rudraksha_rider_avatar_';
+  }
+}
 
 // Active Rider State
 let currentDriver = null;
@@ -74,8 +87,13 @@ function hideLoginOverlay() {
 
 function getActiveRiderAvatar() {
   if (!currentDriver) return null;
-  const cleanPhone = String(currentDriver.phone || '').replace(/\D/g, '');
-  return currentDriver.avatar_url || (cleanPhone ? localStorage.getItem(AVATAR_PREFIX + cleanPhone) : null);
+  try {
+    const cleanPhone = String(currentDriver.phone || '').replace(/\D/g, '');
+    const prefix = getAvatarStoragePrefix();
+    return currentDriver.avatar_url || (cleanPhone ? localStorage.getItem(prefix + cleanPhone) : null);
+  } catch {
+    return currentDriver.avatar_url || null;
+  }
 }
 
 /**
@@ -90,7 +108,8 @@ async function checkDriverAuth() {
       currentDriver = JSON.parse(cachedSession);
       const cleanPhone = String(currentDriver?.phone || '').replace(/\D/g, '');
       if (cleanPhone) {
-        const localAvatar = localStorage.getItem(AVATAR_PREFIX + cleanPhone);
+        const prefix = getAvatarStoragePrefix();
+        const localAvatar = localStorage.getItem(prefix + cleanPhone);
         if (localAvatar && !currentDriver.avatar_url) {
           currentDriver.avatar_url = localAvatar;
         }
@@ -112,17 +131,22 @@ async function checkDriverAuth() {
     if (res.ok) {
       const data = await res.json();
       if (data.rider) {
-        const cleanPhone = String(data.rider.phone || currentDriver?.phone || '').replace(/\D/g, '');
-        const savedAvatar = cleanPhone ? localStorage.getItem(AVATAR_PREFIX + cleanPhone) : null;
+        try {
+          const cleanPhone = String(data.rider.phone || currentDriver?.phone || '').replace(/\D/g, '');
+          const prefix = getAvatarStoragePrefix();
+          const savedAvatar = cleanPhone ? localStorage.getItem(prefix + cleanPhone) : null;
 
-        // Preserve avatar_url: if backend provided one, keep and store it; otherwise restore from local persistent avatar!
-        if (data.rider.avatar_url) {
-          if (cleanPhone) localStorage.setItem(AVATAR_PREFIX + cleanPhone, data.rider.avatar_url);
-        } else if (savedAvatar) {
-          data.rider.avatar_url = savedAvatar;
-        } else if (currentDriver?.avatar_url) {
-          data.rider.avatar_url = currentDriver.avatar_url;
-          if (cleanPhone) localStorage.setItem(AVATAR_PREFIX + cleanPhone, currentDriver.avatar_url);
+          // Preserve avatar_url: if backend provided one, keep and store it; otherwise restore from local persistent avatar!
+          if (data.rider.avatar_url) {
+            if (cleanPhone) localStorage.setItem(prefix + cleanPhone, data.rider.avatar_url);
+          } else if (savedAvatar) {
+            data.rider.avatar_url = savedAvatar;
+          } else if (currentDriver?.avatar_url) {
+            data.rider.avatar_url = currentDriver.avatar_url;
+            if (cleanPhone) localStorage.setItem(prefix + cleanPhone, currentDriver.avatar_url);
+          }
+        } catch (e) {
+          console.warn('Avatar sync non-critical warning:', e);
         }
 
         currentDriver = data.rider;
@@ -186,11 +210,16 @@ async function submitDriverLogin() {
       throw new Error(data.error || 'Access Denied: Invalid mobile number or PIN.');
     }
 
-    // Restore persistent avatar if existing for this phone
-    const cleanPhone = String(data.driver?.phone || phoneInput).replace(/\D/g, '');
-    const savedAvatar = cleanPhone ? localStorage.getItem(AVATAR_PREFIX + cleanPhone) : null;
-    if (savedAvatar && !data.driver.avatar_url) {
-      data.driver.avatar_url = savedAvatar;
+    // Restore persistent avatar if existing for this phone (Protected with Try-Catch)
+    try {
+      const cleanPhone = String(data.driver?.phone || phoneInput).replace(/\D/g, '');
+      const prefix = getAvatarStoragePrefix();
+      const savedAvatar = cleanPhone ? localStorage.getItem(prefix + cleanPhone) : null;
+      if (savedAvatar && !data.driver.avatar_url) {
+        data.driver.avatar_url = savedAvatar;
+      }
+    } catch (avatarErr) {
+      console.warn('Non-blocking avatar restore notice:', avatarErr);
     }
 
     // Save cryptographic token & sanitized driver session
@@ -459,9 +488,14 @@ function handleRiderPhotoUpload(event) {
       const cloudUrl = await uploadToCloudImageHost(compressedBase64);
 
       // Permanently save to dedicated local persistent key by phone
-      const cleanPhone = String(currentDriver?.phone || '').replace(/\D/g, '');
-      if (cleanPhone) {
-        localStorage.setItem(AVATAR_PREFIX + cleanPhone, cloudUrl);
+      try {
+        const cleanPhone = String(currentDriver?.phone || '').replace(/\D/g, '');
+        const prefix = getAvatarStoragePrefix();
+        if (cleanPhone) {
+          localStorage.setItem(prefix + cleanPhone, cloudUrl);
+        }
+      } catch (e) {
+        console.warn('Avatar local storage notice:', e);
       }
 
       if (currentDriver) {

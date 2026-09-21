@@ -18,8 +18,13 @@
   <meta name="apple-mobile-web-app-title" content="Rudraksha Rider">
   <meta name="mobile-web-app-capable" content="yes">
 
-  <!-- Immediate PWA Prompt Interceptor & Service Worker Loader (Zero delay) -->
+  <!-- Global Safety Variables & PWA Prompt Interceptor -->
   <script>
+    window.AVATAR_PREFIX = 'rudraksha_rider_avatar_';
+    window.Avatar_prefix = 'rudraksha_rider_avatar_';
+    window.avatar_prefix = 'rudraksha_rider_avatar_';
+    var AVATAR_PREFIX = 'rudraksha_rider_avatar_';
+    var Avatar_prefix = 'rudraksha_rider_avatar_';
     window._driverInstallPrompt = null;
     window.addEventListener('beforeinstallprompt', function(e) {
       e.preventDefault();
@@ -980,6 +985,6 @@
   </div>
 
   <!-- Dedicated Rider Partner Engine JS -->
-  <script src="driver.js?v=2.8"></script>
+  <script src="driver.js?v=3.5.0"></script>
 </body>
 </html>

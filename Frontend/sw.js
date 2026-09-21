@@ -3,7 +3,7 @@
  * Ultra-resilient, crash-proof caching with live network priority
  */
 
-const CACHE_NAME = 'rudraksha-pwa-v3.2.0';
+const CACHE_NAME = 'rudraksha-pwa-v3.5.0';
 const STATIC_ASSETS = [
   './index.html',
   './parcel.html',
@@ -101,7 +101,6 @@ self.addEventListener('fetch', (event) => {
           return networkRes;
         })
         .catch(() => {
-          // If offline or network fails, load cached version
           return caches.match(request).then((cached) => {
             return cached || caches.match('./index.html');
           });
@@ -110,22 +109,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. Static Assets (CSS, JS, Images, Fonts): Cache-first with Network Fallback
+  // 4. Critical Logic Scripts & CSS: Network-First to guarantee immediate live updates
+  const isCodeAsset = url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
+  if (isCodeAsset) {
+    event.respondWith(
+      fetch(request)
+        .then((networkRes) => {
+          if (networkRes && networkRes.status === 200) {
+            const clone = networkRes.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return networkRes;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // 5. Static Media (Images, Fonts, Icons): Cache-first with Network Fallback
   event.respondWith(
     caches.match(request, { ignoreSearch: true }).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Revalidate in background
-        fetch(request)
-          .then((netRes) => {
-            if (netRes && netRes.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => cache.put(request, netRes));
-            }
-          })
-          .catch(() => {});
-        return cachedResponse;
-      }
-
-      // If not in cache, fetch from network
+      if (cachedResponse) return cachedResponse;
       return fetch(request).then((networkRes) => {
         if (networkRes && networkRes.status === 200) {
           const clone = networkRes.clone();
