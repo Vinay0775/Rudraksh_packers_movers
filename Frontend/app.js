@@ -171,16 +171,25 @@ function renderVehicleCards() {
 function applyCompanyConfig(comp) {
   if (!comp) return;
   if (comp.phone) {
-    document.querySelectorAll('a[href^="tel:"]').forEach(el => el.href = `tel:+91${comp.phone.replace(/\D/g, '')}`);
+    const raw = String(comp.phone).replace(/\D/g, '');
+    document.querySelectorAll('a[href^="tel:"]').forEach(el => el.href = `tel:+91${raw}`);
     document.querySelectorAll('.company-phone-text').forEach(el => el.innerText = `+91 ${comp.phone}`);
+    document.querySelectorAll('.nav-phone-link span').forEach(el => el.innerText = `+91 ${comp.phone}`);
   }
   if (comp.whatsapp) {
+    const rawWa = String(comp.whatsapp).replace(/\D/g, '');
     document.querySelectorAll('a[href*="wa.me"]').forEach(el => {
-      el.href = `https://wa.me/91${comp.whatsapp.replace(/\D/g, '')}?text=Hello%20Rudraksha%20Packers,%20I%20want%20to%20inquire%20about%20shifting%20service`;
+      el.href = `https://wa.me/91${rawWa}?text=Hello%20Rudraksha%20Packers,%20I%20want%20to%20inquire%20about%20shifting%20service`;
     });
   }
   if (comp.name) {
     document.querySelectorAll('.brand-title-text').forEach(el => el.innerText = comp.name);
+  }
+  if (comp.gstin) {
+    document.querySelectorAll('.company-gstin-text').forEach(el => el.innerText = comp.gstin);
+  }
+  if (comp.address) {
+    document.querySelectorAll('.company-address-text').forEach(el => el.innerText = comp.address);
   }
 }
 
@@ -1740,6 +1749,8 @@ async function processWhatsAppCheckout(openWhatsApp = true) {
 function showBookingSuccessModal(bookingId, bookingData) {
   currentTrackedBooking = bookingData;
   document.getElementById('successBookingId').innerText = bookingId;
+  const otpEl = document.getElementById('successPickupOtp');
+  if (otpEl) otpEl.innerText = bookingData.pickup_otp || '----';
 
   // 1. WhatsApp Confirmation Link
   const trackUrl = (() => {
@@ -1754,6 +1765,8 @@ function showBookingSuccessModal(bookingId, bookingData) {
   const waMsg = `📦 *RUDRAKSHA PACKERS & MOVERS - BOOKING CONFIRMED* 🚚\n\n` +
     `Dear *${bookingData.customer_name || 'Customer'}*,\n` +
     `Your relocation booking *${bookingId}* is successfully registered!\n\n` +
+    `🔑 *Moving Pickup PIN:* *${bookingData.pickup_otp || '----'}*\n` +
+    `_(Please share this 4-digit PIN with driver only when truck loading starts)_\n\n` +
     `📍 *Pickup:* ${bookingData.pickup_address}\n` +
     `🏁 *Drop:* ${bookingData.drop_address}\n` +
     `📅 *Moving Date:* ${bookingData.shifting_date}\n` +

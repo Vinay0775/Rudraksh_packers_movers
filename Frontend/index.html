@@ -91,7 +91,7 @@
             <i class="fa-solid fa-location-crosshairs text-primary-custom"></i> <span>Track Move</span>
           </a>
           <a href="tel:+917296831460" class="nav-phone-link">
-            <i class="fa-solid fa-phone text-warning"></i> <span>+91 72968 31460</span>
+            <i class="fa-solid fa-phone text-warning"></i> <span class="company-phone-text">+91 72968 31460</span>
           </a>
           <a href="#calculator" class="btn-calc-nav">
             <i class="fa-solid fa-calculator"></i> <span>Cost Calculator</span>
@@ -1444,7 +1444,7 @@
             <p class="brand-name-bold mb-1">Rudraksh Packers & Movers</p>
             <p class="venture-text mb-2">Reliable local and domestic relocation services.</p>
             <p class="address-text mb-2">Near SNM Hospital, Gandhipath (West), Jaipur, Rajasthan</p>
-            <p class="contact-info-line mb-1"><strong>Mob:</strong> <a href="tel:+917296831460">+91 72968 31460</a>, <a href="tel:+918118808743">+91 81188 08743</a></p>
+            <p class="contact-info-line mb-1"><strong>Mob:</strong> <a href="tel:+917296831460" class="company-phone-text">+91 72968 31460</a>, <a href="tel:+918118808743">+91 81188 08743</a></p>
             <p class="contact-info-line mb-0"><strong>Alt:</strong> <a href="tel:+919680966211">+91 96809 66211</a></p>
           </div>
         </div>
@@ -1656,7 +1656,7 @@
                 <div class="brand-title-text fs-4 fw-extrabold text-primary-custom">Rudraksha Packers & Movers</div>
                 <div class="small text-muted">India's Premier Verified Relocation Network</div>
                 <div class="small text-muted mt-1">Near SNM Hospital, Gandhipath (West), Jaipur, RJ</div>
-                <div class="small text-muted">GSTIN: 08AAACR1234F1Z5 | Support: +91 72968 31460</div>
+                <div class="small text-muted">GSTIN: <span class="company-gstin-text">08AAACR1234F1Z5</span> | Support: <span class="company-phone-text">+91 72968 31460</span></div>
               </div>
               <div class="text-end">
                 <h4 class="fw-extrabold text-secondary-custom mb-1">INVOICE / QUOTE</h4>
@@ -1834,7 +1834,13 @@
         
         <div class="p-3 bg-light rounded-3 border mb-4">
           <div class="small text-muted">Your Unique Booking Reference:</div>
-          <div class="fs-4 fw-extrabold text-primary-custom" id="successBookingId">RB-XXXXXX</div>
+          <div class="fs-4 fw-extrabold text-primary-custom mb-2" id="successBookingId">RB-XXXXXX</div>
+          
+          <div class="p-2 rounded-2 mt-2" style="background: rgba(34, 197, 94, 0.1); border: 1px dashed #22c55e;">
+            <div class="small fw-bold text-success text-uppercase" style="letter-spacing: 0.5px;"><i class="fa-solid fa-key me-1"></i> Moving Pickup Verification PIN</div>
+            <div class="fs-2 fw-bold text-success font-monospace my-1" id="successPickupOtp">----</div>
+            <div class="small text-muted" style="font-size: 0.75rem;">Share this 4-digit PIN with your moving driver only when loading starts.</div>
+          </div>
         </div>
 
         <div class="d-flex flex-column gap-2">

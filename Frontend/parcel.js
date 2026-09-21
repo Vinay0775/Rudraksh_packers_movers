@@ -51,6 +51,62 @@ try {
   }
 } catch (e) {}
 
+function applyCompanyConfig(comp) {
+  if (!comp) return;
+  if (comp.phone) {
+    const raw = String(comp.phone).replace(/\D/g, '');
+    document.querySelectorAll('a[href^="tel:"]').forEach(el => el.href = `tel:+91${raw}`);
+    document.querySelectorAll('.company-phone-text').forEach(el => el.innerText = `+91 ${comp.phone}`);
+    document.querySelectorAll('.btn-brdg-phone span').forEach(el => el.innerText = `+91 ${comp.phone}`);
+  }
+  if (comp.whatsapp) {
+    const rawWa = String(comp.whatsapp).replace(/\D/g, '');
+    document.querySelectorAll('a[href*="wa.me"]').forEach(el => {
+      el.href = `https://wa.me/91${rawWa}?text=Hello%20Rudraksha%20Team,%20I%20want%20to%20check%20my%20parcel%20status`;
+    });
+  }
+  if (comp.name) {
+    document.querySelectorAll('.brand-title-text').forEach(el => el.innerText = comp.name);
+  }
+}
+
+async function loadRemoteParcelConfig() {
+  try {
+    const res = await fetch(`${PARCEL_API_ENDPOINT}/config`);
+    if (res.ok) {
+      const config = await res.json();
+      if (config.parcelRates) {
+        const pr = config.parcelRates;
+        if (pr.bike?.baseFare) FARE_CONFIG.baseFare = Number(pr.bike.baseFare);
+        if (pr.bike?.perKmRate) FARE_CONFIG.distanceRatePerKm = Number(pr.bike.perKmRate);
+        if (pr.handlingFee !== undefined) FARE_CONFIG.handlingCharge = Number(pr.handlingFee);
+        if (pr.weightSurcharges) FARE_CONFIG.weightCharges = { ...FARE_CONFIG.weightCharges, ...pr.weightSurcharges };
+        if (pr.addons) FARE_CONFIG.addons = { ...FARE_CONFIG.addons, ...pr.addons };
+        if (pr.auto && pr.bike) {
+          FARE_CONFIG.vehicleCharges.auto = Math.max(0, Number(pr.auto.baseFare || 135) - Number(pr.bike.baseFare || 48));
+        }
+        if (pr.mini_truck && pr.bike) {
+          FARE_CONFIG.vehicleCharges.mini_truck = Math.max(0, Number(pr.mini_truck.baseFare || 220) - Number(pr.bike.baseFare || 48));
+        }
+        localStorage.setItem('rudraksha_parcel_rates', JSON.stringify({
+          baseFare: FARE_CONFIG.baseFare,
+          perKm: FARE_CONFIG.distanceRatePerKm,
+          handling: FARE_CONFIG.handlingCharge,
+          weights: FARE_CONFIG.weightCharges,
+          addons: FARE_CONFIG.addons,
+          vehicles: FARE_CONFIG.vehicleCharges
+        }));
+      }
+      if (config.company) {
+        applyCompanyConfig(config.company);
+      }
+      calculateFreeParcelFare();
+    }
+  } catch (err) {
+    console.warn('Parcel remote config sync skipped, using cache:', err.message);
+  }
+}
+
 const VEHICLE_CONFIG = {
   'bike': { name: 'Bike Express', desc: 'Up to 20 KG • Docs & Small Parcels', icon: 'fa-motorcycle', maxKg: 20 },
   'auto': { name: 'Auto / 3-Wheeler', desc: 'Up to 500 KG • Wholesale & 1 RK', icon: 'fa-truck-front', maxKg: 500 },
@@ -159,6 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initParcelEventListeners();
   initParcelAutocomplete();
   calculateFreeParcelFare();
+  loadRemoteParcelConfig();
   
   // Initialize Route Map after slight render delay
   setTimeout(() => {

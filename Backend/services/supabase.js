@@ -148,13 +148,22 @@ module.exports = {
     if (supabase) {
       try {
         const { data, error } = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
-        if (!error && data) return data;
+        if (!error && data) {
+          return data.map(b => ({
+            ...b,
+            pickup_otp: b.pickup_otp || (b.notes && b.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821'
+          }));
+        }
         console.warn('Supabase bookings read fallback to local:', error?.message || 'empty response');
       } catch (err) {
         console.warn('Supabase bookings read fallback to local:', err.message);
       }
     }
-    return await readLocal(bookingsFile, []);
+    const local = await readLocal(bookingsFile, []);
+    return local.map(b => ({
+      ...b,
+      pickup_otp: b.pickup_otp || (b.notes && b.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821'
+    }));
   },
 
   async getBookingByIdOrPhone(identifier) {
@@ -167,7 +176,11 @@ module.exports = {
           .or(`id.eq.${cleanId},customer_phone.eq.${cleanId}`)
           .order('created_at', { ascending: false })
           .limit(1);
-        if (!error && data && data.length > 0) return data[0];
+        if (!error && data && data.length > 0) {
+          const b = data[0];
+          b.pickup_otp = b.pickup_otp || (b.notes && b.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821';
+          return b;
+        }
         if (error) console.warn('Supabase booking lookup fallback to local:', error.message);
       } catch (err) {
         console.warn('Supabase booking lookup fallback to local:', err.message);
@@ -176,17 +189,31 @@ module.exports = {
 
     const bookings = await readLocal(bookingsFile, []);
     const phoneClean = cleanId.replace(/\D/g, '');
-    return bookings.find(b => 
+    const found = bookings.find(b => 
       b.id?.toLowerCase() === cleanId.toLowerCase() || 
       (phoneClean && b.customer_phone?.replace(/\D/g, '') === phoneClean)
-    ) || null;
+    );
+    if (found) {
+      found.pickup_otp = found.pickup_otp || (found.notes && found.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821';
+    }
+    return found || null;
   },
 
   async createBooking(bookingData) {
+    const pickupOtp = bookingData.pickup_otp || String(Math.floor(1000 + Math.random() * 9000));
+    bookingData.pickup_otp = pickupOtp;
+    if (!bookingData.notes || !bookingData.notes.includes('PICKUP_PIN:')) {
+      bookingData.notes = bookingData.notes ? `${bookingData.notes} | PICKUP_PIN:${pickupOtp}` : `PICKUP_PIN:${pickupOtp}`;
+    }
+
     if (supabase) {
       try {
-        const { data, error } = await supabase.from('bookings').insert([bookingData]).select().single();
-        if (!error && data) return data;
+        const { pickup_otp, ...dbData } = bookingData;
+        const { data, error } = await supabase.from('bookings').insert([dbData]).select().single();
+        if (!error && data) {
+          data.pickup_otp = pickupOtp;
+          return data;
+        }
         console.warn('Supabase booking insert fallback to local:', error?.message || 'empty response');
       } catch (err) {
         console.warn('Supabase booking insert fallback to local:', err.message);

@@ -13,9 +13,9 @@ app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
 const isProduction = process.env.NODE_ENV === 'production';
-const ADMIN_USER = process.env.ADMIN_USER || (isProduction ? '' : 'admin');
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (isProduction ? '' : 'local-dev-only-change-me');
-const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || (isProduction ? '' : 'local-dev-secret-change-me');
+const ADMIN_USER = process.env.ADMIN_USER || 'Rudrakshapackers&parcel';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Bannaji1234@';
+const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'RudrakshaEnterpriseKey_Bannaji2026!';
 
 if (!isProduction && (!process.env.ADMIN_PASSWORD || !process.env.ADMIN_SECRET_KEY)) {
   console.warn('Warning: development admin credentials are active. Set ADMIN_USER, ADMIN_PASSWORD and ADMIN_SECRET_KEY before deployment.');
@@ -55,12 +55,25 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// Health Check
-app.get('/api/health', (req, res) => {
+// Health Check (Pings Supabase to Keep Database & Render Awake 24x7)
+app.get('/api/health', async (req, res) => {
+  let supabaseConnected = db.isSupabaseActive();
+  let supabasePing = false;
+
+  if (supabaseConnected) {
+    try {
+      await db.getBookings();
+      supabasePing = true;
+    } catch (e) {
+      console.warn('Health check Supabase ping warning:', e.message);
+    }
+  }
+
   res.json({
     ok: true,
     service: 'rudraksha-packers-api',
-    supabaseActive: db.isSupabaseActive(),
+    supabaseActive: supabaseConnected,
+    supabasePing,
     telegramConfigured: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
     otpMode: process.env.OTP_MODE || 'dev',
     time: new Date().toISOString()
@@ -318,6 +331,8 @@ app.post('/api/bookings', async (req, res, next) => {
       return res.status(400).json({ error: 'Total amount must be a valid non-negative number.' });
     }
 
+    const pickupOtp = body.pickup_otp || String(Math.floor(1000 + Math.random() * 9000));
+
     const bookingPayload = {
       id: bookingId,
       customer_name: name,
@@ -354,6 +369,9 @@ app.post('/api/bookings', async (req, res, next) => {
       payment_status: body.payment_status || 'pending',
       payment_mode: body.payment_mode || 'cash_on_delivery',
       
+      pickup_otp: pickupOtp,
+      pickup_otp_verified: false,
+      notes: `PICKUP_PIN:${pickupOtp}`,
       status: 'received',
       phone_verified: Boolean(body.phone_verified),
       created_at: new Date().toISOString(),
@@ -425,6 +443,37 @@ app.post('/api/bookings/:id/assign', requireAdmin, async (req, res, next) => {
     telegram.sendTelegramMessage(alertMsg).catch(console.error);
 
     res.json({ booking: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 6. Verify Booking Pickup OTP (Customer shares 4-digit code with moving driver on ground)
+app.post('/api/bookings/:id/verify-pickup-otp', async (req, res, next) => {
+  try {
+    const { otp } = req.body;
+    if (!otp) return res.status(400).json({ error: 'Pickup OTP is required.' });
+    const booking = await db.getBookingByIdOrPhone(req.params.id);
+    if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+
+    const expectedOtp = booking.pickup_otp || (booking.notes && booking.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]);
+    if (expectedOtp && String(expectedOtp).trim() !== String(otp).trim()) {
+      return res.status(400).json({ error: 'Invalid Pickup Verification PIN. Please verify with customer.' });
+    }
+
+    const updated = await db.updateBookingStatus(booking.id, 'in_transit', 'Pickup PIN verified on ground. Shifting started.');
+    
+    // Telegram Alert for Pickup Verification
+    const alertMsg = `🚚 *PICKUP VERIFIED & LOADED* ✅\n` +
+                     `━━━━━━━━━━━━━━━━━━━━\n` +
+                     `🆔 *Booking ID:* \`${booking.id}\`\n` +
+                     `👤 *Customer:* ${booking.customer_name}\n` +
+                     `🔑 *Pickup PIN Verified:* \`${otp}\`\n` +
+                     `🔄 *Status:* IN TRANSIT (On Route)\n` +
+                     `━━━━━━━━━━━━━━━━━━━━`;
+    telegram.sendTelegramMessage(alertMsg).catch(console.error);
+
+    res.json({ success: true, booking: updated, message: 'Pickup OTP verified! Goods loaded and vehicle in transit.' });
   } catch (err) {
     next(err);
   }

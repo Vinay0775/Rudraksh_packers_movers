@@ -57,16 +57,16 @@
         <i class="fa-solid fa-circle-exclamation me-1"></i> <span id="loginErrorMsg">Invalid credentials</span>
       </div>
 
-      <form id="adminLoginForm" onsubmit="event.preventDefault(); submitAdminLogin();">
+      <form id="adminLoginForm" onsubmit="event.preventDefault(); submitAdminLogin();" autocomplete="off">
         <div class="mb-3">
           <label class="cyber-label">Admin Username</label>
-          <input type="text" class="cyber-input" id="adminUsernameInput" placeholder="Enter Admin ID" autocomplete="username" required>
+          <input type="text" class="cyber-input" id="adminUsernameInput" placeholder="Enter Admin ID" autocomplete="off" value="" required>
         </div>
 
         <div class="mb-3">
           <label class="cyber-label">Security Key / Password</label>
           <div class="position-relative">
-            <input type="password" class="cyber-input" id="adminPasswordInput" placeholder="••••••••••••" autocomplete="current-password" required style="padding-right: 42px;">
+            <input type="password" class="cyber-input" id="adminPasswordInput" placeholder="••••••••••••" autocomplete="new-password" value="" required style="padding-right: 42px;">
             <button type="button" onclick="toggleAdminPassVisibility()" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;">
               <i class="fa-solid fa-eye" id="passToggleIcon"></i>
             </button>
