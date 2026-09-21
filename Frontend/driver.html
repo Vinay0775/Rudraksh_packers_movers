@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Driver Partner Portal | Rudraksha Logistics</title>
-  <meta name="description" content="Rudraksha Rider Partner App – Accept parcel delivery jobs, verify OTPs, track earnings in real time.">
+  <title>Rider Partner App | Rudraksha Logistics</title>
+  <meta name="description" content="Rudraksha Rider Partner App – Live parcel jobs, GPS navigation, OTP verification & instant daily earnings.">
 
-  <!-- Favicon & PWA Icons -->
+  <!-- Favicon & Dedicated Rider PWA Icons -->
   <link rel="icon" type="image/png" href="app-icon.png">
   <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
   <link rel="apple-touch-icon" sizes="192x192" href="app-icon-192.png">
   <link rel="apple-touch-icon" sizes="512x512" href="app-icon.png">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#f97316">
+  <link rel="manifest" href="driver-manifest.json">
+  <meta name="theme-color" content="#0b0c0e">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Rudraksha Driver">
+  <meta name="apple-mobile-web-app-title" content="Rudraksha Rider">
   <meta name="mobile-web-app-capable" content="yes">
 
   <!-- Google Fonts -->
@@ -25,7 +25,6 @@
 
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-  <link rel="stylesheet" href="pwa-install.css">
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,6 +40,45 @@
       --border: rgba(255,255,255,0.09);
       --text-muted: #94a3b8;
       --text-dim: #cbd5e1;
+    }
+
+    /* PWA Install Button Icon in Navbar (No annoying popups) */
+    .btn-install-icon {
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 10px;
+      padding: 6px 11px;
+      color: #fff;
+      font-size: 0.74rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 4px 14px rgba(249,115,22,0.4);
+      transition: all 0.2s;
+    }
+    .btn-install-icon:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(249,115,22,0.55);
+    }
+    .avatar-photo-btn {
+      position: absolute; bottom: -3px; right: -3px;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: #f97316; border: 2px solid #13141a;
+      color: #fff; font-size: 0.72rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+    .payout-modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+      z-index: 2000; align-items: center; justify-content: center; padding: 16px;
+    }
+    .payout-modal-card {
+      background: #13141a; border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 24px; padding: 24px; width: 100%; max-width: 440px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
     }
     body {
       background: var(--bg-deep);
@@ -571,23 +609,32 @@
 
   <!-- =================== TOP NAVBAR =================== -->
   <nav class="rider-nav">
-    <div class="rider-nav-brand">
-      <div class="rider-nav-logo"><i class="fa-solid fa-motorcycle"></i></div>
+    <div class="rider-nav-brand" onclick="switchDriverView('profile')" style="cursor: pointer;" title="View My Profile">
+      <div style="position: relative; width: 38px; height: 38px; border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #f97316, #ea580c); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: #fff; flex-shrink: 0; box-shadow: 0 4px 12px rgba(249,115,22,0.35);">
+        <img id="navAvatarImg" src="logo.png" alt="Rider" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+        <i class="fa-solid fa-motorcycle" id="navAvatarIcon"></i>
+      </div>
       <div>
         <div class="rider-nav-title" id="navDriverName">Rudraksha Rider</div>
         <div class="rider-nav-sub" id="navVehicleInfo">Tata Ace • RJ-14-GA-1024</div>
       </div>
     </div>
     <div style="display:flex; gap:8px; align-items:center;">
-      <button type="button" onclick="openSetupSheet()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;color:#94a3b8;font-size:0.72rem;cursor:pointer;font-family:inherit;" title="Edit Profile">
-        <i class="fa-solid fa-user-pen"></i>
+      <!-- PWA Action Download Icon (Strictly manual click, NO auto-popups) -->
+      <button type="button" id="btnInstallRiderApp" class="btn-install-icon" title="Download & Install Rider App" onclick="triggerPwaInstall()">
+        <i class="fa-solid fa-download"></i>
+        <span class="d-none d-sm-inline">Install App</span>
       </button>
-      <div class="duty-badge">
-        <span class="pulse"></span> ON DUTY
+
+      <!-- Duty Badge Toggle -->
+      <div class="duty-badge" id="navDutyBadge" onclick="toggleDriverDuty()" style="cursor: pointer;" title="Tap to Toggle On-Duty / Off-Duty">
+        <span class="pulse" id="navDutyPulse"></span>
+        <span id="navDutyText">ON DUTY</span>
       </div>
-      <button type="button" onclick="logoutDriver()" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.28);border-radius:8px;padding:6px 10px;color:#f87171;font-size:0.75rem;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;" title="Log Out from Account">
+
+      <!-- Logout Button -->
+      <button type="button" onclick="logoutDriver()" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.28);border-radius:10px;padding:7px 11px;color:#f87171;font-size:0.75rem;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;" title="Log Out from Account">
         <i class="fa-solid fa-arrow-right-from-bracket"></i>
-        <span class="d-none d-sm-inline" style="font-size:0.72rem;font-weight:700;">Logout</span>
       </button>
     </div>
   </nav>
@@ -601,15 +648,15 @@
       <div class="stats-ribbon">
         <div class="stat-card earn">
           <div class="stat-label">Today's Earnings</div>
-          <div class="stat-val earn" id="statEarnings">₹1,450</div>
+          <div class="stat-val earn" id="statEarnings">₹0</div>
         </div>
         <div class="stat-card trips">
           <div class="stat-label">Trips Done</div>
-          <div class="stat-val neutral" id="statTrips">7</div>
+          <div class="stat-val neutral" id="statTrips">0</div>
         </div>
         <div class="stat-card rating">
           <div class="stat-label">Rider Rating</div>
-          <div class="stat-val star">★ 4.9</div>
+          <div class="stat-val star" id="statRating">★ 4.9</div>
         </div>
       </div>
 
@@ -639,19 +686,25 @@
 
     <!-- VIEW 2: DEDICATED DRIVER PROFILE & EARNINGS VIEW (Isolated per Driver) -->
     <div id="driverProfileSection" style="display: none;">
-      <!-- Rider Identification Card -->
+      <!-- Rider Identification Card with Photo Upload -->
       <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; margin-bottom: 16px; position: relative; overflow: hidden;">
         <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #f97316, #22c55e);"></div>
 
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
           <div style="display: flex; align-items: center; gap: 14px;">
-            <div style="width: 54px; height: 54px; border-radius: 16px; background: linear-gradient(135deg, #f97316, #ea580c); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #fff; font-weight: 800; box-shadow: 0 8px 20px rgba(249,115,22,0.35);">
-              <i class="fa-solid fa-id-badge"></i>
+            <!-- Profile Photo with Camera Upload Badge -->
+            <div style="position: relative; width: 64px; height: 64px; flex-shrink: 0;">
+              <img id="profileAvatarImg" src="logo.png" alt="Rider Photo" style="width: 64px; height: 64px; border-radius: 20px; object-fit: cover; border: 2px solid #f97316; box-shadow: 0 8px 24px rgba(249,115,22,0.35); display: block;">
+              <button type="button" class="avatar-photo-btn" onclick="document.getElementById('riderPhotoInput').click()" title="Take Selfie / Upload Photo">
+                <i class="fa-solid fa-camera"></i>
+              </button>
+              <input type="file" id="riderPhotoInput" accept="image/*" capture="user" style="display: none;" onchange="handleRiderPhotoUpload(event)">
             </div>
+
             <div>
               <div style="display: flex; align-items: center; gap: 8px;">
                 <h5 style="font-weight: 800; color: #fff; margin-bottom: 2px;" id="profileRiderName">Rajesh Kumar</h5>
-                <span class="badge bg-success text-dark fw-bold" style="font-size: 0.65rem; border-radius: 20px;">✓ Verified</span>
+                <span class="badge bg-success text-dark fw-bold" style="font-size: 0.65rem; border-radius: 20px;">✓ Verified Partner</span>
               </div>
               <div style="font-size: 0.8rem; color: #94a3b8;" id="profileRiderPhone">+91 7296831460</div>
               <div style="font-size: 0.72rem; color: #f97316; font-weight: 600; margin-top: 2px;" id="profileRiderVehicle">Tata Ace • RJ-14-GA-1024</div>
@@ -660,6 +713,18 @@
           <button onclick="openSetupSheet()" style="background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; color: #cbd5e1; font-size: 0.75rem; font-weight: 600; cursor: pointer;">
             <i class="fa-solid fa-user-pen me-1"></i> Edit
           </button>
+        </div>
+
+        <!-- Rider Documents & Identity Badges -->
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px; font-size: 0.75rem;">
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px;">
+            <div style="font-size: 0.62rem; color: #94a3b8; text-transform: uppercase;">Driving License</div>
+            <div style="font-weight: 700; color: #fff;" id="profileDlNumber">RJ14-2021-00123</div>
+          </div>
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px;">
+            <div style="font-size: 0.62rem; color: #94a3b8; text-transform: uppercase;">Base City & Shift</div>
+            <div style="font-weight: 700; color: #fff;" id="profileCityShift">Jaipur • Full Time</div>
+          </div>
         </div>
 
         <!-- Duty & Availability Toggle -->
@@ -674,27 +739,54 @@
         </div>
       </div>
 
+      <!-- Wallet & Payout Withdrawal Banner -->
+      <div style="background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(249,115,22,0.12)); border: 1px solid rgba(34,197,94,0.3); border-radius: 20px; padding: 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 10px 30px rgba(0,0,0,0.35);">
+        <div>
+          <div style="font-size: 0.68rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Available Wallet Balance</div>
+          <div style="font-size: 1.8rem; font-weight: 900; color: #22c55e; line-height: 1.2;" id="profileWalletBalance">₹0</div>
+          <div style="font-size: 0.72rem; color: #cbd5e1; margin-top: 4px;" id="profilePendingPayoutText">Pending: ₹0</div>
+        </div>
+        <button type="button" onclick="openPayoutModal()" style="background: linear-gradient(135deg, #22c55e, #16a34a); border: none; border-radius: 14px; padding: 12px 18px; color: #fff; font-size: 0.86rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 24px rgba(34,197,94,0.38); transition: all 0.2s;">
+          <i class="fa-solid fa-money-bill-transfer"></i>
+          <span>Withdraw</span>
+        </button>
+      </div>
+
       <!-- Financial Metrics Grid (Only for This Driver) -->
       <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px;">
         <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; position: relative;">
           <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Total Lifetime Payout</div>
-          <div style="font-size: 1.4rem; font-weight: 900; color: #22c55e; margin: 4px 0;" id="profileTotalEarnings">₹1,450</div>
-          <div style="font-size: 0.68rem; color: #94a3b8;">85% guaranteed net share</div>
+          <div style="font-size: 1.4rem; font-weight: 900; color: #22c55e; margin: 4px 0;" id="profileTotalEarnings">₹0</div>
+          <div style="font-size: 0.68rem; color: #94a3b8;">80% guaranteed net share</div>
         </div>
         <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px;">
           <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Completed Trips</div>
-          <div style="font-size: 1.4rem; font-weight: 900; color: #ffffff; margin: 4px 0;" id="profileCompletedTrips">7</div>
+          <div style="font-size: 1.4rem; font-weight: 900; color: #ffffff; margin: 4px 0;" id="profileCompletedTrips">0</div>
           <div style="font-size: 0.68rem; color: #94a3b8;">Delivered safely with OTP</div>
         </div>
         <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px;">
           <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Today's Payout</div>
-          <div style="font-size: 1.4rem; font-weight: 900; color: #f97316; margin: 4px 0;" id="profileTodayEarnings">₹1,450</div>
+          <div style="font-size: 1.4rem; font-weight: 900; color: #f97316; margin: 4px 0;" id="profileTodayEarnings">₹0</div>
           <div style="font-size: 0.68rem; color: #94a3b8;">Calculated for today</div>
         </div>
         <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px;">
           <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Rider Fleet Rating</div>
-          <div style="font-size: 1.4rem; font-weight: 900; color: #fbbf24; margin: 4px 0;">★ 4.9</div>
+          <div style="font-size: 1.4rem; font-weight: 900; color: #fbbf24; margin: 4px 0;" id="profileFleetRating">★ 4.9</div>
           <div style="font-size: 0.68rem; color: #94a3b8;">Top fleet performance</div>
+        </div>
+      </div>
+
+      <!-- Past Payout Requests Section -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; margin-bottom: 18px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+          <div style="font-size: 0.86rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-receipt" style="color: #22c55e;"></i>
+            Payout Requests
+          </div>
+          <span id="profilePayoutsCount" style="font-size: 0.72rem; color: #94a3b8;">0 requests</span>
+        </div>
+        <div id="myPayoutRequestsList">
+          <div style="font-size: 0.78rem; color: #64748b; text-align: center; padding: 10px;">No payout requests yet.</div>
         </div>
       </div>
 
@@ -725,6 +817,64 @@
     </div>
 
   </main>
+
+  <!-- =================== PAYOUT REQUEST MODAL =================== -->
+  <div class="payout-modal-overlay" id="payoutModal">
+    <div class="payout-modal-card">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <h5 style="font-weight: 800; color: #fff; margin: 0; font-size: 1.1rem;">
+          <i class="fa-solid fa-money-bill-transfer text-success me-2"></i> Request Payout
+        </h5>
+        <button type="button" onclick="closePayoutModal()" style="background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <div style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); border-radius: 14px; padding: 12px; margin-bottom: 16px;">
+        <div style="font-size: 0.7rem; color: #94a3b8;">Available to Withdraw:</div>
+        <div style="font-size: 1.4rem; font-weight: 800; color: #22c55e;" id="modalAvailableBalance">₹0</div>
+      </div>
+
+      <form id="payoutForm" onsubmit="event.preventDefault(); submitPayoutRequest();">
+        <div class="mb-3">
+          <label class="setup-field-label">Withdrawal Amount (Min ₹100)</label>
+          <input type="number" id="payoutAmountInput" class="setup-input" placeholder="e.g. 500" min="100" required>
+        </div>
+
+        <div class="mb-3">
+          <label class="setup-field-label">Payout Method</label>
+          <select id="payoutMethodSelect" class="setup-input" onchange="togglePayoutFields()">
+            <option value="upi">Instant UPI (GPay / PhonePe / Paytm)</option>
+            <option value="bank">Bank Transfer (NEFT / IMPS)</option>
+          </select>
+        </div>
+
+        <div id="payoutUpiFields" class="mb-3">
+          <label class="setup-field-label">UPI ID / VPA</label>
+          <input type="text" id="payoutUpiId" class="setup-input" placeholder="e.g. 9829012345@upi or name@okaxis">
+        </div>
+
+        <div id="payoutBankFields" style="display: none;">
+          <div class="mb-2">
+            <label class="setup-field-label">Bank Name</label>
+            <input type="text" id="payoutBankName" class="setup-input" placeholder="e.g. SBI, HDFC, ICICI">
+          </div>
+          <div class="mb-2">
+            <label class="setup-field-label">Account Number</label>
+            <input type="text" id="payoutAccountNo" class="setup-input" placeholder="e.g. 1234567890">
+          </div>
+          <div class="mb-3">
+            <label class="setup-field-label">IFSC Code</label>
+            <input type="text" id="payoutIfsc" class="setup-input" placeholder="e.g. SBIN0001234">
+          </div>
+        </div>
+
+        <div id="payoutErrorMsg" style="display: none; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 10px; font-size: 0.78rem; color: #f87171; margin-bottom: 14px;"></div>
+
+        <button type="submit" class="btn-save-profile" id="btnSubmitPayout" style="background: linear-gradient(135deg, #22c55e, #16a34a); font-size: 0.95rem;">
+          <i class="fa-solid fa-paper-plane me-2"></i> Submit Payout Request
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!-- =================== BOTTOM TAB BAR (Admin replaced with Driver Profile) =================== -->
   <div class="bottom-bar">
@@ -792,10 +942,7 @@
     </div>
   </div>
 
-  <!-- Driver Logic JS -->
+  <!-- Dedicated Rider Partner Engine JS -->
   <script src="driver.js"></script>
-
-  <!-- PWA Universal Install Script -->
-  <script src="pwa-install.js"></script>
 </body>
 </html>

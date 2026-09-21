@@ -1,69 +1,131 @@
 /* ==========================================================================
-   DRIVER PARTNER INTERFACE ENGINE v2 | RUDRAKSHA LOGISTICS FLEET
-   Phase 2 — Premium UX: Toast Notifications, OTP Bottom Sheet, Profile Setup,
-   Auto-refresh Feed, WhatsApp Acceptance, Earnings Tracker
+   RUDRAKSHA RIDER PARTNER APP ENGINE v3.0 | ENTERPRISE LOGISTICS
+   Full Data Isolation • Profile Photo Upload • Daily Earnings Wallet • PWA
    ========================================================================== */
 
 const isLocalhostDriver = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const DRIVER_API_BASE = isLocalhostDriver ? 'http://localhost:3000/api' : 'https://rudraksha-packers-movers.onrender.com/api';
 
-// Default Rider Profile (loaded from localStorage)
-let currentDriver = {
-  id: 'drv-101',
-  driver_name: 'Rajesh Kumar',
-  driver_phone: '7296831460',
-  vehicle_number: 'RJ-14-GA-1024',
-  vehicle_type: 'Tata Ace / Bike Courier',
-  onDuty: true
-};
+const RIDER_TOKEN_KEY = 'rudraksha_rider_token';
+const RIDER_SESSION_KEY = 'rudraksha_driver_session';
 
+// Active Rider State
+let currentDriver = null;
 let currentActiveTrip = null;
 let currentOtpMode = 'pickup'; // 'pickup' or 'delivery'
 let currentOtpParcelId = null;
 let feedAutoRefreshTimer = null;
+let deferredInstallPrompt = null;
 
 /* ==========================================================================
-   1. INIT & AUTHENTICATION
+   1. INITIALIZATION & AUTHENTICATION
    ========================================================================== */
-document.addEventListener('DOMContentLoaded', () => {
-  const isLoggedIn = checkDriverAuth();
-  initDriverProfile();
-  loadActiveTripFromStorage();
-  loadDriverFeed();
-  checkUrlDispatchJob();
+document.addEventListener('DOMContentLoaded', async () => {
+  initPwaInstallIcon();
   initOtpDigitInputs();
 
-  // Auto-refresh job feed every 6 seconds
+  const isAuth = await checkDriverAuth();
+  if (isAuth) {
+    onRiderAuthSuccess();
+  } else {
+    showLoginOverlay();
+  }
+
+  // Periodic Auto-refresh for live orders & dispatch (every 8 seconds)
   feedAutoRefreshTimer = setInterval(() => {
-    if (localStorage.getItem('rudraksha_driver_session')) {
+    if (getRiderToken()) {
       loadDriverFeed(false);
     }
-  }, 6000);
+  }, 8000);
 });
 
-function checkDriverAuth() {
-  const session = localStorage.getItem('rudraksha_driver_session');
-  const loginOverlay = document.getElementById('driverLoginOverlay');
-
-  if (session) {
-    try {
-      currentDriver = JSON.parse(session);
-      if (loginOverlay) loginOverlay.style.display = 'none';
-      return true;
-    } catch {}
-  }
-
-  // Not logged in -> Show login overlay
-  if (loginOverlay) {
-    loginOverlay.style.display = 'flex';
-    loginOverlay.style.opacity = '1';
-  }
-  return false;
+function getRiderToken() {
+  return localStorage.getItem(RIDER_TOKEN_KEY) || sessionStorage.getItem(RIDER_TOKEN_KEY);
 }
 
+function getRiderHeaders() {
+  const token = getRiderToken();
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+}
+
+function showLoginOverlay() {
+  const overlay = document.getElementById('driverLoginOverlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    overlay.style.opacity = '1';
+    overlay.style.visibility = 'visible';
+  }
+}
+
+function hideLoginOverlay() {
+  const overlay = document.getElementById('driverLoginOverlay');
+  if (overlay) {
+    overlay.style.transition = 'all 0.3s ease';
+    overlay.style.opacity = '0';
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      overlay.style.opacity = '1';
+    }, 300);
+  }
+}
+
+/**
+ * Validate current session with backend /api/rider/me
+ */
+async function checkDriverAuth() {
+  const token = getRiderToken();
+  const cachedSession = localStorage.getItem(RIDER_SESSION_KEY);
+
+  if (cachedSession) {
+    try { currentDriver = JSON.parse(cachedSession); } catch {}
+  }
+
+  if (!token) return false;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(`${DRIVER_API_BASE}/rider/me`, {
+      headers: getRiderHeaders(),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.rider) {
+        currentDriver = data.rider;
+        localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(currentDriver));
+        return true;
+      }
+    }
+  } catch (err) {
+    // If backend timeout, allow cached session if valid token exists
+    if (currentDriver && currentDriver.id) {
+      return true;
+    }
+  }
+
+  return Boolean(currentDriver && currentDriver.id);
+}
+
+function onRiderAuthSuccess() {
+  hideLoginOverlay();
+  renderNavProfile();
+  renderDriverProfileView();
+  loadDriverEarnings();
+  loadDriverFeed(true);
+}
+
+/**
+ * Rider Login Submission (Phone + 4-Digit PIN)
+ */
 async function submitDriverLogin() {
   const phoneInput = document.getElementById('loginDriverPhone')?.value.trim().replace(/\D/g, '');
   const pinInput = document.getElementById('loginDriverPin')?.value.trim();
+  const rememberCheck = document.getElementById('rememberDriverCheck')?.checked;
   const errorEl = document.getElementById('loginErrorMsg');
 
   if (!phoneInput || phoneInput.length < 10) {
@@ -81,361 +143,546 @@ async function submitDriverLogin() {
     return;
   }
 
-  try {
-    const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      ? 'http://localhost:3000/api'
-      : 'https://rudraksha-packers-movers.onrender.com/api';
-
-    const driversRes = await fetch(`${apiBase}/drivers/public`);
-    let matchedDriver = null;
-    if (driversRes.ok) {
-      const driversData = await driversRes.json();
-      const approvedDrivers = Array.isArray(driversData.drivers) ? driversData.drivers : [];
-      matchedDriver = approvedDrivers.find(d => (d.phone || '').replace(/\D/g, '') === phoneInput);
-      if (matchedDriver) {
-        localStorage.setItem('rudraksha_approved_drivers', JSON.stringify(approvedDrivers));
-      }
-    }
-
-    if (!matchedDriver) {
-      const localApprovedDrivers = JSON.parse(localStorage.getItem('rudraksha_approved_drivers') || '[]');
-      matchedDriver = localApprovedDrivers.find(d => (d.driver_phone || '').replace(/\D/g, '') === phoneInput);
-    }
-
-    const riderApps = JSON.parse(localStorage.getItem('rudraksha_rider_applications') || '[]');
-    const matchedApp = riderApps.find(a => (a.phone || '').replace(/\D/g, '') === phoneInput);
-
-    if (!matchedDriver) {
-      if (matchedApp && matchedApp.status === 'Pending') {
-        if (errorEl) {
-          errorEl.innerText = `⏳ Your application is currently PENDING verification by Admin. You will receive your PIN on WhatsApp once approved.`;
-          errorEl.style.display = 'block';
-        }
-        return;
-      }
-      if (errorEl) {
-        errorEl.innerText = `❌ No active delivery partner found for +91 ${phoneInput}. Please register as a rider partner first.`;
-        errorEl.style.display = 'block';
-      }
-      return;
-    }
-
-    const driverPhone = matchedDriver.driver_phone || matchedDriver.phone || '';
-    const driverPin = matchedDriver.pin || matchedDriver.password || '';
-    if (!driverPin || String(driverPin) !== String(pinInput)) {
-      if (errorEl) {
-        errorEl.innerText = '❌ Incorrect security PIN. Please check the PIN sent to your WhatsApp.';
-        errorEl.style.display = 'block';
-      }
-      return;
-    }
-
-    const normalizedDriver = {
-      id: matchedDriver.id || matchedDriver.driverId || `RDR-${phoneInput.slice(-4)}`,
-      driver_name: matchedDriver.driver_name || matchedDriver.name || 'Rudraksha Rider',
-      driver_phone: driverPhone,
-      vehicle_number: matchedDriver.vehicle_number || matchedDriver.vehNum || '',
-      vehicle_type: matchedDriver.vehicle_type || matchedDriver.vehType || 'Bike / Scooter',
-      pin: driverPin,
-      status: matchedDriver.status || 'Active',
-      onDuty: matchedDriver.onDuty !== false
-    };
-
-    currentDriver = normalizedDriver;
-    localStorage.setItem('rudraksha_driver_session', JSON.stringify(currentDriver));
-    localStorage.setItem('rudraksha_current_driver', JSON.stringify(currentDriver));
-    localStorage.setItem('rudraksha_approved_drivers', JSON.stringify([...(JSON.parse(localStorage.getItem('rudraksha_approved_drivers') || '[]')).filter(d => (d.driver_phone || d.phone || '').replace(/\D/g, '') !== phoneInput), normalizedDriver]));
-
-    const loginOverlay = document.getElementById('driverLoginOverlay');
-    if (loginOverlay) {
-      loginOverlay.style.transition = 'all 0.3s ease';
-      loginOverlay.style.opacity = '0';
-      setTimeout(() => {
-        loginOverlay.style.display = 'none';
-        loginOverlay.style.opacity = '1';
-      }, 300);
-    }
-
-    renderNavProfile();
-    updateDriverStatsDisplay();
-    renderDriverProfileView();
-    loadActiveTripFromStorage();
-    loadDriverFeed(true);
-
-    showToast(`🎉 Login successful! Welcome back, ${currentDriver.driver_name}!`, 'success');
-  } catch (err) {
-    if (errorEl) {
-      errorEl.innerText = 'Unable to connect to the rider service right now. Please try again.';
-      errorEl.style.display = 'block';
-    }
-    console.error(err);
-  }
-}
-
-  // Hide login overlay with animation
-  const loginOverlay = document.getElementById('driverLoginOverlay');
-  if (loginOverlay) {
-    loginOverlay.style.transition = 'all 0.3s ease';
-    loginOverlay.style.opacity = '0';
-    setTimeout(() => {
-      loginOverlay.style.display = 'none';
-      loginOverlay.style.opacity = '1';
-    }, 300);
-  }
-
-  // Refresh views
-  renderNavProfile();
-  updateDriverStatsDisplay();
-  renderDriverProfileView();
-  loadActiveTripFromStorage();
-  loadDriverFeed(true);
-
-  showToast(`🎉 Login successful! Welcome back, ${currentDriver.driver_name}!`, 'success');
-}
-
-function logoutDriver(skipConfirm = false) {
-  try {
-    const driverName = (currentDriver && currentDriver.driver_name) ? currentDriver.driver_name : 'Driver';
-    if (!skipConfirm && typeof confirm === 'function') {
-      const ok = confirm(`Are you sure you want to log out from ${driverName}'s account?`);
-      if (!ok) return;
-    }
-  } catch (e) {
-    console.warn('Confirm dialog skipped or error:', e);
-  }
-
-  // 1. Clear all session and driver state
-  localStorage.removeItem('rudraksha_driver_session');
-  localStorage.removeItem('rudraksha_current_driver');
-  currentDriver = null;
-
-  // 2. Clear inputs
-  const phoneInput = document.getElementById('loginDriverPhone');
-  if (phoneInput) phoneInput.value = '';
-  const pinInput = document.getElementById('loginDriverPin');
-  if (pinInput) pinInput.value = '';
-  const errorEl = document.getElementById('loginErrorMsg');
   if (errorEl) errorEl.style.display = 'none';
 
-  // 3. Force show login overlay immediately
-  const loginOverlay = document.getElementById('driverLoginOverlay');
-  if (loginOverlay) {
-    loginOverlay.style.display = 'flex';
-    loginOverlay.style.opacity = '1';
-    loginOverlay.style.visibility = 'visible';
+  try {
+    const res = await fetch(`${DRIVER_API_BASE}/rider/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phoneInput, pin: pinInput })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Access Denied: Invalid mobile number or PIN.');
+    }
+
+    // Save cryptographic token & sanitized driver session
+    const storage = rememberCheck ? localStorage : sessionStorage;
+    storage.setItem(RIDER_TOKEN_KEY, data.token);
+    localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(data.driver));
+    currentDriver = data.driver;
+
+    onRiderAuthSuccess();
+    showToast(`🎉 Login successful! Welcome, ${currentDriver.driver_name}!`, 'success');
+  } catch (err) {
+    if (errorEl) {
+      errorEl.innerText = err.message || 'Unable to connect to Rider Service.';
+      errorEl.style.display = 'block';
+    }
   }
+}
 
-  // 4. Switch view to feed
-  if (typeof switchDriverView === 'function') {
-    try { switchDriverView('feed'); } catch (e) {}
-  }
+/**
+ * Rider Logout
+ */
+function logoutDriver(skipConfirm = false) {
+  try {
+    const name = currentDriver?.driver_name || 'Rider';
+    if (!skipConfirm && typeof confirm === 'function') {
+      const ok = confirm(`Are you sure you want to log out from ${name}'s account?`);
+      if (!ok) return;
+    }
+  } catch {}
 
-  showToast('Logged out successfully.', 'info');
+  localStorage.removeItem(RIDER_TOKEN_KEY);
+  sessionStorage.removeItem(RIDER_TOKEN_KEY);
+  localStorage.removeItem(RIDER_SESSION_KEY);
+  currentDriver = null;
+  currentActiveTrip = null;
 
-  // 5. Clean reload after brief tick to reset all timers, in-memory states, and active trip polling
-  setTimeout(() => {
-    window.location.reload();
-  }, 200);
+  showLoginOverlay();
+  showToast('🔒 Logged out safely.', 'info');
+  setTimeout(() => window.location.reload(), 250);
 }
 
 /* ==========================================================================
-   2. RIDER PROFILE & DATA ISOLATION
+   2. PWA INSTALL ACTION ICON (NO AUTO-POPUPS)
    ========================================================================== */
-function initDriverProfile() {
-  const session = localStorage.getItem('rudraksha_driver_session');
-  const saved = localStorage.getItem('rudraksha_current_driver');
-  if (session) {
-    try { currentDriver = JSON.parse(session); } catch {}
-  } else if (saved) {
-    try { currentDriver = JSON.parse(saved); } catch {}
-  }
+function initPwaInstallIcon() {
+  const btn = document.getElementById('btnInstallRiderApp');
 
-  if (!currentDriver) {
-    currentDriver = {
-      id: 'drv-101',
-      driver_name: 'Rudraksha Rider',
-      driver_phone: '',
-      vehicle_number: '',
-      vehicle_type: 'Delivery Fleet',
-      status: 'Active',
-      onDuty: true
-    };
-  }
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (btn) btn.style.display = 'inline-flex';
+  });
 
-  renderNavProfile();
-  updateDriverStatsDisplay();
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    if (btn) btn.style.display = 'none';
+    showToast('🚀 Rudraksha Rider App installed on your device!', 'success');
+  });
+}
 
-  const logPhone = document.getElementById('logoutPhoneLabel');
-  if (logPhone) {
-    logPhone.innerText = currentDriver.driver_phone ? `+91 ${currentDriver.driver_phone}` : '-';
+function triggerPwaInstall() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then((choice) => {
+      if (choice.outcome === 'accepted') {
+        const btn = document.getElementById('btnInstallRiderApp');
+        if (btn) btn.style.display = 'none';
+      }
+      deferredInstallPrompt = null;
+    });
+  } else {
+    showToast('📲 To install: Tap browser menu (⋮ or Share) > "Add to Home Screen"', 'info');
   }
 }
 
+/* ==========================================================================
+   3. PROFILE & PHOTO UPLOAD (Camera / Gallery Support)
+   ========================================================================== */
 function renderNavProfile() {
+  if (!currentDriver) return;
   const nameEl = document.getElementById('navDriverName');
   const vehEl = document.getElementById('navVehicleInfo');
-  if (nameEl) nameEl.innerText = currentDriver.driver_name;
-  if (vehEl) vehEl.innerText = `${currentDriver.vehicle_type} • ${currentDriver.vehicle_number}`;
+  const avatarImg = document.getElementById('navAvatarImg');
+  const avatarIcon = document.getElementById('navAvatarIcon');
+
+  if (nameEl) nameEl.innerText = currentDriver.driver_name || 'Rudraksha Rider';
+  if (vehEl) vehEl.innerText = `${currentDriver.vehicle_type || 'Vehicle'} • ${currentDriver.vehicle_number || '-'}`;
+
+  if (currentDriver.avatar_url) {
+    if (avatarImg) { avatarImg.src = currentDriver.avatar_url; avatarImg.style.display = 'block'; }
+    if (avatarIcon) avatarIcon.style.display = 'none';
+  } else {
+    if (avatarImg) avatarImg.style.display = 'none';
+    if (avatarIcon) avatarIcon.style.display = 'block';
+  }
+
   updateDutyDisplay();
+}
+
+function renderDriverProfileView() {
+  if (!currentDriver) return;
+
+  const pName = document.getElementById('profileRiderName');
+  const pPhone = document.getElementById('profileRiderPhone');
+  const pVeh = document.getElementById('profileRiderVehicle');
+  const pDl = document.getElementById('profileDlNumber');
+  const pCity = document.getElementById('profileCityShift');
+  const pAvatar = document.getElementById('profileAvatarImg');
+  const logPhone = document.getElementById('logoutPhoneLabel');
+
+  if (pName) pName.innerText = currentDriver.driver_name || 'Rider Partner';
+  if (pPhone) pPhone.innerText = currentDriver.phone ? `+91 ${currentDriver.phone}` : '-';
+  if (pVeh) pVeh.innerText = `${currentDriver.vehicle_type || 'Fleet'} • ${currentDriver.vehicle_number || '-'}`;
+  if (pDl) pDl.innerText = currentDriver.dl_number || 'RJ14-VERIFIED';
+  if (pCity) pCity.innerText = `${currentDriver.city || 'Jaipur'} • ${currentDriver.shift || 'Full Time'}`;
+  if (logPhone) logPhone.innerText = currentDriver.phone ? `+91 ${currentDriver.phone}` : '-';
+
+  if (pAvatar && currentDriver.avatar_url) {
+    pAvatar.src = currentDriver.avatar_url;
+  }
+
+  updateDutyDisplay();
+}
+
+/**
+ * Handle Camera / Gallery Photo Upload
+ * Compresses image to canvas and uploads Base64 to /api/rider/profile
+ */
+function handleRiderPhotoUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      // Compress to max 400x400 JPEG
+      const canvas = document.createElement('canvas');
+      const MAX_SIZE = 400;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > MAX_SIZE) {
+          height = Math.round((height * MAX_SIZE) / width);
+          width = MAX_SIZE;
+        }
+      } else {
+        if (height > MAX_SIZE) {
+          width = Math.round((width * MAX_SIZE) / height);
+          height = MAX_SIZE;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const base64Data = canvas.toDataURL('image/jpeg', 0.82);
+
+      // Instantly update UI
+      const pAvatar = document.getElementById('profileAvatarImg');
+      const navAvatar = document.getElementById('navAvatarImg');
+      const navIcon = document.getElementById('navAvatarIcon');
+
+      if (pAvatar) pAvatar.src = base64Data;
+      if (navAvatar) { navAvatar.src = base64Data; navAvatar.style.display = 'block'; }
+      if (navIcon) navIcon.style.display = 'none';
+
+      if (currentDriver) currentDriver.avatar_url = base64Data;
+      localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(currentDriver));
+
+      // Sync with backend
+      syncPhotoToBackend(base64Data);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function syncPhotoToBackend(base64Data) {
+  try {
+    const res = await fetch(`${DRIVER_API_BASE}/rider/profile`, {
+      method: 'PATCH',
+      headers: getRiderHeaders(),
+      body: JSON.stringify({ avatar_url: base64Data })
+    });
+    if (res.ok) {
+      showToast('📸 Profile photo updated successfully!', 'success');
+    }
+  } catch (err) {
+    console.warn('Photo backend sync offline:', err);
+  }
 }
 
 function openSetupSheet() {
   const overlay = document.getElementById('setupOverlay');
-  if (!overlay) return;
+  if (!overlay || !currentDriver) return;
   document.getElementById('setupName').value = currentDriver.driver_name || '';
-  document.getElementById('setupPhone').value = currentDriver.driver_phone || '';
+  document.getElementById('setupPhone').value = currentDriver.phone || '';
   document.getElementById('setupVehicleNo').value = currentDriver.vehicle_number || '';
   document.getElementById('setupVehicleType').value = currentDriver.vehicle_type || '';
   overlay.classList.add('active');
 }
 
-function saveRiderProfile() {
+async function saveRiderProfile() {
   const name = document.getElementById('setupName')?.value.trim();
-  const phone = document.getElementById('setupPhone')?.value.trim();
   const vNo = document.getElementById('setupVehicleNo')?.value.trim();
   const vType = document.getElementById('setupVehicleType')?.value.trim();
 
-  if (!name || !phone) {
-    showToast('Please enter your name and mobile number.', 'error');
+  if (!name) {
+    showToast('Please enter your full name.', 'error');
     return;
   }
 
-  currentDriver = {
-    id: `drv-${phone.slice(-4)}`,
-    driver_name: name,
-    driver_phone: phone,
-    vehicle_number: vNo || 'RJ-00-GA-0000',
-    vehicle_type: vType || 'Bike',
-    onDuty: currentDriver.onDuty !== undefined ? currentDriver.onDuty : true
-  };
-  localStorage.setItem('rudraksha_current_driver', JSON.stringify(currentDriver));
-
-  document.getElementById('setupOverlay').classList.remove('active');
-  renderNavProfile();
-  updateDriverStatsDisplay();
-  renderDriverProfileView();
-  loadDriverFeed(true);
-  showToast(`Profile updated! Welcome, ${name} 👋`, 'success');
-}
-
-/* ==========================================================================
-   3. STATS DISPLAY & DATA ISOLATION (Scoped strictly per Driver)
-   ========================================================================== */
-function getDriverEarningsAndDeliveries() {
-  const allParcels = getAllParcelsFromStorage();
-  const driverPhoneClean = (currentDriver.driver_phone || '').replace(/\D/g, '');
-
-  // Filter deliveries belonging ONLY to this specific driver
-  const myDeliveries = allParcels.filter(p => {
-    const pPhoneClean = (p.assigned_driver_phone || '').replace(/\D/g, '');
-    const isThisDriver = (p.driver_id && p.driver_id === currentDriver.id) ||
-                         (pPhoneClean && driverPhoneClean && pPhoneClean === driverPhoneClean);
-    const isDone = (p.booking_status === 'delivered' || p.status === 'delivered');
-    return isThisDriver && isDone;
-  });
-
-  // Calculate earnings from completed deliveries
-  const deliveryEarnings = myDeliveries.reduce((sum, p) => sum + Math.round((Number(p.total_amount) || 0) * 0.85), 0);
-
-  // Stored base earnings per driver phone
-  const storedBase = Number(localStorage.getItem(`rudraksha_driver_bonus_${driverPhoneClean}`) || (driverPhoneClean === '7296831460' ? '1450' : '0'));
-  const totalEarnings = deliveryEarnings + storedBase;
-
-  // Today's earnings
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayDeliveries = myDeliveries.filter(p => (p.completed_at || p.created_at || '').startsWith(todayStr));
-  const todayEarnings = todayDeliveries.reduce((sum, p) => sum + Math.round((Number(p.total_amount) || 0) * 0.85), 0) + (driverPhoneClean === '7296831460' ? 1450 : 0);
-
-  const totalTrips = myDeliveries.length + (driverPhoneClean === '7296831460' ? 7 : 0);
-
-  return { myDeliveries, totalEarnings, totalTrips, todayEarnings };
-}
-
-function updateDriverStatsDisplay() {
-  const { totalEarnings, totalTrips } = getDriverEarningsAndDeliveries();
-  const eEl = document.getElementById('statEarnings');
-  const tEl = document.getElementById('statTrips');
-  if (eEl) eEl.innerText = `₹${totalEarnings.toLocaleString('en-IN')}`;
-  if (tEl) tEl.innerText = totalTrips;
-}
-
-/* ==========================================================================
-   4. STORAGE HELPERS
-   ========================================================================== */
-function getAllParcelsFromStorage() {
-  // Merge from both keys
-  let combined = [];
-  try {
-    const p1 = JSON.parse(localStorage.getItem('rudraksha_parcels') || '[]');
-    const p2 = JSON.parse(localStorage.getItem('rudraksha_parcels_history') || '[]');
-    const map = new Map();
-    [...p1, ...p2].forEach(p => {
-      const id = p.parcel_id || p.id;
-      if (id && !map.has(id)) map.set(id, p);
-    });
-    combined = Array.from(map.values());
-  } catch {}
-
-  // Seed sample requests only if completely empty
-  if (!combined || combined.length === 0) {
-    combined = [
-      {
-        parcel_id: 'RP-PCL-482910',
-        sender_name: 'Mukesh Sharma',
-        sender_phone: '9829012345',
-        receiver_name: 'Priya Verma',
-        receiver_phone: '9829098765',
-        pickup_address: 'Sirsi Road, Jaipur',
-        drop_address: 'Vaishali Nagar Amrapali Circle, Jaipur',
-        distance_km: 5.4,
-        parcel_type: 'Documents & Envelope',
-        weight_category: 'Upto 1 KG',
-        vehicle_type: 'bike',
-        total_amount: 89,
-        payment_method: 'Cash on Delivery',
-        booking_status: 'searching_driver',
-        pickup_otp: '3412',
-        delivery_otp: '7890',
-        created_at: new Date(Date.now() - 5 * 60000).toISOString()
-      },
-      {
-        parcel_id: 'RP-PCL-918234',
-        sender_name: 'Rajat Joshi',
-        sender_phone: '9414011223',
-        receiver_name: 'Deepak Meena',
-        receiver_phone: '9414099887',
-        pickup_address: 'Mansarovar Metro Station, Jaipur',
-        drop_address: 'Malviya Nagar Gaurav Tower, Jaipur',
-        distance_km: 9.8,
-        parcel_type: 'Electronics Item',
-        weight_category: '1 to 5 KG',
-        vehicle_type: 'bike',
-        total_amount: 145,
-        payment_method: 'UPI / Online',
-        booking_status: 'searching_driver',
-        pickup_otp: '5566',
-        delivery_otp: '2244',
-        created_at: new Date(Date.now() - 15 * 60000).toISOString()
-      }
-    ];
-    saveAllParcelsToStorage(combined);
+  if (currentDriver) {
+    currentDriver.driver_name = name;
+    currentDriver.vehicle_number = vNo || currentDriver.vehicle_number;
+    currentDriver.vehicle_type = vType || currentDriver.vehicle_type;
+    localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(currentDriver));
   }
-  return combined;
-}
 
-function saveAllParcelsToStorage(list) {
+  document.getElementById('setupOverlay')?.classList.remove('active');
+  renderNavProfile();
+  renderDriverProfileView();
+
   try {
-    localStorage.setItem('rudraksha_parcels', JSON.stringify(list));
-    localStorage.setItem('rudraksha_parcels_history', JSON.stringify(list));
+    await fetch(`${DRIVER_API_BASE}/rider/profile`, {
+      method: 'PATCH',
+      headers: getRiderHeaders(),
+      body: JSON.stringify({
+        driver_name: name,
+        vehicle_number: vNo,
+        vehicle_type: vType
+      })
+    });
+    showToast('Profile saved!', 'success');
   } catch {}
 }
 
 /* ==========================================================================
-   5. JOB FEED
+   4. DUTY TOGGLE (Online / Offline)
    ========================================================================== */
-function loadDriverFeed(showRefreshAnim = false) {
+async function toggleDriverDuty() {
+  if (!currentDriver) return;
+  const newDuty = !Boolean(currentDriver.onDuty);
+  currentDriver.onDuty = newDuty;
+  localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(currentDriver));
+
+  updateDutyDisplay();
+
+  try {
+    await fetch(`${DRIVER_API_BASE}/rider/duty`, {
+      method: 'PATCH',
+      headers: getRiderHeaders(),
+      body: JSON.stringify({ onDuty: newDuty })
+    });
+    showToast(newDuty ? '🟢 You are now ON DUTY! Ready to accept jobs.' : '🔴 You are now OFF DUTY.', newDuty ? 'success' : 'info');
+  } catch {
+    showToast(newDuty ? '🟢 On Duty (Local Mode)' : '🔴 Off Duty (Local Mode)', 'info');
+  }
+
+  loadDriverFeed(false);
+}
+
+function updateDutyDisplay() {
+  if (!currentDriver) return;
+  const isDuty = currentDriver.onDuty !== false;
+
+  const navBadge = document.getElementById('navDutyBadge');
+  const navPulse = document.getElementById('navDutyPulse');
+  const navText = document.getElementById('navDutyText');
+  const statusText = document.getElementById('profileDutyStatusText');
+  const btnToggle = document.getElementById('btnToggleDuty');
+
+  if (navBadge) {
+    navBadge.style.color = isDuty ? 'var(--green)' : '#ef4444';
+    navBadge.style.borderColor = isDuty ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)';
+    navBadge.style.background = isDuty ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)';
+  }
+  if (navPulse) {
+    navPulse.style.background = isDuty ? 'var(--green)' : '#ef4444';
+  }
+  if (navText) navText.innerText = isDuty ? 'ON DUTY' : 'OFF DUTY';
+
+  if (statusText) {
+    statusText.innerText = isDuty ? '🟢 On Duty (Receiving Orders)' : '🔴 Off Duty (Not Accepting Orders)';
+    statusText.style.color = isDuty ? 'var(--green)' : '#ef4444';
+  }
+  if (btnToggle) {
+    btnToggle.innerText = isDuty ? 'Go Off Duty' : 'Go On Duty';
+    btnToggle.className = isDuty ? 'btn btn-sm btn-outline-danger rounded-pill px-3 py-1 fw-bold' : 'btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold';
+  }
+}
+
+/* ==========================================================================
+   5. EARNINGS & PAYOUT WALLET (Strictly Private to this Rider)
+   ========================================================================== */
+async function loadDriverEarnings() {
+  if (!getRiderToken()) return;
+
+  try {
+    const res = await fetch(`${DRIVER_API_BASE}/rider/earnings`, {
+      headers: getRiderHeaders()
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      updateEarningsUI(data);
+      renderPastDeliveriesList(data.trips || []);
+      renderPayoutRequestsList(data.payouts || []);
+      return;
+    }
+  } catch (e) {
+    console.warn('Earnings load offline fallback:', e);
+  }
+
+  // Local calculation fallback if backend is momentarily unreachable
+  fallbackLocalEarnings();
+}
+
+function updateEarningsUI(data) {
+  const statEarn = document.getElementById('statEarnings');
+  const statTrips = document.getElementById('statTrips');
+  const pTotal = document.getElementById('profileTotalEarnings');
+  const pTrips = document.getElementById('profileCompletedTrips');
+  const pToday = document.getElementById('profileTodayEarnings');
+  const pWallet = document.getElementById('profileWalletBalance');
+  const modalBal = document.getElementById('modalAvailableBalance');
+  const pPending = document.getElementById('profilePendingPayoutText');
+
+  const todayStr = `₹${(data.todayEarnings || 0).toLocaleString('en-IN')}`;
+  const totalStr = `₹${(data.totalEarnings || 0).toLocaleString('en-IN')}`;
+  const walletStr = `₹${(data.walletBalance || 0).toLocaleString('en-IN')}`;
+
+  if (statEarn) statEarn.innerText = todayStr;
+  if (statTrips) statTrips.innerText = data.completedTripsCount || 0;
+  if (pTotal) pTotal.innerText = totalStr;
+  if (pTrips) pTrips.innerText = data.completedTripsCount || 0;
+  if (pToday) pToday.innerText = todayStr;
+  if (pWallet) pWallet.innerText = walletStr;
+  if (modalBal) modalBal.innerText = walletStr;
+  if (pPending) pPending.innerText = `Pending Payout: ₹${(data.pendingPayout || 0).toLocaleString('en-IN')}`;
+}
+
+function renderPastDeliveriesList(trips) {
+  const container = document.getElementById('myPastDeliveriesList');
+  const badge = document.getElementById('profileTripsCountBadge');
+  if (!container) return;
+
+  if (badge) badge.innerText = trips.length;
+
+  if (!trips || trips.length === 0) {
+    container.innerHTML = `
+      <div style="background: rgba(255,255,255,0.02); border: 1px dashed var(--border); border-radius: 14px; padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">
+        <i class="fa-solid fa-box-open" style="font-size: 1.6rem; color: #475569; margin-bottom: 8px; display: block;"></i>
+        No completed deliveries yet. Accept orders from the feed to earn!
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = trips.map(t => `
+    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-size: 0.75rem; font-weight: 800; color: #fff;">${t.id}</span>
+        <span style="font-size: 0.85rem; font-weight: 900; color: var(--green);">+₹${t.driver_earning}</span>
+      </div>
+      <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+        <i class="fa-solid fa-circle" style="font-size: 6px; color: var(--accent);"></i>
+        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${t.pickup || 'Pickup'}</span>
+      </div>
+      <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+        <i class="fa-solid fa-location-dot" style="font-size: 8px; color: var(--green);"></i>
+        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${t.drop || 'Drop'}</span>
+      </div>
+      <div style="font-size: 0.65rem; color: #64748b; margin-top: 6px; text-align: right;">
+        ${t.date ? new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Delivered'}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderPayoutRequestsList(payouts) {
+  const container = document.getElementById('myPayoutRequestsList');
+  const countEl = document.getElementById('profilePayoutsCount');
+  if (!container) return;
+
+  if (countEl) countEl.innerText = `${payouts.length} request(s)`;
+
+  if (!payouts || payouts.length === 0) {
+    container.innerHTML = `<div style="font-size: 0.78rem; color: #64748b; text-align: center; padding: 10px;">No payout requests yet.</div>`;
+    return;
+  }
+
+  const statusColors = {
+    pending: { text: '#fbbf24', bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.3)' },
+    paid: { text: '#22c55e', bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.3)' },
+    rejected: { text: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)' }
+  };
+
+  container.innerHTML = payouts.map(p => {
+    const c = statusColors[p.status] || statusColors.pending;
+    return `
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <div style="font-size: 0.84rem; font-weight: 800; color: #fff;">₹${p.amount}</div>
+          <div style="font-size: 0.68rem; color: #94a3b8;">${(p.payment_method || 'UPI').toUpperCase()} • ${new Date(p.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}</div>
+        </div>
+        <span style="font-size: 0.7rem; font-weight: 800; padding: 3px 10px; border-radius: 20px; background: ${c.bg}; border: 1px solid ${c.border}; color: ${c.text}; text-transform: uppercase;">
+          ${p.status}
+        </span>
+      </div>
+    `;
+  }).join('');
+}
+
+function fallbackLocalEarnings() {
+  updateEarningsUI({
+    todayEarnings: 0,
+    weeklyEarnings: 0,
+    totalEarnings: 0,
+    walletBalance: 0,
+    completedTripsCount: 0
+  });
+}
+
+/* ==========================================================================
+   6. PAYOUT WITHDRAWAL MODAL HANDLERS
+   ========================================================================== */
+function openPayoutModal() {
+  const modal = document.getElementById('payoutModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closePayoutModal() {
+  const modal = document.getElementById('payoutModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function togglePayoutFields() {
+  const method = document.getElementById('payoutMethodSelect')?.value;
+  const upiFields = document.getElementById('payoutUpiFields');
+  const bankFields = document.getElementById('payoutBankFields');
+
+  if (method === 'bank') {
+    if (upiFields) upiFields.style.display = 'none';
+    if (bankFields) bankFields.style.display = 'block';
+  } else {
+    if (upiFields) upiFields.style.display = 'block';
+    if (bankFields) bankFields.style.display = 'none';
+  }
+}
+
+async function submitPayoutRequest() {
+  const amountInput = document.getElementById('payoutAmountInput');
+  const methodSelect = document.getElementById('payoutMethodSelect');
+  const upiInput = document.getElementById('payoutUpiId');
+  const bankNameInput = document.getElementById('payoutBankName');
+  const accInput = document.getElementById('payoutAccountNo');
+  const ifscInput = document.getElementById('payoutIfsc');
+  const errorEl = document.getElementById('payoutErrorMsg');
+  const btn = document.getElementById('btnSubmitPayout');
+
+  const amount = Number(amountInput?.value || 0);
+  const method = methodSelect?.value || 'upi';
+
+  if (!amount || amount < 100) {
+    if (errorEl) { errorEl.innerText = 'Minimum withdrawal amount is ₹100.'; errorEl.style.display = 'block'; }
+    return;
+  }
+
+  const payload = { amount, payment_method: method };
+
+  if (method === 'upi') {
+    const upiId = upiInput?.value.trim();
+    if (!upiId || !upiId.includes('@')) {
+      if (errorEl) { errorEl.innerText = 'Please enter a valid UPI ID (e.g. yourname@okaxis).'; errorEl.style.display = 'block'; }
+      return;
+    }
+    payload.upi_id = upiId;
+  } else {
+    const acc = accInput?.value.trim();
+    const ifsc = ifscInput?.value.trim().toUpperCase();
+    if (!acc || !ifsc) {
+      if (errorEl) { errorEl.innerText = 'Please provide Account Number and IFSC Code.'; errorEl.style.display = 'block'; }
+      return;
+    }
+    payload.account_number = acc;
+    payload.ifsc_code = ifsc;
+    payload.bank_name = bankNameInput?.value.trim() || 'Bank';
+  }
+
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Submitting...'; }
+
+  try {
+    const res = await fetch(`${DRIVER_API_BASE}/rider/payout-request`, {
+      method: 'POST',
+      headers: getRiderHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to submit payout request.');
+    }
+
+    closePayoutModal();
+    showToast(`✅ Payout request of ₹${amount} submitted! Processing takes 12-24 hours.`, 'success');
+    loadDriverEarnings();
+  } catch (err) {
+    if (errorEl) {
+      errorEl.innerText = err.message;
+      errorEl.style.display = 'block';
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Submit Payout Request'; }
+  }
+}
+
+/* ==========================================================================
+   7. LIVE JOBS FEED & ACTIVE TRIP DISPATCH
+   ========================================================================== */
+async function loadDriverFeed(showRefreshAnim = false) {
   const feedList = document.getElementById('driverFeedList');
   const feedCountEl = document.getElementById('feedCount');
+  const activeContainer = document.getElementById('activeTripContainer');
   if (!feedList) return;
 
   if (showRefreshAnim) {
@@ -446,347 +693,242 @@ function loadDriverFeed(showRefreshAnim = false) {
     }
   }
 
-  const allParcels = getAllParcelsFromStorage();
+  try {
+    const res = await fetch(`${DRIVER_API_BASE}/rider/jobs`, {
+      headers: getRiderHeaders()
+    });
 
-  // Available = searching_driver + this rider's accepted (not yet delivered)
-  const available = allParcels.filter(p => {
-    const st = p.booking_status || p.status || '';
-    if (st === 'delivered' || st === 'cancelled') return false;
-    if (st === 'searching_driver') return true;
-    // Show if this rider accepted it and it's in some active state
-    if (['driver_assigned', 'reached_pickup', 'picked_up', 'in_transit', 'out_for_delivery'].includes(st)) {
-      return (p.assigned_driver_phone === currentDriver.driver_phone || p.driver_id === currentDriver.id);
+    if (res.ok) {
+      const data = await res.json();
+      currentActiveTrip = data.activeTrip || null;
+
+      // Render Active Trip if rider is assigned
+      if (activeContainer) {
+        if (currentActiveTrip) {
+          activeContainer.innerHTML = buildActiveTripCard(currentActiveTrip);
+        } else {
+          activeContainer.innerHTML = '';
+        }
+      }
+
+      // Render Available Jobs Feed
+      const available = data.availableJobs || [];
+      if (feedCountEl) feedCountEl.innerText = available.length > 0 ? available.length : '';
+
+      if (currentActiveTrip) {
+        feedList.innerHTML = `
+          <div class="empty-state" style="padding: 24px 16px;">
+            <div class="empty-icon" style="color: var(--green);"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="empty-title">Trip in Progress</div>
+            <div class="empty-sub">Complete your active trip above to receive new orders.</div>
+          </div>
+        `;
+        return;
+      }
+
+      if (available.length === 0) {
+        feedList.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon"><i class="fa-solid fa-satellite-dish"></i></div>
+            <div class="empty-title">Scanning for Delivery Jobs...</div>
+            <div class="empty-sub">New orders appear here automatically every 8 seconds.</div>
+          </div>
+        `;
+        return;
+      }
+
+      feedList.innerHTML = available.map(p => buildFeedCard(p)).join('');
+      return;
     }
-    return false;
-  });
-
-  if (feedCountEl) feedCountEl.innerText = available.length > 0 ? available.length : '';
-
-  if (available.length === 0) {
-    feedList.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon"><i class="fa-solid fa-satellite-dish"></i></div>
-        <div class="empty-title">Scanning for Parcel Jobs...</div>
-        <div class="empty-sub">New delivery requests will appear here automatically.</div>
-      </div>
-    `;
-    return;
+  } catch (err) {
+    console.warn('Jobs feed error:', err);
   }
+}
 
-  feedList.innerHTML = available.map(parcel => buildFeedCard(parcel)).join('');
+function buildActiveTripCard(trip) {
+  const pId = trip.parcel_id || trip.id;
+  const st = trip.booking_status || trip.status || 'driver_assigned';
+  const pickupAddr = trip.pickup_address || 'Pickup Point';
+  const dropAddr = trip.drop_address || 'Drop Point';
+  const fare = trip.total_amount || 0;
+  const riderShare = Math.round(fare * 0.8) || 60;
+  const isPickedUp = st === 'picked_up' || st === 'in_transit' || st === 'out_for_delivery';
+
+  const customerPhone = isPickedUp ? (trip.receiver_phone || trip.sender_phone) : (trip.sender_phone || trip.receiver_phone);
+  const targetAddress = isPickedUp ? dropAddr : pickupAddr;
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(targetAddress)}`;
+
+  return `
+    <div class="active-trip-card">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <span class="active-badge"><i class="fa-solid fa-bolt"></i> ACTIVE TRIP</span>
+        <span class="trip-status-pill">${st.replace(/_/g, ' ').toUpperCase()}</span>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <div>
+          <div class="trip-id-label">Order Number</div>
+          <div class="trip-id-val">${pId}</div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Your Earning</div>
+          <div style="font-size: 1.4rem; font-weight: 900; color: var(--green);">₹${riderShare}</div>
+        </div>
+      </div>
+
+      <div class="route-info-box">
+        <div class="route-row">
+          <div class="route-icon pickup"><i class="fa-solid fa-arrow-up"></i></div>
+          <div style="flex: 1;">
+            <div class="route-label">PICKUP FROM</div>
+            <div class="route-addr">${pickupAddr}</div>
+            <div class="route-contact">Sender: ${trip.sender_name || 'Customer'} (+91 ${trip.sender_phone || '-'})</div>
+          </div>
+        </div>
+        <div class="route-row">
+          <div class="route-icon drop"><i class="fa-solid fa-location-dot"></i></div>
+          <div style="flex: 1;">
+            <div class="route-label">DELIVER TO</div>
+            <div class="route-addr">${dropAddr}</div>
+            <div class="route-contact">Receiver: ${trip.receiver_name || 'Customer'} (+91 ${trip.receiver_phone || '-'})</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action Buttons: Call & Google Maps Navigation -->
+      <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 8px; margin-bottom: 14px;">
+        <a href="tel:${customerPhone}" class="btn-refresh" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; font-size: 0.82rem; font-weight: 700; color: #fff; text-decoration: none; border-color: rgba(255,255,255,0.2);">
+          <i class="fa-solid fa-phone text-success"></i> Call Customer
+        </a>
+        <a href="${mapsUrl}" target="_blank" class="btn-refresh" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; font-size: 0.82rem; font-weight: 700; color: #38bdf8; text-decoration: none; border-color: rgba(56,189,248,0.3); background: rgba(56,189,248,0.08);">
+          <i class="fa-solid fa-diamond-turn-right"></i> Google Maps
+        </a>
+      </div>
+
+      <!-- OTP Verification Trigger Button -->
+      ${!isPickedUp ? `
+        <button type="button" class="btn-verify-otp" style="background: linear-gradient(135deg, #f97316, #ea580c);" onclick="openOtpSheet('pickup', '${pId}')">
+          <i class="fa-solid fa-key"></i> Enter Customer Pickup PIN
+        </button>
+      ` : `
+        <button type="button" class="btn-verify-otp" onclick="openOtpSheet('delivery', '${pId}')">
+          <i class="fa-solid fa-circle-check"></i> Enter Delivery PIN & Complete Trip
+        </button>
+      `}
+    </div>
+  `;
 }
 
 function buildFeedCard(parcel) {
   const pId = parcel.parcel_id || parcel.id;
-  const st = parcel.booking_status || parcel.status || 'searching_driver';
-  const isMyJob = (parcel.assigned_driver_phone === currentDriver.driver_phone || parcel.driver_id === currentDriver.id);
-  const riderEarning = Math.round((parcel.total_amount || 100) * 0.85);
-  const timeAgo = getTimeAgo(parcel.created_at);
-
-  let badgeText = '⚡ NEW DELIVERY REQUEST';
-  let badgeStyle = '';
-  let acceptLabel = '<i class="fa-solid fa-circle-check"></i> Accept Delivery Job';
-
-  if (isMyJob) {
-    badgeText = '🔄 YOUR ACCEPTED JOB';
-    badgeStyle = 'background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.3);color:#22c55e;';
-    acceptLabel = '<i class="fa-solid fa-arrow-right"></i> Continue Delivery';
-  }
+  const fare = parcel.total_amount || 100;
+  const riderShare = Math.round(fare * 0.8) || 60;
 
   return `
-    <div class="feed-card${isMyJob ? ' highlighted' : ''}" id="card-${pId}">
+    <div class="feed-card" id="card-${pId}">
       <div class="feed-top">
         <div>
-          <span class="feed-badge" style="${badgeStyle}">${badgeText}</span>
-          <div class="feed-id">${pId} <span style="font-size:0.68rem;color:#64748b;font-weight:400;">• ${timeAgo}</span></div>
+          <span class="feed-badge">⚡ NEW DELIVERY JOB</span>
+          <div class="feed-title">${pId} • ${(parcel.parcel_type || 'Package').toUpperCase()}</div>
         </div>
-        <div>
-          <div class="feed-fare">₹${parcel.total_amount || 0}</div>
-          <div class="feed-payout">You earn: <strong>₹${riderEarning}</strong></div>
+        <div class="feed-fare">
+          <div class="feed-fare-val">₹${riderShare}</div>
+          <div class="feed-fare-sub">Driver Net Share</div>
         </div>
       </div>
 
-      <div class="feed-route">
+      <div class="feed-routes">
         <div class="feed-route-row">
-          <div class="feed-route-dot p"></div>
-          <div class="feed-route-text">
-            <div class="feed-route-tag">Pickup</div>
-            <div class="feed-route-addr">${parcel.pickup_address}</div>
-            <div class="feed-route-who">${parcel.sender_name || 'Sender'} • ${parcel.sender_phone || ''}</div>
-          </div>
+          <i class="fa-solid fa-arrow-up feed-route-icon pickup"></i>
+          <span class="feed-route-text"><strong>Pickup:</strong> ${parcel.pickup_address || 'Pickup Point'}</span>
         </div>
         <div class="feed-route-row">
-          <div class="feed-route-dot d"></div>
-          <div class="feed-route-text">
-            <div class="feed-route-tag">Drop</div>
-            <div class="feed-route-addr">${parcel.drop_address}</div>
-            <div class="feed-route-who">${parcel.receiver_name || 'Receiver'} • ${parcel.receiver_phone || ''}</div>
-          </div>
+          <i class="fa-solid fa-location-dot feed-route-icon drop"></i>
+          <span class="feed-route-text"><strong>Drop:</strong> ${parcel.drop_address || 'Drop Point'}</span>
         </div>
       </div>
 
-      <div class="feed-meta">
-        <span class="feed-meta-item"><i class="fa-solid fa-box"></i> ${parcel.parcel_type || 'Package'}</span>
-        <span class="feed-meta-item"><i class="fa-solid fa-route"></i> ${parcel.distance_km || '?'} km</span>
-        <span class="feed-meta-item"><i class="fa-solid fa-credit-card"></i> ${parcel.payment_method || 'COD'}</span>
-      </div>
-
-      <div class="feed-actions">
-        <button class="btn-decline" onclick="rejectParcelJob('${pId}')">✕ Decline</button>
-        <button class="btn-accept" onclick="acceptParcelJob('${pId}')">${acceptLabel}</button>
+      <div style="display: flex; gap: 8px; align-items: center; margin-top: 12px;">
+        <button class="btn-accept-job" onclick="acceptDriverJob('${pId}')" style="flex: 1; padding: 11px;">
+          <i class="fa-solid fa-circle-check me-1"></i> Accept Job (Earn ₹${riderShare})
+        </button>
       </div>
     </div>
   `;
 }
 
-/* ==========================================================================
-   6. JOB ACCEPT / DECLINE / STATUS
-   ========================================================================== */
-async function acceptParcelJob(parcelId) {
-  const allParcels = getAllParcelsFromStorage();
-  const target = allParcels.find(p => (p.parcel_id === parcelId || p.id === parcelId));
-
-  if (!target) { showToast('Delivery request not found.', 'error'); return; }
-
-  // Check if another driver claimed it
-  if (target.booking_status === 'driver_assigned' &&
-      target.assigned_driver_phone !== currentDriver.driver_phone &&
-      target.driver_id !== currentDriver.id) {
-    showToast(`Already accepted by another rider (${target.assigned_driver_name || 'Fleet Member'}).`, 'error');
-    loadDriverFeed();
+async function acceptDriverJob(parcelId) {
+  if (!currentDriver) return;
+  if (!currentDriver.onDuty) {
+    showToast('Please toggle ON DUTY before accepting jobs.', 'error');
     return;
   }
 
-  // Assign to current rider
-  target.booking_status = 'driver_assigned';
-  target.status = 'driver_assigned';
-  target.driver_id = currentDriver.id;
-  target.assigned_driver_name = currentDriver.driver_name;
-  target.assigned_driver_phone = currentDriver.driver_phone;
-  target.vehicle_number = currentDriver.vehicle_number;
-  target.accepted_at = new Date().toISOString();
+  try {
+    const res = await fetch(`${DRIVER_API_BASE}/rider/jobs/${parcelId}/accept`, {
+      method: 'POST',
+      headers: getRiderHeaders()
+    });
 
-  saveAllParcelsToStorage(allParcels);
-
-  currentActiveTrip = target;
-  localStorage.setItem('rudraksha_driver_active_trip', JSON.stringify(target));
-
-  showToast(`Job #${parcelId} accepted! Proceed to pickup. 🎉`, 'success');
-  renderActiveTrip();
-  loadDriverFeed();
-
-  // Scroll to active trip
-  const atc = document.getElementById('activeTripContainer');
-  if (atc) setTimeout(() => atc.scrollIntoView({ behavior: 'smooth' }), 200);
-
-  // Open WhatsApp to notify owner
-  const waMsg = `✅ *JOB ACCEPTED*\n\nRider: *${currentDriver.driver_name}*\nPhone: *${currentDriver.driver_phone}*\nVehicle: *${currentDriver.vehicle_number}* (${currentDriver.vehicle_type})\n\nOrder ID: *${parcelId}*\nPickup: ${target.pickup_address}\nDrop: ${target.drop_address}\n\n_Rider is now heading to pickup location._`;
-  const waUrl = `https://wa.me/917296831460?text=${encodeURIComponent(waMsg)}`;
-
-  // Small delay so rider sees the toast first
-  setTimeout(() => {
-    if (confirm(`Send WhatsApp acceptance message to Owner?`)) {
-      window.open(waUrl, '_blank');
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Unable to accept this job.');
     }
-  }, 500);
-}
 
-function rejectParcelJob(parcelId) {
-  const card = document.getElementById(`card-${parcelId}`);
-  if (card) {
-    card.style.transition = 'all 0.25s';
-    card.style.opacity = '0';
-    card.style.transform = 'translateX(20px)';
-    setTimeout(() => card.remove(), 250);
-  }
-}
-
-function updateTripStatus(parcelId, status) {
-  const allParcels = getAllParcelsFromStorage();
-  const target = allParcels.find(p => (p.parcel_id === parcelId || p.id === parcelId));
-
-  if (target) {
-    target.booking_status = status;
-    target.status = status;
-    target.updated_at = new Date().toISOString();
-    saveAllParcelsToStorage(allParcels);
-
-    currentActiveTrip = target;
-    localStorage.setItem('rudraksha_driver_active_trip', JSON.stringify(target));
-    renderActiveTrip();
-    loadDriverFeed();
-
-    const statusLabels = {
-      reached_pickup: '📍 Marked as Reached Pickup!',
-      out_for_delivery: '🚀 Marked as Out for Delivery!',
-      delivered: '🎉 Delivery Complete!'
-    };
-    showToast(statusLabels[status] || `Status updated: ${status}`, 'success');
-  }
-}
-
-function loadActiveTripFromStorage() {
-  const saved = localStorage.getItem('rudraksha_driver_active_trip');
-  if (saved) {
-    try { currentActiveTrip = JSON.parse(saved); renderActiveTrip(); } catch {}
+    showToast('🚀 Job accepted! Heading to pickup.', 'success');
+    switchDriverView('feed');
+    loadDriverFeed(true);
+  } catch (err) {
+    showToast(err.message || 'Error accepting job.', 'error');
   }
 }
 
 /* ==========================================================================
-   7. ACTIVE TRIP CARD RENDERER
-   ========================================================================== */
-function renderActiveTrip() {
-  const container = document.getElementById('activeTripContainer');
-  if (!container) return;
-
-  if (!currentActiveTrip) { container.innerHTML = ''; return; }
-
-  const p = currentActiveTrip;
-  const pId = p.parcel_id || p.id;
-  const status = p.booking_status || p.status || 'driver_assigned';
-
-  const pickupNav = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.pickup_address)}`;
-  const dropNav = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.drop_address)}`;
-
-  const statusLabels = {
-    driver_assigned: { text: 'Driver Assigned — Head to Pickup', color: '#f97316' },
-    reached_pickup: { text: 'Reached Pickup — Verify OTP', color: '#fbbf24' },
-    picked_up: { text: 'Parcel Picked Up — In Transit', color: '#22c55e' },
-    in_transit: { text: 'In Transit — En Route', color: '#22c55e' },
-    out_for_delivery: { text: 'Out for Delivery — Verify Delivery OTP', color: '#38bdf8' },
-  };
-  const stInfo = statusLabels[status] || { text: status.replace(/_/g, ' '), color: '#94a3b8' };
-
-  let actions = '';
-  if (status === 'driver_assigned') {
-    actions = `
-      <div class="action-group">
-        <a href="${pickupNav}" target="_blank" class="btn-nav"><i class="fa-solid fa-diamond-turn-right"></i> Navigate to Pickup</a>
-        <button class="btn-status" onclick="updateTripStatus('${pId}','reached_pickup')"><i class="fa-solid fa-location-dot me-1"></i> Reached Pickup</button>
-      </div>
-      <button class="btn-otp" style="width:100%;margin-top:8px;" onclick="openOtpSheet('${pId}','pickup')"><i class="fa-solid fa-key"></i> Enter Pickup OTP</button>
-    `;
-  } else if (status === 'reached_pickup') {
-    actions = `
-      <button class="btn-otp" style="width:100%;" onclick="openOtpSheet('${pId}','pickup')"><i class="fa-solid fa-key"></i> Verify Pickup OTP & Start Trip</button>
-    `;
-  } else if (status === 'picked_up' || status === 'in_transit') {
-    actions = `
-      <div class="action-group">
-        <a href="${dropNav}" target="_blank" class="btn-nav" style="border-color:#38bdf8;color:#38bdf8;"><i class="fa-solid fa-diamond-turn-right"></i> Navigate to Drop</a>
-        <button class="btn-status" onclick="updateTripStatus('${pId}','out_for_delivery')"><i class="fa-solid fa-truck-fast me-1"></i> Reached Drop</button>
-      </div>
-      <button class="btn-otp" style="width:100%;margin-top:8px;" onclick="openOtpSheet('${pId}','delivery')"><i class="fa-solid fa-shield-check"></i> Enter Delivery OTP</button>
-    `;
-  } else if (status === 'out_for_delivery') {
-    actions = `
-      <button class="btn-otp" style="width:100%;" onclick="openOtpSheet('${pId}','delivery')"><i class="fa-solid fa-circle-check"></i> Verify Delivery OTP & Complete Trip</button>
-    `;
-  }
-
-  container.innerHTML = `
-    <div class="active-trip-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-        <span class="active-badge"><span class="pulse"></span> ACTIVE DELIVERY</span>
-        <div class="trip-fare">₹${p.total_amount || 0}</div>
-      </div>
-      <div class="trip-id-label">Trip ID</div>
-      <div class="trip-id-val">${pId}</div>
-      <span class="trip-status-pill" style="border-color:${stInfo.color}33;color:${stInfo.color};background:${stInfo.color}15;margin-top:8px;display:inline-flex;">
-        ${stInfo.text}
-      </span>
-
-      <div class="route-info-box">
-        <div class="route-row">
-          <div class="route-icon pickup"><i class="fa-solid fa-location-dot"></i></div>
-          <div>
-            <div class="route-label">Pickup</div>
-            <div class="route-addr">${p.pickup_address}</div>
-            <div class="route-contact">${p.sender_name} • <a href="tel:${p.sender_phone}"><i class="fa-solid fa-phone me-1"></i>${p.sender_phone}</a></div>
-          </div>
-        </div>
-        <div class="route-row">
-          <div class="route-icon drop"><i class="fa-solid fa-flag-checkered"></i></div>
-          <div>
-            <div class="route-label">Drop</div>
-            <div class="route-addr">${p.drop_address}</div>
-            <div class="route-contact">${p.receiver_name} • <a href="tel:${p.receiver_phone}"><i class="fa-solid fa-phone me-1"></i>${p.receiver_phone}</a></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="meta-pills">
-        <span class="meta-pill"><i class="fa-solid fa-box"></i> ${p.parcel_type || 'Package'}</span>
-        <span class="meta-pill"><i class="fa-solid fa-route"></i> ${p.distance_km || '?'} km</span>
-        <span class="meta-pill"><i class="fa-solid fa-credit-card"></i> ${p.payment_method || 'COD'}</span>
-      </div>
-
-      ${actions}
-    </div>
-  `;
-}
-
-/* ==========================================================================
-   8. OTP BOTTOM SHEET
+   8. OTP BOTTOM SHEET VERIFICATION
    ========================================================================== */
 function initOtpDigitInputs() {
-  const digits = ['otp1','otp2','otp3','otp4'];
-  digits.forEach((id, idx) => {
-    const el = document.getElementById(id);
+  const digits = [document.getElementById('otp1'), document.getElementById('otp2'), document.getElementById('otp3'), document.getElementById('otp4')];
+  digits.forEach((el, idx) => {
     if (!el) return;
     el.addEventListener('input', (e) => {
-      e.target.value = e.target.value.replace(/\D/g, '').slice(-1);
-      if (e.target.value && idx < digits.length - 1) {
-        document.getElementById(digits[idx + 1])?.focus();
-      }
+      const val = e.target.value.replace(/\D/g, '');
+      e.target.value = val;
+      if (val && idx < 3) digits[idx + 1]?.focus();
     });
     el.addEventListener('keydown', (e) => {
       if (e.key === 'Backspace' && !e.target.value && idx > 0) {
-        document.getElementById(digits[idx - 1])?.focus();
+        digits[idx - 1]?.focus();
       }
-    });
-    el.addEventListener('paste', (e) => {
-      e.preventDefault();
-      const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
-      digits.forEach((did, di) => {
-        const dEl = document.getElementById(did);
-        if (dEl) dEl.value = text[di] || '';
-      });
-      document.getElementById(digits[Math.min(text.length, 3)])?.focus();
     });
   });
 }
 
-function openOtpSheet(parcelId, mode) {
+function openOtpSheet(mode, parcelId) {
   currentOtpMode = mode;
   currentOtpParcelId = parcelId;
 
   const overlay = document.getElementById('otpOverlay');
   const title = document.getElementById('otpSheetTitle');
   const sub = document.getElementById('otpSheetSub');
-  const label = document.getElementById('btnVerifyLabel');
-  const icon = document.getElementById('otpIconRing');
+  const btnLabel = document.getElementById('btnVerifyLabel');
 
-  // Clear digit inputs
-  ['otp1','otp2','otp3','otp4'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
+  [1, 2, 3, 4].forEach(i => {
+    const inp = document.getElementById(`otp${i}`);
+    if (inp) inp.value = '';
   });
 
   if (mode === 'pickup') {
-    if (title) title.innerText = 'Enter Pickup OTP';
-    if (sub) sub.innerText = 'Ask the sender for the 4-digit secret code to confirm goods handover.';
-    if (label) label.innerText = 'Verify Pickup OTP';
-    if (icon) icon.innerHTML = '<i class="fa-solid fa-key"></i>';
+    if (title) title.innerText = 'Enter Pickup Verification PIN';
+    if (sub) sub.innerText = 'Ask the sender on ground for their 4-digit PIN to load the parcel.';
+    if (btnLabel) btnLabel.innerText = 'Verify Pickup PIN';
   } else {
-    if (title) title.innerText = 'Enter Delivery OTP';
-    if (sub) sub.innerText = 'Ask the receiver for the 4-digit secret code to confirm safe delivery.';
-    if (label) label.innerText = 'Verify Delivery OTP';
-    if (icon) { icon.innerHTML = '<i class="fa-solid fa-shield-check"></i>'; icon.style.background = 'rgba(34,197,94,0.12)'; icon.style.borderColor = 'rgba(34,197,94,0.3)'; icon.style.color = '#22c55e'; }
+    if (title) title.innerText = 'Enter Delivery PIN';
+    if (sub) sub.innerText = 'Ask the receiver for their 4-digit PIN to complete delivery.';
+    if (btnLabel) btnLabel.innerText = 'Verify & Complete Delivery';
   }
 
   if (overlay) overlay.classList.add('active');
-  setTimeout(() => document.getElementById('otp1')?.focus(), 300);
+  setTimeout(() => document.getElementById('otp1')?.focus(), 200);
 }
 
 function closeOtpSheet() {
@@ -794,284 +936,109 @@ function closeOtpSheet() {
   if (overlay) overlay.classList.remove('active');
 }
 
-function getOtpValue() {
-  return ['otp1','otp2','otp3','otp4'].map(id => document.getElementById(id)?.value || '').join('');
-}
+async function submitOtpVerification() {
+  const digits = [
+    document.getElementById('otp1')?.value.trim() || '',
+    document.getElementById('otp2')?.value.trim() || '',
+    document.getElementById('otp3')?.value.trim() || '',
+    document.getElementById('otp4')?.value.trim() || ''
+  ];
+  const enteredOtp = digits.join('');
 
-function submitOtpVerification() {
-  const otp = getOtpValue();
-
-  if (otp.length < 4) {
-    showToast('Please enter all 4 digits.', 'error');
+  if (enteredOtp.length !== 4) {
+    showToast('Please enter all 4 digits of the PIN.', 'error');
     return;
   }
 
-  const allParcels = getAllParcelsFromStorage();
-  const target = allParcels.find(p => (p.parcel_id === currentOtpParcelId || p.id === currentOtpParcelId));
+  const btn = document.getElementById('btnVerifyOtp');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Verifying...'; }
 
-  if (!target) { showToast('Order not found.', 'error'); return; }
+  const endpoint = currentOtpMode === 'pickup' ? 'verify-pickup-otp' : 'verify-delivery-otp';
 
-  const expectedOtp = currentOtpMode === 'pickup'
-    ? (target.pickup_otp || '3412')
-    : (target.delivery_otp || '7890');
+  try {
+    const res = await fetch(`${DRIVER_API_BASE}/parcels/${currentOtpParcelId}/${endpoint}`, {
+      method: 'POST',
+      headers: getRiderHeaders(),
+      body: JSON.stringify({ otp: enteredOtp })
+    });
 
-  // Accept correct OTP or universal testing bypass
-  if (otp !== expectedOtp) {
-    showToast(`❌ Wrong OTP (${otp}). Ask customer for correct code.`, 'error');
-    // Shake input
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Invalid PIN entered. Please check with customer.');
+    }
+
+    closeOtpSheet();
+
+    if (currentOtpMode === 'pickup') {
+      showToast('✅ Pickup PIN verified! Parcel marked as Picked Up.', 'success');
+    } else {
+      showToast('🎉 Delivery Complete! Payment added to your wallet.', 'success');
+      loadDriverEarnings();
+    }
+
+    loadDriverFeed(true);
+  } catch (err) {
+    showToast(err.message, 'error');
+    // Shake inputs
     const wrap = document.querySelector('.otp-input-wrap');
     if (wrap) {
-      wrap.style.animation = 'none';
-      wrap.offsetHeight;
       wrap.style.animation = 'shake 0.4s ease';
+      setTimeout(() => wrap.style.animation = '', 400);
     }
-    return;
-  }
-
-  closeOtpSheet();
-
-  if (currentOtpMode === 'pickup') {
-    target.booking_status = 'picked_up';
-    target.status = 'picked_up';
-    target.pickup_verified_at = new Date().toISOString();
-    saveAllParcelsToStorage(allParcels);
-    currentActiveTrip = target;
-    localStorage.setItem('rudraksha_driver_active_trip', JSON.stringify(target));
-    showToast('✅ Pickup OTP Verified! Parcel picked up. Head to drop location.', 'success');
-    renderActiveTrip();
-    loadDriverFeed();
-  } else {
-    // Delivery complete
-    target.booking_status = 'delivered';
-    target.status = 'delivered';
-    target.completed_at = new Date().toISOString();
-    target.driver_id = currentDriver.id;
-    target.assigned_driver_name = currentDriver.driver_name;
-    target.assigned_driver_phone = currentDriver.driver_phone;
-    target.vehicle_number = currentDriver.vehicle_number;
-    saveAllParcelsToStorage(allParcels);
-
-    const riderShare = Math.round((Number(target.total_amount) || 100) * 0.85);
-
-    currentActiveTrip = null;
-    localStorage.removeItem('rudraksha_driver_active_trip');
-    updateDriverStatsDisplay();
-    renderDriverProfileView();
-    renderActiveTrip();
-    loadDriverFeed();
-
-    showToast(`🎉 Delivery Complete! You earned ₹${riderShare} for this trip.`, 'success');
-  }
-}
-
-/* ==========================================================================
-   9. URL DISPATCH JOB DETECTION (WhatsApp link click)
-   ========================================================================== */
-function checkUrlDispatchJob() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const targetJobId = urlParams.get('jobId') || urlParams.get('orderId') || urlParams.get('id');
-  if (!targetJobId) return;
-
-  const all = getAllParcelsFromStorage();
-  const match = all.find(p => (p.parcel_id === targetJobId || p.id === targetJobId));
-
-  if (match) {
-    if (match.booking_status !== 'searching_driver' && match.status !== 'searching_driver') {
-      showToast(`Order #${targetJobId} already accepted by ${match.assigned_driver_name || 'another rider'}.`, 'info');
-    } else {
-      setTimeout(() => {
-        const el = document.getElementById(`card-${targetJobId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          el.classList.add('highlighted');
-          showToast(`📦 Delivery job #${targetJobId} highlighted for you!`, 'info');
-        }
-      }, 600);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-circle-check me-2"></i> <span id="btnVerifyLabel">${currentOtpMode === 'pickup' ? 'Verify Pickup PIN' : 'Verify & Complete Delivery'}</span>`;
     }
-  } else {
-    showToast(`Searching for job #${targetJobId}...`, 'info');
   }
 }
 
 /* ==========================================================================
-   10. TOAST NOTIFICATION SYSTEM
-   ========================================================================== */
-function showToast(message, type = 'info') {
-  const container = document.getElementById('toastContainer');
-  if (!container) return;
-
-  const icons = { success: 'fa-circle-check', error: 'fa-circle-xmark', info: 'fa-circle-info' };
-  const toast = document.createElement('div');
-  toast.className = `toast-msg ${type}`;
-  toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i> ${message}`;
-  container.appendChild(toast);
-
-  setTimeout(() => {
-    toast.style.transition = 'all 0.3s';
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateY(-8px)';
-    setTimeout(() => toast.remove(), 300);
-  }, 3200);
-}
-
-/* ==========================================================================
-   11. UTILITY
-   ========================================================================== */
-function getTimeAgo(isoString) {
-  if (!isoString) return '';
-  const diff = Date.now() - new Date(isoString).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  return `${hrs}h ago`;
-}
-
-/* ==========================================================================
-   12. DRIVER VIEW SWITCHER (Feed vs Active vs Profile)
+   9. VIEW NAVIGATION & TOASTS
    ========================================================================== */
 function switchDriverView(viewName) {
   const feedSec = document.getElementById('driverFeedSection');
-  const profileSec = document.getElementById('driverProfileSection');
+  const profSec = document.getElementById('driverProfileSection');
   const btnFeed = document.getElementById('btnTabFeed');
   const btnActive = document.getElementById('btnTabActive');
-  const btnProfile = document.getElementById('btnTabProfile');
+  const btnProf = document.getElementById('btnTabProfile');
 
-  // Reset active classes
-  [btnFeed, btnActive, btnProfile].forEach(b => b?.classList.remove('active'));
+  [btnFeed, btnActive, btnProf].forEach(b => b?.classList.remove('active'));
 
   if (viewName === 'profile') {
     if (feedSec) feedSec.style.display = 'none';
-    if (profileSec) profileSec.style.display = 'block';
-    if (btnProfile) btnProfile.classList.add('active');
+    if (profSec) profSec.style.display = 'block';
+    if (btnProf) btnProf.classList.add('active');
+    loadDriverEarnings();
     renderDriverProfileView();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   } else if (viewName === 'active') {
     if (feedSec) feedSec.style.display = 'block';
-    if (profileSec) profileSec.style.display = 'none';
+    if (profSec) profSec.style.display = 'none';
     if (btnActive) btnActive.classList.add('active');
-    const atc = document.getElementById('activeTripContainer');
-    if (atc) atc.scrollIntoView({ behavior: 'smooth' });
+    const activeEl = document.getElementById('activeTripContainer');
+    if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth' });
   } else {
-    // Default: 'feed'
     if (feedSec) feedSec.style.display = 'block';
-    if (profileSec) profileSec.style.display = 'none';
+    if (profSec) profSec.style.display = 'none';
     if (btnFeed) btnFeed.classList.add('active');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    loadDriverFeed(false);
   }
 }
 
-function toggleDriverDuty() {
-  currentDriver.onDuty = !currentDriver.onDuty;
-  localStorage.setItem('rudraksha_current_driver', JSON.stringify(currentDriver));
-  updateDutyDisplay();
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
 
-  if (currentDriver.onDuty) {
-    showToast('🟢 You are now ON DUTY. You will receive active parcel alerts!', 'success');
-  } else {
-    showToast('⚪ You are now OFF DUTY. Parcel alerts paused.', 'info');
-  }
-}
+  const toast = document.createElement('div');
+  toast.className = `toast-msg ${type}`;
+  const icon = type === 'success' ? 'fa-circle-check' : (type === 'error' ? 'fa-triangle-exclamation' : 'fa-bell');
+  toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${msg}</span>`;
+  container.appendChild(toast);
 
-function updateDutyDisplay() {
-  const onDuty = currentDriver.onDuty !== false;
-  const navBadge = document.querySelector('.duty-badge');
-  if (navBadge) {
-    navBadge.innerHTML = onDuty ? '<span class="pulse"></span> ON DUTY' : '<span style="width:7px;height:7px;border-radius:50%;background:#8E8E93;display:inline-block;"></span> OFF DUTY';
-    navBadge.style.borderColor = onDuty ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)';
-    navBadge.style.color = onDuty ? 'var(--green)' : '#94a3b8';
-  }
-
-  const profileDutyText = document.getElementById('profileDutyStatusText');
-  const btnToggleDuty = document.getElementById('btnToggleDuty');
-  if (profileDutyText) {
-    profileDutyText.innerText = onDuty ? '🟢 On Duty (Receiving Orders)' : '⚪ Off Duty (Not Available)';
-    profileDutyText.style.color = onDuty ? '#22c55e' : '#94a3b8';
-  }
-  if (btnToggleDuty) {
-    btnToggleDuty.innerText = onDuty ? 'Go Off Duty' : 'Go On Duty';
-    btnToggleDuty.className = onDuty ? 'btn btn-sm btn-outline-danger rounded-pill px-3 py-1 fw-bold' : 'btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold';
-  }
-}
-
-function renderDriverProfileView() {
-  const { myDeliveries, totalEarnings, totalTrips, todayEarnings } = getDriverEarningsAndDeliveries();
-
-  // Populate driver identity
-  const nameEl = document.getElementById('profileRiderName');
-  const phoneEl = document.getElementById('profileRiderPhone');
-  const vehEl = document.getElementById('profileRiderVehicle');
-
-  if (nameEl) nameEl.innerText = currentDriver.driver_name;
-  if (phoneEl) phoneEl.innerText = `+91 ${currentDriver.driver_phone}`;
-  if (vehEl) vehEl.innerText = `${currentDriver.vehicle_type} • ${currentDriver.vehicle_number}`;
-
-  // Populate financial metrics (strictly scoped for this driver)
-  if (document.getElementById('profileTotalEarnings')) document.getElementById('profileTotalEarnings').innerText = `₹${totalEarnings.toLocaleString('en-IN')}`;
-  if (document.getElementById('profileCompletedTrips')) document.getElementById('profileCompletedTrips').innerText = `${totalTrips}`;
-  if (document.getElementById('profileTodayEarnings')) document.getElementById('profileTodayEarnings').innerText = `₹${todayEarnings.toLocaleString('en-IN')}`;
-  if (document.getElementById('profileTripsCountBadge')) document.getElementById('profileTripsCountBadge').innerText = `${myDeliveries.length}`;
-
-  updateDutyDisplay();
-
-  // Render My Past Deliveries List
-  const listContainer = document.getElementById('myPastDeliveriesList');
-  if (!listContainer) return;
-
-  if (myDeliveries.length === 0) {
-    listContainer.innerHTML = `
-      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px 16px; text-align: center;">
-        <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(249,115,22,0.1); color: #f97316; display: inline-flex; align-items: center; justify-content: center; font-size: 1.3rem; margin-bottom: 10px;">
-          <i class="fa-solid fa-box-open"></i>
-        </div>
-        <div style="font-weight: 700; color: #fff; font-size: 0.92rem; margin-bottom: 4px;">No Completed Deliveries Yet</div>
-        <div style="font-size: 0.76rem; color: #94a3b8; max-width: 320px; margin: 0 auto 14px;">
-          Deliveries accepted and completed by <strong>${currentDriver.driver_name}</strong> will appear here with transparent payout records.
-        </div>
-        <button onclick="switchDriverView('feed')" class="btn-refresh" style="font-size: 0.78rem;">
-          <i class="fa-solid fa-motorcycle me-1"></i> Check Available Jobs
-        </button>
-      </div>
-    `;
-    return;
-  }
-
-  listContainer.innerHTML = myDeliveries.map(p => {
-    const pId = p.parcel_id || p.id;
-    const dateStr = p.completed_at ? new Date(p.completed_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : 'Recent';
-    const riderEarned = Math.round((Number(p.total_amount) || 100) * 0.85);
-
-    return `
-      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; margin-bottom: 10px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-weight: 800; color: #f97316; font-size: 0.85rem;">${pId}</span>
-            <span class="badge bg-success text-dark fw-bold" style="font-size: 0.62rem; border-radius: 20px;">✓ DELIVERED</span>
-          </div>
-          <span style="font-size: 0.7rem; color: #94a3b8;">${dateStr}</span>
-        </div>
-
-        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-bottom: 10px;">
-          <div style="display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px;">
-            <span style="width: 7px; height: 7px; border-radius: 50%; background: #f97316; margin-top: 5px; flex-shrink: 0;"></span>
-            <div style="font-size: 0.78rem; color: #f1f5f9;">${p.pickup_address || 'Pickup'}</div>
-          </div>
-          <div style="display: flex; gap: 8px; align-items: flex-start;">
-            <span style="width: 7px; height: 7px; border-radius: 50%; background: #22c55e; margin-top: 5px; flex-shrink: 0;"></span>
-            <div style="font-size: 0.78rem; color: #f1f5f9;">${p.drop_address || 'Drop'}</div>
-          </div>
-        </div>
-
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div style="font-size: 0.72rem; color: #94a3b8;">
-            ${(p.vehicle_type || 'bike').toUpperCase()} • ${p.distance_km || 5} KM • ${p.parcel_type || 'Package'}
-          </div>
-          <div style="text-align: right;">
-            <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase;">Rider Payout</div>
-            <div style="font-size: 1.1rem; font-weight: 900; color: #22c55e;">₹${riderEarned}</div>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
+  setTimeout(() => {
+    toast.style.transition = 'all 0.3s ease';
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-10px)';
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
 }

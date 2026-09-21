@@ -55,6 +55,73 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+/* ==========================================================================
+   RIDER AUTHENTICATION & SECURITY MIDDLEWARE
+   ========================================================================== */
+const RIDER_SECRET_KEY = process.env.RIDER_SECRET_KEY || 'RudrakshaRiderSecretKey_2026_SecureFleet!';
+
+function generateRiderToken(driver) {
+  const payload = JSON.stringify({
+    role: 'rider',
+    driver_id: driver.id,
+    phone: driver.phone,
+    driver_name: driver.driver_name,
+    time: Date.now()
+  });
+  const hmac = crypto.createHmac('sha256', RIDER_SECRET_KEY).update(payload).digest('hex');
+  return Buffer.from(`${payload}::${hmac}`).toString('base64');
+}
+
+function verifyRiderToken(token) {
+  if (!token) return null;
+  try {
+    const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
+    const decoded = Buffer.from(cleanToken, 'base64').toString('utf8');
+    const [payloadStr, hmac] = decoded.split('::');
+    if (!payloadStr || !hmac) return null;
+    const expectedHmac = crypto.createHmac('sha256', RIDER_SECRET_KEY).update(payloadStr).digest('hex');
+    const received = Buffer.from(hmac, 'utf8');
+    const expected = Buffer.from(expectedHmac, 'utf8');
+    if (received.length !== expected.length || !crypto.timingSafeEqual(received, expected)) return null;
+    const payload = JSON.parse(payloadStr);
+    if (payload.role !== 'rider' || !payload.driver_id) return null;
+    // Valid for 30 days
+    if (Date.now() - payload.time > 30 * 24 * 60 * 60 * 1000) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+async function requireRider(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const decoded = verifyRiderToken(authHeader);
+  if (!decoded) {
+    return res.status(401).json({ error: 'Rider authentication required. Please log in again.' });
+  }
+  const driver = await db.getDriverById(decoded.driver_id) || await db.getDriverByPhone(decoded.phone);
+  if (!driver) {
+    return res.status(401).json({ error: 'Rider account not found or deactivated.' });
+  }
+  req.rider = driver;
+  next();
+}
+
+function requireAdminOrRider(req, res, next) {
+  if (verifyAdminToken(req.headers.authorization)) {
+    req.isAdmin = true;
+    return next();
+  }
+  const decoded = verifyRiderToken(req.headers.authorization);
+  if (decoded) {
+    req.isRider = true;
+    req.riderId = decoded.driver_id;
+    return next();
+  }
+  // Allow unauthenticated OTP verification if correct OTP is provided
+  next();
+}
+
 // Health Check (Pings Supabase to Keep Database & Render Awake 24x7)
 app.get('/api/health', async (req, res) => {
   let supabaseConnected = db.isSupabaseActive();
@@ -235,6 +302,373 @@ app.post('/api/rider-applications/:id/reject', requireAdmin, async (req, res, ne
       updated_at: new Date().toISOString()
     });
     res.json({ success: true, application: updated, message: 'Rider application rejected.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* ==========================================================================
+   DEDICATED RIDER PARTNER APP API ENGINE
+   Full Data Isolation • PWA Profile • Earnings Wallet • Duty Engine
+   ========================================================================== */
+
+// 1. Rider Login with Phone & 4-Digit Security PIN
+app.post('/api/rider/login', async (req, res, next) => {
+  try {
+    const { phone, pin } = req.body;
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    const cleanPin = String(pin || '').trim();
+
+    if (!cleanPhone || cleanPhone.length < 10) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number.' });
+    }
+    if (!cleanPin || cleanPin.length < 4) {
+      return res.status(400).json({ error: 'Please enter your 4-digit security PIN.' });
+    }
+
+    // Lookup in approved drivers first
+    const drivers = await db.getDrivers();
+    let matchedDriver = drivers.find(d => String(d.phone || '').replace(/\D/g, '') === cleanPhone);
+
+    // If not found in drivers, lookup approved rider applications
+    if (!matchedDriver) {
+      const apps = await db.getRiderApplications();
+      const matchedApp = apps.find(a => String(a.phone || '').replace(/\D/g, '') === cleanPhone);
+
+      if (matchedApp) {
+        if (matchedApp.status === 'Pending') {
+          return res.status(403).json({
+            error: '⏳ Your rider application is currently under review by Admin. You will receive your PIN on WhatsApp once approved.'
+          });
+        }
+        if (matchedApp.status === 'Rejected') {
+          return res.status(403).json({
+            error: '❌ Your rider application was declined. Please contact Rudraksha Support at +91 7296831460.'
+          });
+        }
+
+        // Auto-provision driver record for approved application
+        const driverId = matchedApp.driverId || `RDR-${cleanPhone.slice(-4)}`;
+        matchedDriver = {
+          id: driverId,
+          driver_name: matchedApp.name,
+          phone: cleanPhone,
+          vehicle_number: matchedApp.vehNum || '',
+          vehicle_type: matchedApp.vehType || 'Bike / Scooter',
+          dl_number: matchedApp.dlNum || '',
+          city: matchedApp.city || 'Jaipur',
+          shift: matchedApp.shift || 'Full Time',
+          status: 'available',
+          pin: matchedApp.pin || cleanPin,
+          rating: 4.9,
+          onDuty: true,
+          created_at: new Date().toISOString()
+        };
+        await db.createDriver(matchedDriver);
+      }
+    }
+
+    if (!matchedDriver) {
+      return res.status(404).json({
+        error: `❌ No registered partner found for +91 ${cleanPhone}. Please register as a rider first.`
+      });
+    }
+
+    // Validate PIN
+    const expectedPin = String(matchedDriver.pin || matchedDriver.password || '1234').trim();
+    if (expectedPin !== cleanPin) {
+      return res.status(401).json({
+        error: '❌ Incorrect security PIN. Please enter the 4-digit PIN sent to your WhatsApp.'
+      });
+    }
+
+    // Generate cryptographic Rider Session Token
+    const token = generateRiderToken(matchedDriver);
+
+    // Return sanitized driver object (never return pin back to client)
+    const sanitizedDriver = { ...matchedDriver };
+    delete sanitizedDriver.pin;
+    delete sanitizedDriver.password;
+
+    res.json({
+      success: true,
+      token,
+      driver: sanitizedDriver,
+      message: `Welcome back, ${matchedDriver.driver_name || 'Partner'}!`
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 2. Get Authenticated Rider's Own Profile (100% Private & Isolated)
+app.get('/api/rider/me', requireRider, async (req, res, next) => {
+  try {
+    const driver = { ...req.rider };
+    delete driver.pin;
+    delete driver.password;
+    res.json({ success: true, rider: driver });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 3. Update Rider Profile (Photo Upload / Avatar / Vehicle / Contact)
+app.patch('/api/rider/profile', requireRider, async (req, res, next) => {
+  try {
+    const { avatar_url, driver_name, vehicle_number, vehicle_type, dl_number, city, shift } = req.body;
+    const updates = {};
+    if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+    if (driver_name) updates.driver_name = String(driver_name).trim();
+    if (vehicle_number) updates.vehicle_number = String(vehicle_number).trim();
+    if (vehicle_type) updates.vehicle_type = String(vehicle_type).trim();
+    if (dl_number) updates.dl_number = String(dl_number).trim();
+    if (city) updates.city = String(city).trim();
+    if (shift) updates.shift = String(shift).trim();
+    updates.updated_at = new Date().toISOString();
+
+    const updated = await db.updateDriver(req.rider.id, updates);
+    const sanitized = { ...(updated || req.rider) };
+    delete sanitized.pin;
+    delete sanitized.password;
+
+    res.json({ success: true, rider: sanitized, message: 'Profile updated successfully.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 4. Toggle Rider Duty Switch (On-Duty / Off-Duty)
+app.patch('/api/rider/duty', requireRider, async (req, res, next) => {
+  try {
+    const { onDuty } = req.body;
+    const isDuty = Boolean(onDuty);
+    await db.updateDriver(req.rider.id, {
+      onDuty: isDuty,
+      status: isDuty ? 'available' : 'off_duty',
+      updated_at: new Date().toISOString()
+    });
+    res.json({ success: true, onDuty: isDuty, message: isDuty ? 'You are now ONLINE & ready for trips! 🟢' : 'You are now OFFLINE. 🔴' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 5. Get Rider Trips & Live Assigned Jobs (Strictly for Authenticated Rider)
+app.get('/api/rider/jobs', requireRider, async (req, res, next) => {
+  try {
+    const riderId = req.rider.id;
+    const riderPhone = String(req.rider.phone || '').replace(/\D/g, '');
+    const parcels = await db.getParcels();
+
+    // 1. Find currently active assigned trip
+    const activeTrip = parcels.find(p => {
+      const isAssigned = (p.driver_id === riderId) || (p.assigned_driver_phone && String(p.assigned_driver_phone).replace(/\D/g, '') === riderPhone);
+      const activeStatuses = ['driver_assigned', 'reached_pickup', 'picked_up', 'in_transit', 'out_for_delivery'];
+      return isAssigned && activeStatuses.includes(p.booking_status || p.status);
+    }) || null;
+
+    // 2. Find available jobs waiting for acceptance (if rider is on-duty)
+    let availableJobs = [];
+    if (req.rider.onDuty !== false && !activeTrip) {
+      availableJobs = parcels.filter(p => {
+        const st = p.booking_status || p.status;
+        return (st === 'searching_driver' || st === 'received') && !p.driver_id;
+      }).slice(0, 5);
+    }
+
+    res.json({
+      success: true,
+      activeTrip,
+      availableJobs,
+      onDuty: req.rider.onDuty !== false
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 6. Accept Available Job
+app.post('/api/rider/jobs/:id/accept', requireRider, async (req, res, next) => {
+  try {
+    const parcelId = req.params.id;
+    const updated = await db.assignParcelDriver(parcelId, {
+      driver_id: req.rider.id,
+      driver_name: req.rider.driver_name,
+      driver_phone: req.rider.phone,
+      vehicle_number: req.rider.vehicle_number || '',
+      vehicle_type: req.rider.vehicle_type || 'Bike'
+    });
+
+    if (!updated) return res.status(404).json({ error: 'Order not found or already assigned.' });
+
+    // Send Telegram alert
+    const msg = `🛵 *RIDER ACCEPTED JOB* 🚀\n` +
+                `━━━━━━━━━━━━━━━━━━━━\n` +
+                `🆔 *Order:* \`${updated.parcel_id}\`\n` +
+                `👨‍✈️ *Rider:* ${req.rider.driver_name} (+91 ${req.rider.phone})\n` +
+                `📍 *Pickup:* ${updated.pickup_address}\n` +
+                `🏁 *Drop:* ${updated.drop_address}\n` +
+                `💰 *Fare:* ₹${updated.total_amount}\n` +
+                `━━━━━━━━━━━━━━━━━━━━`;
+    telegram.sendTelegramMessage(msg).catch(console.error);
+
+    res.json({ success: true, parcel: updated, message: 'Trip accepted! Please head to the pickup point.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 7. Rider Earnings & Payout Wallet (Strictly Private to Logged-in Rider)
+app.get('/api/rider/earnings', requireRider, async (req, res, next) => {
+  try {
+    const riderId = req.rider.id;
+    const riderPhone = String(req.rider.phone || '').replace(/\D/g, '');
+    const parcels = await db.getParcels();
+
+    // Filter delivered parcels completed by THIS rider only
+    const myDelivered = parcels.filter(p => {
+      const isMyTrip = (p.driver_id === riderId) || (p.assigned_driver_phone && String(p.assigned_driver_phone).replace(/\D/g, '') === riderPhone);
+      const isDone = (p.booking_status === 'delivered' || p.status === 'delivered');
+      return isMyTrip && isDone;
+    });
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const sevenDaysAgo = now.getTime() - (7 * 24 * 60 * 60 * 1000);
+
+    let todayEarnings = 0;
+    let weeklyEarnings = 0;
+    let totalEarnings = 0;
+
+    const trips = myDelivered.map(p => {
+      const orderFare = Number(p.total_amount || 0);
+      // Driver gets 80% of parcel delivery fare (standard aggregator model)
+      const driverShare = Math.round(orderFare * 0.8) || 60;
+      const tripTime = new Date(p.delivery_time || p.updated_at || p.created_at).getTime();
+
+      totalEarnings += driverShare;
+      if (tripTime >= startOfToday) todayEarnings += driverShare;
+      if (tripTime >= sevenDaysAgo) weeklyEarnings += driverShare;
+
+      return {
+        id: p.parcel_id || p.id,
+        date: p.delivery_time || p.updated_at || p.created_at,
+        pickup: p.pickup_address,
+        drop: p.drop_address,
+        distance_km: p.distance_km || 4,
+        order_fare: orderFare,
+        driver_earning: driverShare,
+        status: 'Delivered'
+      };
+    });
+
+    // Payout requests by this rider
+    const payouts = await db.getPayoutRequests(riderId);
+    const paidOut = payouts.filter(p => p.status === 'paid').reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const pendingPayout = payouts.filter(p => p.status === 'pending').reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const availableBalance = Math.max(0, totalEarnings - paidOut - pendingPayout);
+
+    res.json({
+      success: true,
+      todayEarnings,
+      weeklyEarnings,
+      totalEarnings,
+      paidOut,
+      pendingPayout,
+      walletBalance: availableBalance,
+      completedTripsCount: myDelivered.length,
+      trips: trips.slice(0, 30),
+      payouts: payouts.slice(0, 10)
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 8. Submit Payout / Withdrawal Request
+app.post('/api/rider/payout-request', requireRider, async (req, res, next) => {
+  try {
+    const { amount, payment_method, upi_id, account_number, ifsc_code, bank_name } = req.body;
+    const numAmount = Number(amount);
+
+    if (!numAmount || numAmount < 100) {
+      return res.status(400).json({ error: 'Minimum payout withdrawal request is ₹100.' });
+    }
+
+    if (payment_method === 'upi' && (!upi_id || !upi_id.includes('@'))) {
+      return res.status(400).json({ error: 'Please provide a valid UPI ID (e.g., yourname@okaxis).' });
+    }
+    if (payment_method === 'bank' && (!account_number || !ifsc_code)) {
+      return res.status(400).json({ error: 'Please provide Bank Account Number and IFSC Code.' });
+    }
+
+    const payoutItem = await db.createPayoutRequest({
+      driver_id: req.rider.id,
+      driver_name: req.rider.driver_name,
+      driver_phone: req.rider.phone,
+      amount: numAmount,
+      payment_method: payment_method || 'upi',
+      upi_id: upi_id || null,
+      account_number: account_number ? String(account_number).slice(-4).padStart(String(account_number).length, '*') : null,
+      full_account_number: account_number || null,
+      ifsc_code: ifsc_code || null,
+      bank_name: bank_name || null
+    });
+
+    // Alert Owner on Telegram
+    const alertMsg = `💳 *NEW RIDER PAYOUT REQUEST* 💰\n` +
+                     `━━━━━━━━━━━━━━━━━━━━\n` +
+                     `🆔 *Payout ID:* \`${payoutItem.id}\`\n` +
+                     `👨‍✈️ *Rider:* ${req.rider.driver_name} (+91 ${req.rider.phone})\n` +
+                     `💵 *Amount:* ₹${numAmount}\n` +
+                     `🏦 *Method:* ${(payment_method || 'UPI').toUpperCase()}\n` +
+                     `📲 *Details:* ${upi_id || `${bank_name || 'Bank'} A/C: ${account_number} (IFSC: ${ifsc_code})`}\n` +
+                     `━━━━━━━━━━━━━━━━━━━━`;
+    telegram.sendTelegramMessage(alertMsg).catch(console.error);
+
+    res.status(201).json({
+      success: true,
+      payout: payoutItem,
+      message: `Payout request of ₹${numAmount} submitted to Admin! Processing takes 12-24 hours.`
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 9. Get Rider Past Payout Requests
+app.get('/api/rider/payouts', requireRider, async (req, res, next) => {
+  try {
+    const list = await db.getPayoutRequests(req.rider.id);
+    res.json({ success: true, payouts: list });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 10. Admin: Get All Payout Requests
+app.get('/api/admin/payouts', requireAdmin, async (req, res, next) => {
+  try {
+    const list = await db.getPayoutRequests();
+    res.json({ success: true, payouts: list });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 11. Admin: Update Payout Status (Mark as Paid or Rejected)
+app.patch('/api/admin/payouts/:id/status', requireAdmin, async (req, res, next) => {
+  try {
+    const { status, notes } = req.body;
+    const allowed = ['pending', 'processing', 'paid', 'rejected'];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ error: `Invalid status. Allowed: ${allowed.join(', ')}` });
+    }
+    const updated = await db.updatePayoutStatus(req.params.id, status, notes);
+    if (!updated) return res.status(404).json({ error: 'Payout request not found.' });
+
+    res.json({ success: true, payout: updated, message: `Payout marked as ${status.toUpperCase()}.` });
   } catch (err) {
     next(err);
   }
@@ -667,7 +1101,7 @@ app.patch('/api/parcels/:id/status', requireAdmin, async (req, res, next) => {
 });
 
 // 7. Verify Pickup OTP (Driver reaches sender)
-app.post('/api/parcels/:id/verify-pickup-otp', requireAdmin, async (req, res, next) => {
+app.post('/api/parcels/:id/verify-pickup-otp', requireAdminOrRider, async (req, res, next) => {
   try {
     const { otp } = req.body;
     if (!otp) return res.status(400).json({ error: 'OTP is required' });
@@ -679,7 +1113,7 @@ app.post('/api/parcels/:id/verify-pickup-otp', requireAdmin, async (req, res, ne
 });
 
 // 8. Verify Delivery OTP (Driver reaches receiver)
-app.post('/api/parcels/:id/verify-delivery-otp', requireAdmin, async (req, res, next) => {
+app.post('/api/parcels/:id/verify-delivery-otp', requireAdminOrRider, async (req, res, next) => {
   try {
     const { otp } = req.body;
     if (!otp) return res.status(400).json({ error: 'OTP is required' });

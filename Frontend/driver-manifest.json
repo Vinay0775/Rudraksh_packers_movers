@@ -1,0 +1,40 @@
+{
+  "id": "rudraksha-rider-partner-app",
+  "name": "Rudraksha Rider Partner",
+  "short_name": "Rudraksha Rider",
+  "description": "Rudraksha Logistics Rider Partner Portal - Live Trips, GPS Routing, OTP Verification & Daily Earnings",
+  "start_url": "./driver.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b0c0e",
+  "theme_color": "#f97316",
+  "prefer_related_applications": false,
+  "categories": ["business", "productivity", "utilities", "logistics"],
+  "icons": [
+    {
+      "src": "app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

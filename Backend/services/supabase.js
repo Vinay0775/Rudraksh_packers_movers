@@ -20,6 +20,7 @@ const driversFile = path.join(dataDir, 'drivers.json');
 const riderApplicationsFile = path.join(dataDir, 'rider_applications.json');
 const feedbackFile = path.join(dataDir, 'feedback.json');
 const configFile = path.join(dataDir, 'config.json');
+const payoutRequestsFile = path.join(dataDir, 'payout_requests.json');
 
 async function readLocal(file, defaultData = []) {
   try {
@@ -362,6 +363,89 @@ module.exports = {
     drivers[index] = { ...drivers[index], ...driverData };
     await writeLocal(driversFile, drivers);
     return drivers[index];
+  },
+
+  async getDriverById(id) {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('drivers').select('*').eq('id', id).single();
+        if (!error && data) return data;
+      } catch {}
+    }
+    const drivers = await readLocal(driversFile, defaultDrivers);
+    return drivers.find(d => d.id === id) || null;
+  },
+
+  async getDriverByPhone(phone) {
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('drivers').select('*').limit(100);
+        if (!error && Array.isArray(data)) {
+          const found = data.find(d => String(d.phone || '').replace(/\D/g, '') === cleanPhone);
+          if (found) return found;
+        }
+      } catch {}
+    }
+    const drivers = await readLocal(driversFile, defaultDrivers);
+    return drivers.find(d => String(d.phone || '').replace(/\D/g, '') === cleanPhone) || null;
+  },
+
+  // PAYOUT REQUESTS
+  async getPayoutRequests(driverId = null) {
+    if (supabase) {
+      try {
+        let query = supabase.from('payout_requests').select('*').order('created_at', { ascending: false });
+        if (driverId) query = query.eq('driver_id', driverId);
+        const { data, error } = await query;
+        if (!error && data) return data;
+      } catch {}
+    }
+    const list = await readLocal(payoutRequestsFile, []);
+    if (driverId) {
+      return list.filter(item => item.driver_id === driverId);
+    }
+    return list;
+  },
+
+  async createPayoutRequest(payload) {
+    const item = {
+      id: `PAY-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...payload
+    };
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('payout_requests').insert([item]).select().single();
+        if (!error && data) return data;
+      } catch {}
+    }
+    const list = await readLocal(payoutRequestsFile, []);
+    list.unshift(item);
+    await writeLocal(payoutRequestsFile, list);
+    return item;
+  },
+
+  async updatePayoutStatus(id, status, notes = '') {
+    const updatePayload = {
+      status,
+      notes: notes || '',
+      updated_at: new Date().toISOString()
+    };
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('payout_requests').update(updatePayload).eq('id', id).select().single();
+        if (!error && data) return data;
+      } catch {}
+    }
+    const list = await readLocal(payoutRequestsFile, []);
+    const idx = list.findIndex(p => p.id === id);
+    if (idx === -1) return null;
+    list[idx] = { ...list[idx], ...updatePayload };
+    await writeLocal(payoutRequestsFile, list);
+    return list[idx];
   },
 
   // FEEDBACK
