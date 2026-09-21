@@ -1651,6 +1651,7 @@ function renderDashboardRiderApps() {
 
 function renderRiderApplicationsTable(filter = currentRiderFilter) {
   const tbody = document.getElementById('riderApplicationsTableBody');
+  const subTbody = document.getElementById('subtabRiderApplicationsTableBody');
 
   // Update Stats in Dedicated Tab
   const total = allRiderApplications.length;
@@ -1677,19 +1678,20 @@ function renderRiderApplicationsTable(filter = currentRiderFilter) {
   // Sync dashboard widget and dock badge
   renderDashboardRiderApps();
 
-  if (!tbody) return;
-
   let displayApps = allRiderApplications;
   if (filter && filter !== 'all') {
     displayApps = allRiderApplications.filter(a => (a.status || 'Pending').toLowerCase() === filter.toLowerCase());
   }
 
+  const emptyHtml = `<tr><td colspan="9" class="text-center py-5 text-muted"><i class="fa-solid fa-motorcycle fa-2x mb-2 d-block text-secondary"></i>No applications found for filter "${filter}".</td></tr>`;
+
   if (displayApps.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted"><i class="fa-solid fa-motorcycle fa-2x mb-2 d-block text-secondary"></i>No applications found for filter "${filter}".</td></tr>`;
+    if (tbody) tbody.innerHTML = emptyHtml;
+    if (subTbody) subTbody.innerHTML = emptyHtml;
     return;
   }
 
-  tbody.innerHTML = displayApps.map((app) => {
+  const rowsHtml = displayApps.map((app) => {
     const origIdx = allRiderApplications.findIndex(a => a.phone === app.phone);
     const idx = origIdx >= 0 ? origIdx : 0;
     const status = app.status || 'Pending';
@@ -1745,6 +1747,9 @@ function renderRiderApplicationsTable(filter = currentRiderFilter) {
       </tr>
     `;
   }).join('');
+
+  if (tbody) tbody.innerHTML = rowsHtml;
+  if (subTbody) subTbody.innerHTML = rowsHtml;
 }
 
 async function approveRiderPartner(idx) {
@@ -1764,7 +1769,7 @@ async function approveRiderPartner(idx) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Approval failed.');
 
-    app.driverId = data.driver?.id || driverId;
+    app.driverId = data.driver?.driverId || data.driver?.id || driverId;
     app.pin = data.driver?.pin || driverPin;
     app.status = 'Approved';
     app.approved_at = new Date().toISOString();
@@ -1791,11 +1796,15 @@ async function approveRiderPartner(idx) {
     const portalUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}driver.html`;
     const waMsg = `🎉 *CONGRATULATIONS! RUDRAKSHA DELIVERY PARTNER APPROVED*\n━━━━━━━━━━━━━━━━━━━━\nNamaste *${app.name}*,\nAapka Rudraksha Express Delivery Partner account approve aur activate ho gaya hai!\n\n📲 *Aapke Login Credentials:*\n• Login Mobile Number: *${app.phone}*\n• Security PIN / Password: *${app.pin}*\n• Driver Partner ID: *${app.driverId}*\n• Registered Vehicle: *${app.vehType} (${app.vehNum})*\n\n👉 *Tap to Login to Your Driver Dashboard:*\n${portalUrl}\n━━━━━━━━━━━━━━━━━━━━\n_Login karke apni duty 'ON' karein aur city delivery orders accept karna shuru karein. Welcome to the fleet!_`;
     const waUrl = `https://wa.me/91${app.phone}?text=${encodeURIComponent(waMsg)}`;
-    window.open(waUrl, '_blank');
+    try {
+      window.open(waUrl, '_blank');
+    } catch (popupErr) {
+      console.warn('Popup blocked, opening in tab:', popupErr);
+    }
 
-    showAdminToast(`🎉 Driver "${app.name}" approved! WhatsApp credentials dispatched.`, 'success');
+    showAdminToast(`🎉 Driver "${app.name}" approved! PIN is ${driverPin}`, 'success');
     await loadRiderApplications();
-    renderRiderApplicationsTable();
+    await loadDriversFromBackend();
     updateParcelMetrics();
   } catch (err) {
     showAdminToast(err.message || 'Approval failed. Please try again.', 'error');

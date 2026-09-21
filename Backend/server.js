@@ -260,42 +260,43 @@ app.post('/api/rider-applications/:id/approve', requireAdmin, async (req, res, n
       return res.status(404).json({ error: 'Rider application not found.' });
     }
 
-    const driverId = app.driverId || `RDR-${String(app.phone).slice(-4)}`;
+    const driverCode = app.driverId || `RDR-${phoneClean.slice(-4)}`;
     const driverPin = pin || app.pin || String(Math.floor(1000 + Math.random() * 9000));
-    const phoneClean = String(app.phone || '').replace(/\D/g, '');
 
     const existingDrivers = await db.getDrivers();
     const matchedDriver = existingDrivers.find(d => String(d.phone || '').replace(/\D/g, '') === phoneClean);
 
     const driverPayload = {
-      id: matchedDriver?.id || driverId,
+      id: matchedDriver?.id,
       driver_name: app.name,
       phone: phoneClean,
       vehicle_number: app.vehNum || app.vehicle_number || '',
       vehicle_type: app.vehType || app.vehicle_type || 'Bike / Scooter',
       status: 'available',
-      rating: matchedDriver?.rating || 4.8,
-      pin: driverPin,
-      onDuty: true,
-      approved_at: new Date().toISOString(),
-      created_at: matchedDriver?.created_at || new Date().toISOString()
+      rating: matchedDriver?.rating || 4.8
     };
 
-    if (matchedDriver) {
-      await db.updateDriver(matchedDriver.id, driverPayload);
+    let savedDriver = null;
+    if (matchedDriver && matchedDriver.id) {
+      savedDriver = await db.updateDriver(matchedDriver.id, driverPayload);
     } else {
-      await db.createDriver(driverPayload);
+      savedDriver = await db.createDriver(driverPayload);
     }
 
     const updatedApp = await db.updateRiderApplication(app.id, {
       status: 'Approved',
-      driverId,
+      driverId: driverCode,
       pin: driverPin,
       approved_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     });
 
-    res.json({ success: true, application: updatedApp, driver: driverPayload, message: 'Rider approved successfully.' });
+    res.json({
+      success: true,
+      application: updatedApp,
+      driver: { ...savedDriver, driverId: driverCode, pin: driverPin },
+      message: `Rider ${app.name} approved successfully with PIN ${driverPin}.`
+    });
   } catch (err) {
     next(err);
   }

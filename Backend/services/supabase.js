@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs/promises');
 const path = require('path');
+const crypto = require('crypto');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -374,39 +375,98 @@ module.exports = {
   },
 
   async getDrivers() {
+    let list = [];
     if (supabase) {
-      const { data, error } = await supabase.from('drivers').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await supabase.from('drivers').select('*').order('created_at', { ascending: false });
+        if (!error && Array.isArray(data)) list = data;
+      } catch (err) {
+        console.warn('Supabase getDrivers warning:', err.message);
+      }
     }
-    return await readLocal(driversFile, defaultDrivers);
+    if (!list || list.length === 0) {
+      list = await readLocal(driversFile, defaultDrivers);
+    }
+
+    // Enrich driver list with security PIN, approval date, and onDuty status from applications
+    try {
+      const apps = await this.getRiderApplications();
+      list = list.map(d => {
+        const dPhone = String(d.phone || '').replace(/\D/g, '');
+        const matchedApp = apps.find(a => String(a.phone || '').replace(/\D/g, '') === dPhone);
+        return {
+          ...d,
+          pin: matchedApp?.pin || d.pin || '1234',
+          onDuty: d.onDuty !== undefined ? d.onDuty : (d.status !== 'off_duty'),
+          approved_at: matchedApp?.approved_at || d.approved_at || d.created_at,
+          vehicle_number: d.vehicle_number || matchedApp?.vehNum || '',
+          vehicle_type: d.vehicle_type || matchedApp?.vehType || 'Bike / Scooter'
+        };
+      });
+    } catch {}
+
+    return list;
   },
 
   async createDriver(driverData) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const dbPayload = {
+      id: (driverData.id && isUuid.test(driverData.id)) ? driverData.id : crypto.randomUUID(),
+      driver_name: driverData.driver_name || driverData.name || 'Rider Partner',
+      phone: String(driverData.phone || '').replace(/\D/g, ''),
+      vehicle_number: driverData.vehicle_number || driverData.vehNum || '',
+      vehicle_type: driverData.vehicle_type || driverData.vehType || 'Bike / Scooter',
+      status: driverData.status || 'available',
+      current_location: driverData.current_location || null,
+      rating: Number(driverData.rating || 4.8),
+      created_at: driverData.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
     if (supabase) {
-      const { data, error } = await supabase.from('drivers').insert([driverData]).select().single();
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await supabase.from('drivers').insert([dbPayload]).select().single();
+        if (!error && data) {
+          return { ...driverData, ...data };
+        }
+        console.warn('Supabase create driver warning:', error?.message);
+      } catch (err) {
+        console.warn('Supabase create driver error:', err.message);
+      }
     }
 
     const drivers = await readLocal(driversFile, defaultDrivers);
-    const newDriver = { id: `drv-${Date.now().toString().slice(-4)}`, ...driverData, created_at: new Date().toISOString() };
+    const newDriver = { ...driverData, ...dbPayload };
     drivers.unshift(newDriver);
     await writeLocal(driversFile, drivers);
     return newDriver;
   },
 
   async updateDriver(id, driverData) {
-    if (supabase) {
-      const { data, error } = await supabase.from('drivers').update(driverData).eq('id', id).select().single();
-      if (error) throw error;
-      return data;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const allowed = ['driver_name', 'phone', 'vehicle_number', 'vehicle_type', 'status', 'current_location', 'rating', 'updated_at'];
+    const dbUpdates = {};
+    for (const key of allowed) {
+      if (key in driverData && driverData[key] !== undefined) dbUpdates[key] = driverData[key];
+    }
+    dbUpdates.updated_at = new Date().toISOString();
+
+    if (supabase && id && isUuid.test(id)) {
+      try {
+        const { data, error } = await supabase.from('drivers').update(dbUpdates).eq('id', id).select().single();
+        if (!error && data) {
+          return { ...driverData, ...data };
+        }
+        console.warn('Supabase update driver warning:', error?.message);
+      } catch (err) {
+        console.warn('Supabase update driver error:', err.message);
+      }
     }
 
     const drivers = await readLocal(driversFile, defaultDrivers);
-    const index = drivers.findIndex(d => d.id === id);
+    const index = drivers.findIndex(d => d.id === id || String(d.phone || '').replace(/\D/g, '') === String(driverData.phone || '').replace(/\D/g, ''));
     if (index === -1) return null;
-    drivers[index] = { ...drivers[index], ...driverData };
+    drivers[index] = { ...drivers[index], ...driverData, ...dbUpdates };
     await writeLocal(driversFile, drivers);
     return drivers[index];
   },
