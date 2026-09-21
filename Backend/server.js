@@ -260,6 +260,7 @@ app.post('/api/rider-applications/:id/approve', requireAdmin, async (req, res, n
       return res.status(404).json({ error: 'Rider application not found.' });
     }
 
+    const phoneClean = String(app.phone || '').replace(/\D/g, '');
     const driverCode = app.driverId || `RDR-${phoneClean.slice(-4)}`;
     const driverPin = pin || app.pin || String(Math.floor(1000 + Math.random() * 9000));
 
