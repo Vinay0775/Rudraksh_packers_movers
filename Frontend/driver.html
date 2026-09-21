@@ -33,8 +33,6 @@
 
     window.addEventListener('appinstalled', function() {
       window._driverInstallPrompt = null;
-      var btns = document.querySelectorAll('#btnInstallRiderApp, #cardInstallRiderApp, #loginInstallContainer');
-      btns.forEach(function(b) { if (b) b.style.display = 'none'; });
       if (typeof window.showToast === 'function') {
         window.showToast('🚀 Rudraksha Driver App successfully installed!', 'success');
       }
@@ -708,6 +706,21 @@
 
     <!-- VIEW 1: JOBS FEED & ACTIVE TRIP -->
     <div id="driverFeedSection">
+      <!-- Prominent 1-Click Install Banner in Jobs Feed -->
+      <div id="feedInstallBanner" style="background: linear-gradient(135deg, rgba(249,115,22,0.18) 0%, rgba(20,20,26,0.95) 100%); border: 1.5px solid rgba(249,115,22,0.4); border-radius: 16px; padding: 12px 16px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.35);">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <img src="driver-icon-192.png" alt="Driver App" style="width: 40px; height: 40px; border-radius: 12px; border: 1.5px solid #f97316; object-fit: cover;">
+          <div>
+            <div style="font-weight: 800; font-size: 0.88rem; color: #fff;">Rudraksha Driver App</div>
+            <div style="font-size: 0.72rem; color: #94a3b8;">1-Tap me phone me download & install karein</div>
+          </div>
+        </div>
+        <button type="button" onclick="triggerPwaInstall()" style="background: linear-gradient(135deg, #f97316, #ea580c); border: none; color: #fff; border-radius: 12px; padding: 8px 15px; font-size: 0.82rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 14px rgba(249,115,22,0.45); flex-shrink: 0;">
+          <i class="fa-solid fa-download"></i>
+          <span>Install App</span>
+        </button>
+      </div>
+
       <!-- Stats Ribbon -->
       <div class="stats-ribbon">
         <div class="stat-card earn">
@@ -967,6 +980,6 @@
   </div>
 
   <!-- Dedicated Rider Partner Engine JS -->
-  <script src="driver.js?v=2.7"></script>
+  <script src="driver.js?v=2.8"></script>
 </body>
 </html>

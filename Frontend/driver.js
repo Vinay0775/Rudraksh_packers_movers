@@ -8,6 +8,7 @@ const DRIVER_API_BASE = isLocalhostDriver ? 'http://localhost:3000/api' : 'https
 
 const RIDER_TOKEN_KEY = 'rudraksha_rider_token';
 const RIDER_SESSION_KEY = 'rudraksha_driver_session';
+const AVATAR_PREFIX = 'rudraksha_rider_avatar_';
 
 // Active Rider State
 let currentDriver = null;
@@ -238,13 +239,8 @@ function initPwaInstallIcon() {
     });
   }
 
-  // 2. Hide install buttons if already running inside installed standalone app
-  if (isStandaloneDriver) {
-    document.querySelectorAll('#btnInstallRiderApp, #cardInstallRiderApp, #loginInstallContainer').forEach(el => {
-      if (el) el.style.display = 'none';
-    });
-    return;
-  }
+  // 2. Keep install buttons always accessible to the user
+  // Do not hide them so user can easily reinstall or add to any device
 
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -258,9 +254,6 @@ function initPwaInstallIcon() {
 
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
-    document.querySelectorAll('#btnInstallRiderApp, #cardInstallRiderApp, #loginInstallContainer').forEach(el => {
-      if (el) el.style.display = 'none';
-    });
     showToast('🚀 Rudraksha Rider App successfully installed on your device!', 'success');
   });
 }
@@ -268,7 +261,7 @@ function initPwaInstallIcon() {
 async function triggerPwaInstall() {
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   if (isStandalone) {
-    showToast('✅ App pehle se hi phone me installed hai!', 'success');
+    showToast('✅ App pehle se hi aapke phone me installed hai!', 'success');
     return;
   }
 
@@ -281,9 +274,6 @@ async function triggerPwaInstall() {
       const choice = await nativePrompt.userChoice;
       if (choice && choice.outcome === 'accepted') {
         showToast('🎉 Rudraksha Driver App successfully installed!', 'success');
-        document.querySelectorAll('#btnInstallRiderApp, #cardInstallRiderApp, #loginInstallContainer').forEach(el => {
-          if (el) el.style.display = 'none';
-        });
       }
       window._driverInstallPrompt = null;
       deferredInstallPrompt = null;
@@ -306,9 +296,6 @@ async function triggerPwaInstall() {
         const choice = await promptNow.userChoice;
         if (choice && choice.outcome === 'accepted') {
           showToast('🎉 Rudraksha Driver App successfully installed!', 'success');
-          document.querySelectorAll('#btnInstallRiderApp, #cardInstallRiderApp, #loginInstallContainer').forEach(el => {
-            if (el) el.style.display = 'none';
-          });
         }
         window._driverInstallPrompt = null;
         deferredInstallPrompt = null;
