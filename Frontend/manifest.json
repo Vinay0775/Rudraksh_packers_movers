@@ -13,25 +13,25 @@
   "categories": ["business", "travel", "productivity", "utilities"],
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "app-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-192.png",
+      "src": "app-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "app-icon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-512.png",
+      "src": "app-icon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -44,7 +44,7 @@
       "description": "Book your shifting and packing now",
       "url": "./index.html#calculator",
       "icons": [
-        { "src": "icon-192.png", "sizes": "192x192" }
+        { "src": "app-icon-192.png", "sizes": "192x192" }
       ]
     },
     {
@@ -53,7 +53,7 @@
       "description": "Send package across India",
       "url": "./parcel.html",
       "icons": [
-        { "src": "icon-192.png", "sizes": "192x192" }
+        { "src": "app-icon-192.png", "sizes": "192x192" }
       ]
     },
     {
@@ -62,7 +62,7 @@
       "description": "Track your moving truck or courier in real time",
       "url": "./track.html",
       "icons": [
-        { "src": "icon-192.png", "sizes": "192x192" }
+        { "src": "app-icon-192.png", "sizes": "192x192" }
       ]
     }
   ]

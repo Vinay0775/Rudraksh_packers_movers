@@ -3,11 +3,18 @@
    WhatsApp-First Logistics Engine • No Paid APIs • Standalone & Modular
    ========================================================================== */
 
-// 1. CENTRALIZED CONFIGURATION (Easily editable from one place)
+// LocalStorage Cache Buster for Parcel PDF Pricing Updates
+const PARCEL_RATES_VERSION = '2026_pdf_pcl_v2';
+if (localStorage.getItem('rudraksha_parcel_rates_version') !== PARCEL_RATES_VERSION) {
+  localStorage.removeItem('rudraksha_parcel_rates');
+  localStorage.setItem('rudraksha_parcel_rates_version', PARCEL_RATES_VERSION);
+}
+
+// 1. CENTRALIZED CONFIGURATION (Aligned with Jaipur Porter & Logistics PDF Market Report)
 const ADMIN_WHATSAPP_NUMBER = '7296831460'; // Official Rudraksha WhatsApp Number
 
 const FARE_CONFIG = {
-  baseFare: 40,
+  baseFare: 48, // PDF Page 2: 2-Wheeler base fare ₹48 (includes first 1 KM and 25 mins)
   distanceRatePerKm: 10,
   weightCharges: {
     'upto_1kg': 0,
@@ -18,9 +25,9 @@ const FARE_CONFIG = {
     '50kg_plus': 250
   },
   vehicleCharges: {
-    'bike': 0,
-    'auto': 50,
-    'mini_truck': 150
+    'bike': 0,        // Total Base = ₹48
+    'auto': 87,       // Total Base = ₹48 + 87 = ₹135 (PDF Page 2: 3-Wheeler Tempo base ₹135)
+    'mini_truck': 172 // Total Base = ₹48 + 172 = ₹220 (PDF Page 2: Tata Ace Chota Hathi base ₹220)
   },
   handlingCharge: 10,
   addons: {
@@ -30,10 +37,24 @@ const FARE_CONFIG = {
   }
 };
 
+// Sync with saved admin rates if available
+try {
+  const savedPcl = localStorage.getItem('rudraksha_parcel_rates');
+  if (savedPcl) {
+    const parsed = JSON.parse(savedPcl);
+    if (parsed.baseFare) FARE_CONFIG.baseFare = parsed.baseFare;
+    if (parsed.perKm) FARE_CONFIG.distanceRatePerKm = parsed.perKm;
+    if (parsed.handling) FARE_CONFIG.handlingCharge = parsed.handling;
+    if (parsed.vehicles) FARE_CONFIG.vehicleCharges = { ...FARE_CONFIG.vehicleCharges, ...parsed.vehicles };
+    if (parsed.weights) FARE_CONFIG.weightCharges = { ...FARE_CONFIG.weightCharges, ...parsed.weights };
+    if (parsed.addons) FARE_CONFIG.addons = { ...FARE_CONFIG.addons, ...parsed.addons };
+  }
+} catch (e) {}
+
 const VEHICLE_CONFIG = {
-  'bike': { name: 'Bike', desc: 'For small/lightweight parcels', icon: 'fa-motorcycle', maxKg: 10 },
-  'auto': { name: 'Auto / 3-Wheeler', desc: 'For medium parcels', icon: 'fa-truck-front', maxKg: 50 },
-  'mini_truck': { name: 'Mini Truck (Tata Ace)', desc: 'For large/heavy parcels', icon: 'fa-truck-pickup', maxKg: 1000 }
+  'bike': { name: 'Bike Express', desc: 'Up to 20 KG • Docs & Small Parcels', icon: 'fa-motorcycle', maxKg: 20 },
+  'auto': { name: 'Auto / 3-Wheeler', desc: 'Up to 500 KG • Wholesale & 1 RK', icon: 'fa-truck-front', maxKg: 500 },
+  'mini_truck': { name: 'Tata Ace (Chota Hathi)', desc: 'Up to 750 KG • 1 BHK / Bulky', icon: 'fa-truck-pickup', maxKg: 750 }
 };
 
 // State Object for Parcel Booking

@@ -67,15 +67,15 @@ const defaultRiderApplications = [
 
 const defaultConfig = {
   rates: {
-    baseRate: 2500,
-    perKmRate: 40,
-    floorNoLiftRate: 300,
+    baseRate: 2200,
+    perKmRate: 25,
+    floorNoLiftRate: 250,
     houseSizeRates: {
       '1rk': 0,
-      '1bhk': 1000,
-      '2bhk': 2500,
-      '3bhk': 4500,
-      'villa': 7500
+      '1bhk': 800,
+      '2bhk': 2300,
+      '3bhk': 4000,
+      'villa': 7300
     },
     itemRates: {
       sofa: 500,
@@ -93,11 +93,11 @@ const defaultConfig = {
     }
   },
   vehicles: {
-    'mini_truck': { name: 'Tata Ace / Mini (1.5 Ton)', basePrice: 2500, perKmRate: 35, icon: 'fa-truck-pickup', cap: 'Up to 1 BHK / Studio' },
-    'tempo_14ft': { name: '14ft Tempo / Eicher (3.5 Ton)', basePrice: 3500, perKmRate: 45, icon: 'fa-truck', cap: 'Ideal for 1-2 BHK' },
-    'truck_19ft': { name: '19ft Container Truck (7 Ton)', basePrice: 5500, perKmRate: 65, icon: 'fa-truck-moving', cap: '3+ BHK / Large Moving' },
-    'bike': { name: 'Bike Transport Carrier', basePrice: 1500, perKmRate: 15, icon: 'fa-motorcycle', cap: 'Two-Wheeler Carrier' },
-    'car': { name: 'Closed Car Carrier', basePrice: 4500, perKmRate: 35, icon: 'fa-car-side', cap: 'Hydraulic Car Carrier' }
+    'mini_truck': { name: 'Tata Ace (Chota Hathi 750kg)', basePrice: 2200, perKmRate: 25, icon: 'fa-truck-pickup', cap: '1 BHK / Partial Household' },
+    'tempo_14ft': { name: 'Canter 14ft / Tempo (3.5 Ton)', basePrice: 3500, perKmRate: 30, icon: 'fa-truck', cap: 'Ideal for 2-3 BHK Shifting' },
+    'truck_19ft': { name: 'Tata 407 / 19ft Container (7 Ton)', basePrice: 5500, perKmRate: 50, icon: 'fa-truck-moving', cap: '3+ BHK / Industrial Moving' },
+    'bike': { name: 'Bike Carrier (Up to 150cc)', basePrice: 2500, perKmRate: 15, icon: 'fa-motorcycle', cap: 'Two-Wheeler Dedicated Carrier' },
+    'car': { name: 'Closed Car Carrier Trailer', basePrice: 6000, perKmRate: 25, icon: 'fa-car-side', cap: 'Hydraulic Closed Car Carrier' }
   },
   coupons: [
     { code: 'FIRST500', type: 'fixed', value: 500, description: '₹500 flat off on first relocation' },
@@ -113,12 +113,12 @@ const defaultConfig = {
     gstin: '08AAACR1234F1Z5'
   },
   parcelRates: {
-    bike: { name: 'Bike', baseFare: 40, perKmRate: 8, baseKm: 2, maxWeightKg: 10, icon: 'fa-motorcycle', desc: 'Up to 10 KG • Fastest Option' },
-    auto: { name: 'Auto / 3-Wheeler', baseFare: 120, perKmRate: 14, baseKm: 2, maxWeightKg: 50, icon: 'fa-truck-front', desc: 'Up to 50 KG • Medium Items' },
-    mini_truck: { name: 'Mini Truck (Tata Ace)', baseFare: 350, perKmRate: 25, baseKm: 3, maxWeightKg: 1000, icon: 'fa-truck-pickup', desc: 'Up to 1000 KG • Heavy & Bulky' },
+    bike: { name: 'Bike Express', baseFare: 48, perKmRate: 10, baseKm: 1, maxWeightKg: 20, icon: 'fa-motorcycle', desc: 'Up to 20 KG • Docs & Small Parcels' },
+    auto: { name: 'Auto / 3-Wheeler', baseFare: 135, perKmRate: 14, baseKm: 2, maxWeightKg: 500, icon: 'fa-truck-front', desc: 'Up to 500 KG • Wholesale & 1 RK' },
+    mini_truck: { name: 'Tata Ace (Chota Hathi)', baseFare: 220, perKmRate: 25, baseKm: 3, maxWeightKg: 750, icon: 'fa-truck-pickup', desc: 'Up to 750 KG • Heavy Relocation' },
     weightSurcharges: {
       'upto_1kg': 0,
-      '1_5kg': 15,
+      '1_5kg': 20,
       '5_10kg': 30,
       '10_20kg': 60,
       '20_50kg': 120,

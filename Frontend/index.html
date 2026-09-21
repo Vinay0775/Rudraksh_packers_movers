@@ -6,10 +6,10 @@
   <title>Rudraksha Packers and Movers | India's Relocation Portal</title>
 
   <!-- Favicon & PWA App Icons -->
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" href="app-icon.png">
   <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
-  <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
-  <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="app-icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="app-icon.png">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#ea580c">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -556,33 +556,33 @@
                       <div class="col-6 col-md-4 col-lg-2.4">
                         <div class="vehicle-select-card active" data-vehicle="mini_truck" onclick="selectVehicleType('mini_truck')">
                           <div class="vehicle-icon-wrap"><i class="fa-solid fa-truck-pickup"></i></div>
-                          <h6 class="vehicle-name">Tata Ace / Mini</h6>
-                          <span class="vehicle-cap">1.5 Ton • 1 RK/Studio</span>
-                          <div class="vehicle-price-tag">Base ₹2,500</div>
+                          <h6 class="vehicle-name">Tata Ace (Chota Hathi)</h6>
+                          <span class="vehicle-cap">750 KG • 1 BHK / Partial</span>
+                          <div class="vehicle-price-tag">Base ₹2,200 (₹25/KM)</div>
                         </div>
                       </div>
                       <div class="col-6 col-md-4 col-lg-2.4">
                         <div class="vehicle-select-card" data-vehicle="tempo_14ft" onclick="selectVehicleType('tempo_14ft')">
                           <div class="vehicle-icon-wrap"><i class="fa-solid fa-truck"></i></div>
-                          <h6 class="vehicle-name">14ft Tempo / Eicher</h6>
-                          <span class="vehicle-cap">3.5 Ton • 1-2 BHK</span>
-                          <div class="vehicle-price-tag">Base ₹3,500</div>
+                          <h6 class="vehicle-name">Canter 14ft / Tempo</h6>
+                          <span class="vehicle-cap">3.5 Ton • 2-3 BHK</span>
+                          <div class="vehicle-price-tag">Base ₹3,500 (₹30/KM)</div>
                         </div>
                       </div>
                       <div class="col-6 col-md-4 col-lg-2.4">
                         <div class="vehicle-select-card" data-vehicle="truck_19ft" onclick="selectVehicleType('truck_19ft')">
                           <div class="vehicle-icon-wrap"><i class="fa-solid fa-truck-moving"></i></div>
-                          <h6 class="vehicle-name">19ft Container Truck</h6>
+                          <h6 class="vehicle-name">Tata 407 / Container</h6>
                           <span class="vehicle-cap">7.0 Ton • 3+ BHK</span>
-                          <div class="vehicle-price-tag">Base ₹5,500</div>
+                          <div class="vehicle-price-tag">Base ₹5,500 (₹50/KM)</div>
                         </div>
                       </div>
                       <div class="col-6 col-md-4 col-lg-2.4">
                         <div class="vehicle-select-card" data-vehicle="bike" onclick="selectVehicleType('bike')">
                           <div class="vehicle-icon-wrap"><i class="fa-solid fa-motorcycle"></i></div>
-                          <h6 class="vehicle-name">Bike Carrier</h6>
+                          <h6 class="vehicle-name">Bike Carrier (150cc)</h6>
                           <span class="vehicle-cap">Ramp & Chock Secured</span>
-                          <div class="vehicle-price-tag">Base ₹1,500</div>
+                          <div class="vehicle-price-tag">Base ₹2,500</div>
                         </div>
                       </div>
                       <div class="col-6 col-md-4 col-lg-2.4">
@@ -590,7 +590,7 @@
                           <div class="vehicle-icon-wrap"><i class="fa-solid fa-car-side"></i></div>
                           <h6 class="vehicle-name">Closed Car Carrier</h6>
                           <span class="vehicle-cap">Hydraulic Platform</span>
-                          <div class="vehicle-price-tag">Base ₹4,500</div>
+                          <div class="vehicle-price-tag">Base ₹6,000</div>
                         </div>
                       </div>
                     </div>
@@ -751,7 +751,7 @@
                           <input class="form-check-input" type="checkbox" id="pickupLift" checked onchange="calculatePrice()">
                           <label class="form-check-label fw-semibold" for="pickupLift">Service Lift / Elevator Available</label>
                         </div>
-                        <div class="small text-muted mt-1">If no lift, ₹300 per floor labor surcharge applies.</div>
+                        <div class="small text-muted mt-1">If no lift, ₹250 per floor labor surcharge applies.</div>
                       </div>
                     </div>
 
@@ -776,7 +776,7 @@
                           <input class="form-check-input" type="checkbox" id="dropLift" checked onchange="calculatePrice()">
                           <label class="form-check-label fw-semibold" for="dropLift">Service Lift / Elevator Available</label>
                         </div>
-                        <div class="small text-muted mt-1">If no lift, ₹300 per floor labor surcharge applies.</div>
+                        <div class="small text-muted mt-1">If no lift, ₹250 per floor labor surcharge applies.</div>
                       </div>
                     </div>
                   </div>
@@ -992,15 +992,15 @@
               <!-- Line Items Breakdown with Icons -->
               <div class="summary-line-item">
                 <span><i class="fa-solid fa-truck-moving text-primary-custom"></i> Base Vehicle &amp; Freight:</span>
-                <span class="fw-semibold" id="priceBase">₹2,500</span>
+                <span class="fw-semibold" id="priceBase">₹2,200</span>
               </div>
               <div class="summary-line-item">
                 <span><i class="fa-solid fa-road text-primary-custom"></i> Distance Toll &amp; Fuel:</span>
-                <span class="fw-semibold" id="priceDistance">₹1,000</span>
+                <span class="fw-semibold" id="priceDistance">₹625</span>
               </div>
               <div class="summary-line-item">
                 <span><i class="fa-solid fa-boxes-stacked text-primary-custom"></i> Cargo Size &amp; Items:</span>
-                <span class="fw-semibold" id="priceItems">₹1,000</span>
+                <span class="fw-semibold" id="priceItems">₹800</span>
               </div>
               <div class="summary-line-item">
                 <span><i class="fa-solid fa-stairs text-primary-custom"></i> Floor &amp; Labor Handling:</span>
@@ -1018,7 +1018,7 @@
               <!-- Total Row -->
               <div class="summary-total-row">
                 <span>ESTIMATED TOTAL:</span>
-                <span class="summary-total-amount" id="priceTotal">₹4,500</span>
+                <span class="summary-total-amount" id="priceTotal">₹3,625</span>
               </div>
 
               <div class="summary-guarantee-note">
@@ -1036,7 +1036,7 @@
   <div class="mobile-floating-price-bar d-lg-none" id="mobileFloatingPriceBar">
     <div class="mobile-price-info">
       <span class="mobile-price-label">Live Estimate</span>
-      <span class="mobile-price-amount" id="mobilePriceTotalDisplay">₹4,500</span>
+      <span class="mobile-price-amount" id="mobilePriceTotalDisplay">₹3,625</span>
     </div>
     <button type="button" class="btn-mobile-breakdown" onclick="scrollToQuoteSummary()">
       <span>Breakdown</span> <i class="fa-solid fa-angle-up"></i>
@@ -1170,127 +1170,244 @@
     </div>
   </section>
 
-  <!-- 7. RATE CHARTS & CHARGES TABLES SECTION (Matched with Images 1 & 2) -->
+  <!-- 7. RATE CHARTS & CHARGES TABLES SECTION (Matched with Jaipur Logistics & Movers Research PDF) -->
   <section class="rate-charts-section" id="rate-charts">
     <div class="container">
 
       <!-- Table 1: Local Shifting Rate Chart -->
-      <h3 class="section-red-title">Packers and Movers Rate Chart for Local Shifting in India</h3>
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h3 class="section-red-title mb-0">Packers and Movers Rate Chart for Local Shifting in Jaipur &amp; India</h3>
+        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-semibold">
+          <i class="fa-solid fa-shield-check me-1"></i> Verified Jaipur Market Rates
+        </span>
+      </div>
       
-      <div class="table-responsive">
+      <div class="table-responsive mb-5">
         <table class="rate-chart-table">
           <thead>
             <tr>
-              <th>Moving Type</th>
-              <th>Packing Cost (includes the cost of packing supplies)</th>
-              <th>Labor Charges (Loading & Unloading)</th>
-              <th>Transport Cost (Includes the cost of fuel)</th>
-              <th>Approx. Total Cost</th>
+              <th>House Size</th>
+              <th>Packaging Cost (40 GSM Wrap + 5-Ply Boxes)</th>
+              <th>Labor Handling (Loading &amp; Unloading)</th>
+              <th>Transport Cost (Fuel &amp; Vehicle)</th>
+              <th>Estimated Total Cost</th>
+              <th>Labour &amp; Duration</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><strong>1 BHK</strong> (150 to 300 Cubic feet)</td>
-              <td>₹1,000 &ndash; ₹2,000</td>
-              <td>₹1,000 &ndash; ₹3,500</td>
-              <td>₹1,000 &ndash; ₹3,500</td>
-              <td><strong>₹3,000 &ndash; ₹9,000</strong></td>
+              <td><strong>1 RK / Studio</strong> (Micro-Shifting)</td>
+              <td>₹800 &ndash; ₹1,200</td>
+              <td>₹800 &ndash; ₹1,500</td>
+              <td>₹800 &ndash; ₹1,300</td>
+              <td><strong class="text-primary-custom">₹1,400 &ndash; ₹3,500</strong></td>
+              <td><span class="badge bg-light text-dark border">2 Labours • 3-4 Hrs</span></td>
             </tr>
             <tr>
-              <td><strong>2 BHK</strong> (400 to 700 Cubic feet)</td>
-              <td>₹1,500 &ndash; ₹3,500</td>
-              <td>₹1,500 &ndash; ₹5,500</td>
+              <td><strong>1 BHK Apartment</strong></td>
+              <td>₹1,200 &ndash; ₹2,500</td>
+              <td>₹1,000 &ndash; ₹2,500</td>
+              <td>₹1,000 &ndash; ₹2,500</td>
+              <td><strong class="text-primary-custom">₹3,200 &ndash; ₹7,500</strong></td>
+              <td><span class="badge bg-light text-dark border">2 Labours • 4-6 Hrs</span></td>
+            </tr>
+            <tr>
+              <td><strong>2 BHK Apartment</strong></td>
+              <td>₹2,000 &ndash; ₹4,500</td>
+              <td>₹2,000 &ndash; ₹4,500</td>
               <td>₹1,500 &ndash; ₹4,000</td>
-              <td><strong>₹4,500 &ndash; ₹13,000</strong></td>
+              <td><strong class="text-primary-custom">₹5,500 &ndash; ₹13,000</strong></td>
+              <td><span class="badge bg-light text-dark border">3 Labours • 6-8 Hrs</span></td>
             </tr>
             <tr>
-              <td><strong>3 BHK</strong> (800 to 1200 Cubic feet)</td>
-              <td>₹1,500 &ndash; ₹4,500</td>
-              <td>₹1,500 &ndash; ₹7,500</td>
-              <td>₹3,000 &ndash; ₹6,000</td>
-              <td><strong>₹6,000 &ndash; ₹18,000</strong></td>
+              <td><strong>3 BHK Apartment</strong></td>
+              <td>₹3,000 &ndash; ₹6,500</td>
+              <td>₹3,000 &ndash; ₹7,000</td>
+              <td>₹2,500 &ndash; ₹6,000</td>
+              <td><strong class="text-primary-custom">₹8,500 &ndash; ₹19,500</strong></td>
+              <td><span class="badge bg-light text-dark border">4+ Labours • 8-11 Hrs</span></td>
             </tr>
             <tr>
-              <td><strong>4/5 BHK House</strong></td>
-              <td>₹2,000 &ndash; ₹6,000</td>
-              <td>₹2,000 &ndash; ₹9,000</td>
-              <td>₹4,000 &ndash; ₹10,000</td>
-              <td><strong>₹8,000 &ndash; ₹25,000</strong></td>
+              <td><strong>4+ BHK / Luxury Villa</strong></td>
+              <td>₹4,500 &ndash; ₹10,000</td>
+              <td>₹4,500 &ndash; ₹11,000</td>
+              <td>₹3,500 &ndash; ₹9,000</td>
+              <td><strong class="text-primary-custom">₹12,500 &ndash; ₹30,000+</strong></td>
+              <td><span class="badge bg-light text-dark border">5+ Labours • 10-14 Hrs</span></td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Table 2: Domestic Relocation Charges -->
-      <h3 class="section-red-title mt-5">Packers and Movers Charges in India for Domestic Relocation</h3>
+      <!-- Table 2: Top Jaipur City Corridors Relocation Benchmark (from PDF Page 5) -->
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 mt-4">
+        <h3 class="section-red-title mb-0">Popular Jaipur Local Corridors Price Benchmark</h3>
+        <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-3 py-2 fw-semibold">
+          <i class="fa-solid fa-location-crosshairs text-warning me-1"></i> Exact Route Slabs
+        </span>
+      </div>
+
+      <div class="table-responsive mb-5">
+        <table class="rate-chart-table">
+          <thead>
+            <tr>
+              <th>From (Origin)</th>
+              <th>To (Destination)</th>
+              <th>Approx. Distance</th>
+              <th>1 BHK Shifting Cost</th>
+              <th>2 BHK Shifting Cost</th>
+              <th>Ideal Vehicle</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>C-Scheme</strong></td>
+              <td><strong>Tonk Road</strong></td>
+              <td>8 KM</td>
+              <td><strong>₹2,480 &ndash; ₹5,180</strong></td>
+              <td><strong>₹3,560 &ndash; ₹7,400</strong></td>
+              <td>Tata Ace / 14ft</td>
+            </tr>
+            <tr>
+              <td><strong>Mansarovar</strong></td>
+              <td><strong>Jagatpura</strong></td>
+              <td>11 KM</td>
+              <td><strong>₹2,620 &ndash; ₹5,500</strong></td>
+              <td><strong>₹3,780 &ndash; ₹7,950</strong></td>
+              <td>Tata Ace / 14ft</td>
+            </tr>
+            <tr>
+              <td><strong>Raja Park</strong></td>
+              <td><strong>Pratap Nagar</strong></td>
+              <td>13 KM</td>
+              <td><strong>₹2,750 &ndash; ₹5,860</strong></td>
+              <td><strong>₹3,950 &ndash; ₹8,200</strong></td>
+              <td>Tata Ace / 14ft Tempo</td>
+            </tr>
+            <tr>
+              <td><strong>Vaishali Nagar</strong></td>
+              <td><strong>Malviya Nagar</strong></td>
+              <td>14 KM</td>
+              <td><strong>₹2,900 &ndash; ₹6,100</strong></td>
+              <td><strong>₹4,100 &ndash; ₹8,600</strong></td>
+              <td>Tata Ace / 14ft Tempo</td>
+            </tr>
+            <tr>
+              <td><strong>Jhotwara</strong></td>
+              <td><strong>Muhana Mandi</strong></td>
+              <td>19 KM</td>
+              <td><strong>₹3,360 &ndash; ₹6,980</strong></td>
+              <td><strong>₹4,780 &ndash; ₹9,750</strong></td>
+              <td>14ft Canter / Tata 407</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Table 3: Domestic Relocation Charges (from PDF Page 6 & 7) -->
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 mt-4">
+        <h3 class="section-red-title mb-0">Interstate &amp; National Corridors from Jaipur (Domestic Shifting)</h3>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 fw-semibold">
+          <i class="fa-solid fa-truck-moving me-1"></i> Pan-India Transit Rates
+        </span>
+      </div>
 
       <div class="table-responsive">
         <table class="rate-chart-table">
           <thead>
             <tr>
-              <th>Relocation Type</th>
-              <th>Average Price Range for 100-400 Km Move</th>
-              <th>Average Price Range for 400-700 Km Move</th>
-              <th>Average Price Range for 700-1100 Km Move</th>
-              <th>Average Price Range for 1100-1500 Km Move</th>
-              <th>Average Price Range for 1500-2100 Km Move</th>
-              <th>Average Price Range for 2100-2700 Km move</th>
+              <th>Destination Route</th>
+              <th>Highway &amp; Distance</th>
+              <th>1 BHK Shifting</th>
+              <th>2 BHK Shifting</th>
+              <th>3 BHK Shifting</th>
+              <th>Car Carrier</th>
+              <th>Bike Transport</th>
+              <th>Transit Time</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><strong>1 BHK</strong> (150 to 300 Cubic feet)</td>
-              <td>₹10,000 &ndash; ₹20,000</td>
-              <td>₹12,000 &ndash; ₹22,000</td>
+              <td><strong>Jaipur ➔ Delhi NCR</strong></td>
+              <td>NH-48 • 280 KM</td>
+              <td>₹7,800 &ndash; ₹19,500</td>
+              <td>₹11,500 &ndash; ₹32,000</td>
+              <td>₹16,500 &ndash; ₹46,000</td>
+              <td>₹6,000 &ndash; ₹11,500</td>
+              <td>₹2,500 &ndash; ₹4,000</td>
+              <td>5 &ndash; 7 Hours</td>
+            </tr>
+            <tr>
+              <td><strong>Jaipur ➔ Ahmedabad</strong></td>
+              <td>NH-48 • 650 KM</td>
+              <td>₹8,500 &ndash; ₹20,500</td>
+              <td>₹12,800 &ndash; ₹34,000</td>
+              <td>₹18,500 &ndash; ₹49,000</td>
+              <td>₹8,000 &ndash; ₹14,000</td>
+              <td>₹3,500 &ndash; ₹5,500</td>
+              <td>8 &ndash; 10 Hours</td>
+            </tr>
+            <tr>
+              <td><strong>Jaipur ➔ Mumbai</strong></td>
+              <td>NH-48 • 1,150 KM</td>
+              <td>₹13,500 &ndash; ₹31,000</td>
+              <td>₹19,500 &ndash; ₹47,000</td>
+              <td>₹27,000 &ndash; ₹58,000</td>
+              <td>₹10,500 &ndash; ₹18,000</td>
+              <td>₹4,500 &ndash; ₹7,800</td>
+              <td>16 &ndash; 20 Hours (2-3 Days)</td>
+            </tr>
+            <tr>
+              <td><strong>Jaipur ➔ Pune</strong></td>
+              <td>NH-48 • 1,200 KM</td>
+              <td>₹11,000 &ndash; ₹24,500</td>
+              <td>₹16,000 &ndash; ₹38,500</td>
+              <td>₹22,500 &ndash; ₹52,000</td>
+              <td>₹10,000 &ndash; ₹17,000</td>
+              <td>₹4,500 &ndash; ₹7,500</td>
+              <td>14 &ndash; 17 Hours</td>
+            </tr>
+            <tr>
+              <td><strong>Jaipur ➔ Hyderabad</strong></td>
+              <td>NH-48 + NH-44 • 1,400 KM</td>
+              <td>₹14,500 &ndash; ₹31,500</td>
+              <td>₹20,500 &ndash; ₹46,000</td>
+              <td>₹28,000 &ndash; ₹57,500</td>
+              <td>₹12,000 &ndash; ₹20,000</td>
+              <td>₹5,000 &ndash; ₹8,500</td>
+              <td>18 &ndash; 22 Hours (2-3 Days)</td>
+            </tr>
+            <tr>
+              <td><strong>Jaipur ➔ Bangalore (Bengaluru)</strong></td>
+              <td>NH-48 + NH-44 • 1,850 KM</td>
+              <td>₹16,500 &ndash; ₹36,000</td>
+              <td>₹23,000 &ndash; ₹52,000</td>
+              <td>₹32,000 &ndash; ₹64,000</td>
               <td>₹14,000 &ndash; ₹23,000</td>
-              <td>₹16,000 &ndash; ₹25,000</td>
-              <td>₹18,000 &ndash; ₹28,000</td>
-              <td>₹20,000 &ndash; ₹33,000</td>
-            </tr>
-            <tr>
-              <td><strong>2 BHK</strong> (400 to 700 Cubic feet)</td>
-              <td>₹13,000 &ndash; ₹24,000</td>
-              <td>₹15,000 &ndash; ₹27,000</td>
-              <td>₹17,000 &ndash; ₹30,000</td>
-              <td>₹20,000 &ndash; ₹33,000</td>
-              <td>₹23,000 &ndash; ₹37,000</td>
-              <td>₹25,000 &ndash; ₹40,000</td>
-            </tr>
-            <tr>
-              <td><strong>3 BHK</strong> (800 to 1200 Cubic feet)</td>
-              <td>₹16,000 &ndash; ₹28,000</td>
-              <td>₹19,000 &ndash; ₹32,000</td>
-              <td>₹20,000 &ndash; ₹36,000</td>
-              <td>₹24,000 &ndash; ₹39,000</td>
-              <td>₹28,000 &ndash; ₹44,000</td>
-              <td>₹32,000 &ndash; ₹52,000</td>
-            </tr>
-            <tr>
-              <td><strong>4 Wheeler (Car)</strong></td>
-              <td>₹4,000 &ndash; ₹7,000</td>
               <td>₹5,500 &ndash; ₹9,500</td>
-              <td>₹6,000 &ndash; ₹10,800</td>
-              <td>₹8,000 &ndash; ₹13,000</td>
-              <td>₹9,500 &ndash; ₹15,000</td>
-              <td>₹10,500 &ndash; ₹20,500</td>
-            </tr>
-            <tr>
-              <td><strong>2 Wheeler (Bike and Scooter)</strong></td>
-              <td>₹2,500 &ndash; ₹4,500</td>
-              <td>₹3,000 &ndash; ₹5,400</td>
-              <td>₹3,500 &ndash; ₹6,000</td>
-              <td>₹4,500 &ndash; ₹9,000</td>
-              <td>₹5,200 &ndash; ₹10,000</td>
-              <td>₹5,500 &ndash; ₹15,000</td>
+              <td>22 &ndash; 28 Hours (3-4 Days)</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Disclaimer Note -->
-      <p class="rate-disclaimer">
-        <strong>Disclaimer:</strong> The above rate charts do not show accurate pricing. Charges and rates given in the rate chart are roughly estimated based on previous relocation trends. Contact us for precise moving estimates.
-      </p>
+      <!-- Transparent Pricing & Scam Protection Banner (from PDF Page 8 & 9) -->
+      <div class="alert alert-warning border-warning-subtle rounded-4 p-4 mt-4 shadow-xs">
+        <div class="d-flex align-items-start gap-3">
+          <div class="fs-2 text-warning"><i class="fa-solid fa-shield-halved"></i></div>
+          <div>
+            <h5 class="fw-bold mb-1 text-dark">100% Transparent Pricing &amp; Zero Hidden Fees Guarantee</h5>
+            <p class="text-muted small mb-2">
+              Unlike unorganized operators, <strong>Rudraksha Packers &amp; Movers</strong> provides written binding quotes with zero unexpected surprise charges. All floor surcharges (₹250/floor without lift), toll taxes, 40 GSM multi-layer bubble wrap packing, and dedicated transport are itemized upfront.
+            </p>
+            <div class="d-flex flex-wrap gap-3 small fw-semibold text-secondary">
+              <span><i class="fa-solid fa-circle-check text-success me-1"></i> GST Compliant (5% GTA RCM / 18% Full Moving)</span>
+              <span><i class="fa-solid fa-circle-check text-success me-1"></i> Pre-Move Survey Binding Quote</span>
+              <span><i class="fa-solid fa-circle-check text-success me-1"></i> Verified Drivers &amp; GPS Tracking</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
     </div>
   </section>

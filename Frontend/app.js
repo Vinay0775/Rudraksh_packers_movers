@@ -29,13 +29,21 @@ let verifiedPhoneNumber = '';
 let otpCountdownInterval = null;
 let currentTrackedBooking = null;
 
-// Dedicated Vehicle Fleet Config (Dynamic)
+// LocalStorage Cache Buster for PDF Pricing Updates
+const RATES_VERSION = '2026_pdf_v2';
+if (localStorage.getItem('rudraksha_rates_version') !== RATES_VERSION) {
+  localStorage.removeItem('rudraksha_rates_config');
+  localStorage.removeItem('rudraksha_fleet_config');
+  localStorage.setItem('rudraksha_rates_version', RATES_VERSION);
+}
+
+// Dedicated Vehicle Fleet Config (Aligned with Jaipur Porter & Packers PDF Benchmark)
 let vehicleConfig = {
-  'mini_truck': { name: 'Tata Ace / Mini (1.5 Ton)', basePrice: 2500, perKmRate: 35, icon: 'fa-truck-pickup', cap: 'Up to 1 BHK / Studio' },
-  'tempo_14ft': { name: '14ft Tempo / Eicher (3.5 Ton)', basePrice: 3500, perKmRate: 45, icon: 'fa-truck', cap: 'Ideal for 1-2 BHK' },
-  'truck_19ft': { name: '19ft Container Truck (7 Ton)', basePrice: 5500, perKmRate: 65, icon: 'fa-truck-moving', cap: '3+ BHK / Large Moving' },
-  'bike': { name: 'Bike Transport Carrier', basePrice: 1500, perKmRate: 15, icon: 'fa-motorcycle', cap: 'Two-Wheeler Carrier' },
-  'car': { name: 'Closed Car Carrier', basePrice: 4500, perKmRate: 35, icon: 'fa-car-side', cap: 'Hydraulic Car Carrier' }
+  'mini_truck': { name: 'Tata Ace (Chota Hathi 750kg)', basePrice: 2200, perKmRate: 25, icon: 'fa-truck-pickup', cap: '1 BHK / Partial Household' },
+  'tempo_14ft': { name: 'Canter 14ft / Tempo (3.5 Ton)', basePrice: 3500, perKmRate: 30, icon: 'fa-truck', cap: 'Ideal for 2-3 BHK Shifting' },
+  'truck_19ft': { name: 'Tata 407 / 19ft Container (7 Ton)', basePrice: 5500, perKmRate: 50, icon: 'fa-truck-moving', cap: '3+ BHK / Industrial Moving' },
+  'bike': { name: 'Bike Carrier (Up to 150cc)', basePrice: 2500, perKmRate: 15, icon: 'fa-motorcycle', cap: 'Two-Wheeler Dedicated Carrier' },
+  'car': { name: 'Closed Car Carrier Trailer', basePrice: 6000, perKmRate: 25, icon: 'fa-car-side', cap: 'Hydraulic Closed Car Carrier' }
 };
 
 // Map & Route Coordinates
@@ -50,17 +58,17 @@ const isLocalhost = window.location.hostname === 'localhost' || window.location.
 const PRODUCTION_API_URL = 'https://rudraksha-packers-movers.onrender.com/api';
 const BOOKING_API_URL = isLocalhost ? 'http://localhost:3000/api' : (localStorage.getItem('rudraksha_backend_api_url') || PRODUCTION_API_URL);
 
-// Default Rate Configuration (Dynamic)
+// Default Rate Configuration (Aligned with Jaipur Relocation Market Research PDF)
 let ratesConfig = {
-  baseRate: 2500,
-  perKmRate: 40,
-  floorNoLiftRate: 300,
+  baseRate: 2200,
+  perKmRate: 25,
+  floorNoLiftRate: 250, // PDF Page 8: ₹200 to ₹500 per floor
   houseSizeRates: {
     '1rk': 0,
-    '1bhk': 1000,
-    '2bhk': 2500,
-    '3bhk': 4500,
-    'villa': 7500
+    '1bhk': 800,   // Base ₹2,200 + 800 = ₹3,000 (Market avg 1 BHK: ₹3,200 - ₹7,500)
+    '2bhk': 2300,  // Base ₹2,200 + 2,300 = ₹4,500 (Porter base 2 BHK: ₹4,500, Market: ₹5,500)
+    '3bhk': 4000,  // Base ₹2,200 + 4,000 = ₹6,200 (Porter base 3 BHK: ₹6,200, Market: ₹8,500)
+    'villa': 7300  // Base ₹2,200 + 7,300 = ₹9,500 (Porter base 4+ BHK: ₹9,500, Market: ₹12,500+)
   },
   itemRates: {
     sofa: 500,
@@ -71,10 +79,10 @@ let ratesConfig = {
     boxes: 80
   },
   addonRates: {
-    bubblePacking: 1500,
-    unpacking: 1200,
-    insurance: 999,
-    vehicleTransport: 2500
+    bubblePacking: 1500, // PDF Page 4: 40 GSM Bubble wrap & 5-ply cartons (₹1,500 - ₹5,500)
+    unpacking: 1200,     // PDF Page 4: Modular furniture dismantling & reassembly
+    insurance: 999,      // PDF Page 10: Goods-in-transit policy
+    vehicleTransport: 2500 // PDF Page 7: Bike / Car transit
   }
 };
 
@@ -1442,14 +1450,14 @@ function recalculateTotal() {
   if (!selectedVehicleType) selectedVehicleType = 'mini_truck';
   if (!selectedHouseSize) selectedHouseSize = '1bhk';
 
-  const veh = vehicleConfig[selectedVehicleType] || { name: 'Tata Ace / Mini (1.5 Ton)', basePrice: 2500, perKmRate: 35 };
+  const veh = vehicleConfig[selectedVehicleType] || { name: 'Tata Ace (Chota Hathi 750kg)', basePrice: 2200, perKmRate: 25 };
   let distKm = parseFloat(document.getElementById('distanceKm')?.value || 25);
   if (isNaN(distKm) || distKm <= 0) distKm = 25;
 
-  const perKmRate = veh.perKmRate || ratesConfig.perKmRate || 35;
+  const perKmRate = veh.perKmRate || ratesConfig.perKmRate || 25;
   const distanceCost = distKm * perKmRate;
   const houseSizeFee = selectedHouseSize ? (ratesConfig.houseSizeRates[selectedHouseSize] || 0) : 0;
-  const baseVehicleCost = veh.basePrice || 2500;
+  const baseVehicleCost = veh.basePrice || 2200;
 
   let inventoryCost = 0;
   for (const key in itemQuantities) {

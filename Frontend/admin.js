@@ -1009,16 +1009,16 @@ async function loadAdminRates() {
   }
 
   // Populate form inputs
-  if (document.getElementById('rateBase')) document.getElementById('rateBase').value = adminRates.baseRate || 2500;
-  if (document.getElementById('ratePerKm')) document.getElementById('ratePerKm').value = adminRates.perKmRate || 40;
-  if (document.getElementById('rateFloorNoLift')) document.getElementById('rateFloorNoLift').value = adminRates.floorNoLiftRate || 300;
+  if (document.getElementById('rateBase')) document.getElementById('rateBase').value = adminRates.baseRate || 2200;
+  if (document.getElementById('ratePerKm')) document.getElementById('ratePerKm').value = adminRates.perKmRate || 25;
+  if (document.getElementById('rateFloorNoLift')) document.getElementById('rateFloorNoLift').value = adminRates.floorNoLiftRate || 250;
 
   const hs = adminRates.houseSizeRates || {};
   if (document.getElementById('rateHouse1rk')) document.getElementById('rateHouse1rk').value = hs['1rk'] ?? 0;
-  if (document.getElementById('rateHouse1bhk')) document.getElementById('rateHouse1bhk').value = hs['1bhk'] ?? 1000;
-  if (document.getElementById('rateHouse2bhk')) document.getElementById('rateHouse2bhk').value = hs['2bhk'] ?? 2500;
-  if (document.getElementById('rateHouse3bhk')) document.getElementById('rateHouse3bhk').value = hs['3bhk'] ?? 4500;
-  if (document.getElementById('rateHouseVilla')) document.getElementById('rateHouseVilla').value = hs['villa'] ?? 7500;
+  if (document.getElementById('rateHouse1bhk')) document.getElementById('rateHouse1bhk').value = hs['1bhk'] ?? 800;
+  if (document.getElementById('rateHouse2bhk')) document.getElementById('rateHouse2bhk').value = hs['2bhk'] ?? 2300;
+  if (document.getElementById('rateHouse3bhk')) document.getElementById('rateHouse3bhk').value = hs['3bhk'] ?? 4000;
+  if (document.getElementById('rateHouseVilla')) document.getElementById('rateHouseVilla').value = hs['villa'] ?? 7300;
 
   const items = adminRates.itemRates || {};
   if (document.getElementById('rateItemSofa')) document.getElementById('rateItemSofa').value = items.sofa ?? 500;
@@ -1036,16 +1036,16 @@ async function loadAdminRates() {
 }
 
 async function saveAdminRates() {
-  const baseRate = parseInt(document.getElementById('rateBase')?.value) || 2500;
-  const perKmRate = parseInt(document.getElementById('ratePerKm')?.value) || 40;
-  const floorNoLiftRate = parseInt(document.getElementById('rateFloorNoLift')?.value) || 300;
+  const baseRate = parseInt(document.getElementById('rateBase')?.value) || 2200;
+  const perKmRate = parseInt(document.getElementById('ratePerKm')?.value) || 25;
+  const floorNoLiftRate = parseInt(document.getElementById('rateFloorNoLift')?.value) || 250;
 
   const houseSizeRates = {
     '1rk': parseInt(document.getElementById('rateHouse1rk')?.value) || 0,
-    '1bhk': parseInt(document.getElementById('rateHouse1bhk')?.value) || 1000,
-    '2bhk': parseInt(document.getElementById('rateHouse2bhk')?.value) || 2500,
-    '3bhk': parseInt(document.getElementById('rateHouse3bhk')?.value) || 4500,
-    'villa': parseInt(document.getElementById('rateHouseVilla')?.value) || 7500
+    '1bhk': parseInt(document.getElementById('rateHouse1bhk')?.value) || 800,
+    '2bhk': parseInt(document.getElementById('rateHouse2bhk')?.value) || 2300,
+    '3bhk': parseInt(document.getElementById('rateHouse3bhk')?.value) || 4000,
+    'villa': parseInt(document.getElementById('rateHouseVilla')?.value) || 7300
   };
 
   const itemRates = {
@@ -2091,7 +2091,7 @@ async function quickUpdateParcelStatus(parcelId, newStatus) {
 // Save & Load Parcel Tariff
 function saveAdminParcelRates() {
   const rates = {
-    baseFare: parseFloat(document.getElementById('pclRateBase')?.value) || 40,
+    baseFare: parseFloat(document.getElementById('pclRateBase')?.value) || 48,
     perKm: parseFloat(document.getElementById('pclRatePerKm')?.value) || 10,
     handling: parseFloat(document.getElementById('pclRateHandling')?.value) || 10,
     weights: {
@@ -2104,8 +2104,8 @@ function saveAdminParcelRates() {
     },
     vehicles: {
       bike: parseFloat(document.getElementById('pclVehBike')?.value) || 0,
-      auto: parseFloat(document.getElementById('pclVehAuto')?.value) || 50,
-      mini_truck: parseFloat(document.getElementById('pclVehTruck')?.value) || 150
+      auto: parseFloat(document.getElementById('pclVehAuto')?.value) || 87,
+      mini_truck: parseFloat(document.getElementById('pclVehTruck')?.value) || 172
     },
     addons: {
       fragile: parseFloat(document.getElementById('pclAddonFragile')?.value) || 25,
@@ -2123,7 +2123,7 @@ function loadAdminParcelRates() {
   if (!saved) return;
   try {
     const r = JSON.parse(saved);
-    if (document.getElementById('pclRateBase')) document.getElementById('pclRateBase').value = r.baseFare || 40;
+    if (document.getElementById('pclRateBase')) document.getElementById('pclRateBase').value = r.baseFare || 48;
     if (document.getElementById('pclRatePerKm')) document.getElementById('pclRatePerKm').value = r.perKm || 10;
     if (document.getElementById('pclRateHandling')) document.getElementById('pclRateHandling').value = r.handling || 10;
     if (r.weights) {
@@ -2136,8 +2136,8 @@ function loadAdminParcelRates() {
     }
     if (r.vehicles) {
       if (document.getElementById('pclVehBike')) document.getElementById('pclVehBike').value = r.vehicles.bike || 0;
-      if (document.getElementById('pclVehAuto')) document.getElementById('pclVehAuto').value = r.vehicles.auto || 50;
-      if (document.getElementById('pclVehTruck')) document.getElementById('pclVehTruck').value = r.vehicles.mini_truck || 150;
+      if (document.getElementById('pclVehAuto')) document.getElementById('pclVehAuto').value = r.vehicles.auto || 87;
+      if (document.getElementById('pclVehTruck')) document.getElementById('pclVehTruck').value = r.vehicles.mini_truck || 172;
     }
     if (r.addons) {
       if (document.getElementById('pclAddonFragile')) document.getElementById('pclAddonFragile').value = r.addons.fragile || 25;
