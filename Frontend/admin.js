@@ -397,8 +397,9 @@ function logoutAdmin() {
     _adminAutoRefreshTimer = null;
   }
 
-  // 2. Clear authentication token
+  // 2. Clear authentication token & gatekeeper unlock flag
   clearAuthToken();
+  sessionStorage.removeItem('rudraksha_admin_gate_unlocked');
 
   // 3. Clear sensitive data from memory
   adminBookings = [];
@@ -406,24 +407,8 @@ function logoutAdmin() {
   allAdminParcels = [];
   allRiderApplications = [];
 
-  // 4. Hide dashboard layout immediately
-  const layout = document.getElementById('cyberAdminLayout');
-  if (layout) {
-    layout.style.display = 'none';
-  }
-
-  // 5. Show locked login gate
-  const overlay = document.getElementById('adminLoginOverlay');
-  if (overlay) {
-    overlay.style.display = 'flex';
-    overlay.style.opacity = '1';
-    const passInput = document.getElementById('adminPasswordInput');
-    if (passInput) passInput.value = '';
-    const errAlert = document.getElementById('loginErrorAlert');
-    if (errAlert) errAlert.classList.add('d-none');
-  }
-
-  showAdminToast('🔒 Dashboard locked. Session terminated safely.', 'info');
+  // 4. Safely redirect away to home page so admin URL is protected
+  window.location.replace('index.html');
 }
 
 /* ==========================================================================
