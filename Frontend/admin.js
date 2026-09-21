@@ -1392,6 +1392,10 @@ async function refreshAdminAll() {
    ========================================================================== */
 let allAdminParcels = [];
 let allRiderApplications = [];
+try {
+  const cachedRiders = localStorage.getItem('rudraksha_rider_applications');
+  if (cachedRiders) allRiderApplications = JSON.parse(cachedRiders);
+} catch {}
 let currentParcelFilter = 'all';
 
 async function loadAdminParcels() {
@@ -1489,7 +1493,7 @@ async function loadAdminParcels() {
     }
   }
 
-  // Load Rider Applications
+  // Load Rider Applications & sync
   loadRiderApplications();
   loadAdminParcelRates();
   updateParcelMetrics();
@@ -1515,6 +1519,7 @@ function switchParcelSubtab(subtabName, btnEl) {
 
   if (subtabName === 'riders') {
     renderRiderApplicationsTable();
+    loadRiderApplications();
   }
 }
 
@@ -1554,11 +1559,20 @@ function filterRiderApps(filter) {
   currentRiderFilter = filter;
   ['All', 'Pending', 'Approved'].forEach(f => {
     const btn = document.getElementById(`btnFilterRider${f}`);
+    const subBtn = document.getElementById(`btnSubFilterRider${f}`);
+    const isActive = f.toLowerCase() === filter.toLowerCase();
     if (btn) {
-      if (f.toLowerCase() === filter.toLowerCase()) {
+      if (isActive) {
         btn.classList.add('active');
       } else {
         btn.classList.remove('active');
+      }
+    }
+    if (subBtn) {
+      if (isActive) {
+        subBtn.classList.add('active');
+      } else {
+        subBtn.classList.remove('active');
       }
     }
   });
@@ -1675,6 +1689,19 @@ function renderRiderApplicationsTable(filter = currentRiderFilter) {
   if (cntPending) cntPending.innerText = pending;
   if (cntApproved) cntApproved.innerText = approved;
 
+  const subCntAll = document.getElementById('subCountFilterAll');
+  const subCntPending = document.getElementById('subCountFilterPending');
+  const subCntApproved = document.getElementById('subCountFilterApproved');
+  if (subCntAll) subCntAll.innerText = total;
+  if (subCntPending) subCntPending.innerText = pending;
+  if (subCntApproved) subCntApproved.innerText = approved;
+
+  const badgeRider = document.getElementById('badgeRiderAppCount');
+  if (badgeRider) badgeRider.innerText = total;
+
+  const pclRidersCount = document.getElementById('pclRidersCount');
+  if (pclRidersCount) pclRidersCount.innerText = total;
+
   // Sync dashboard widget and dock badge
   renderDashboardRiderApps();
 
@@ -1683,7 +1710,7 @@ function renderRiderApplicationsTable(filter = currentRiderFilter) {
     displayApps = allRiderApplications.filter(a => (a.status || 'Pending').toLowerCase() === filter.toLowerCase());
   }
 
-  const emptyHtml = `<tr><td colspan="9" class="text-center py-5 text-muted"><i class="fa-solid fa-motorcycle fa-2x mb-2 d-block text-secondary"></i>No applications found for filter "${filter}".</td></tr>`;
+  const emptyHtml = `<tr><td colspan="10" class="text-center py-5 text-muted"><i class="fa-solid fa-motorcycle fa-2x mb-2 d-block text-secondary"></i>No applications found for filter "${filter}".</td></tr>`;
 
   if (displayApps.length === 0) {
     if (tbody) tbody.innerHTML = emptyHtml;

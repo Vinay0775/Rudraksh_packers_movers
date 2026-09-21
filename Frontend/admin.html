@@ -1048,16 +1048,21 @@
                 <h6 class="fw-bold text-white mb-1"><i class="fa-solid fa-id-card text-warning me-2"></i>Rider Partner Registrations</h6>
                 <div class="small text-muted">Driver partners who registered via the "Become a Rider" portal on the website.</div>
               </div>
-              <button class="btn-cyber-outline btn-sm" onclick="renderRiderApplicationsTable()">
-                <i class="fa-solid fa-rotate me-1"></i> Refresh Applications
-              </button>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button class="btn btn-sm btn-outline-warning active px-3 rounded-pill fw-bold" id="btnSubFilterRiderAll" onclick="filterRiderApps('all')">All (<span id="subCountFilterAll">0</span>)</button>
+                <button class="btn btn-sm btn-outline-warning px-3 rounded-pill fw-bold" id="btnSubFilterRiderPending" onclick="filterRiderApps('Pending')">Pending (<span id="subCountFilterPending">0</span>)</button>
+                <button class="btn btn-sm btn-outline-success px-3 rounded-pill fw-bold" id="btnSubFilterRiderApproved" onclick="filterRiderApps('Approved')">Approved (<span id="subCountFilterApproved">0</span>)</button>
+                <button class="btn-cyber-outline btn-sm" onclick="loadRiderApplications()">
+                  <i class="fa-solid fa-rotate me-1"></i> Refresh Applications
+                </button>
+              </div>
             </div>
             
             <div class="table-responsive">
-              <table class="cyber-table table-borderless text-white mb-0" style="width: 100%; min-width: 900px;">
+              <table class="cyber-table table-borderless text-white mb-0" style="width: 100%; min-width: 950px;">
                 <thead>
                   <tr class="border-bottom border-secondary border-opacity-25 text-muted small">
-                    <th>Applicant Name</th>
+                    <th>Applicant Name & ID</th>
                     <th>Phone / WhatsApp</th>
                     <th>City / Zone</th>
                     <th>Shift</th>
@@ -1065,12 +1070,13 @@
                     <th>Reg Number</th>
                     <th>DL Number</th>
                     <th>Applied Date</th>
-                    <th>Status / Action</th>
+                    <th>Status</th>
+                    <th class="text-end">Verification Actions</th>
                   </tr>
                 </thead>
                 <tbody id="subtabRiderApplicationsTableBody">
                   <tr>
-                    <td colspan="9" class="text-center py-4 text-muted">
+                    <td colspan="10" class="text-center py-4 text-muted">
                       <i class="fa-solid fa-spinner fa-spin me-1"></i> Loading driver applications...
                     </td>
                   </tr>
@@ -1197,7 +1203,7 @@
               </div>
             </div>
             <div class="d-flex align-items-center gap-2">
-              <button class="btn-cyber-outline" onclick="renderRiderApplicationsTable()">
+              <button class="btn-cyber-outline" onclick="loadRiderApplications()">
                 <i class="fa-solid fa-rotate me-1"></i> Refresh Applications
               </button>
             </div>
@@ -1253,7 +1259,8 @@
                   <th>Phone / WhatsApp</th>
                   <th>City / Operating Area</th>
                   <th>Shift</th>
-                  <th>Vehicle Details</th>
+                  <th>Vehicle Type</th>
+                  <th>Reg Number</th>
                   <th>DL Number</th>
                   <th>Applied Date</th>
                   <th>Status</th>
@@ -1262,7 +1269,7 @@
               </thead>
               <tbody id="riderApplicationsTableBody">
                 <tr>
-                  <td colspan="9" class="text-center py-4 text-muted">
+                  <td colspan="10" class="text-center py-4 text-muted">
                     <i class="fa-solid fa-spinner fa-spin me-1"></i> Loading driver applications...
                   </td>
                 </tr>
@@ -1452,7 +1459,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <!-- Futuristic Admin App Script -->
-  <script src="admin.js?v=2.5"></script>
+  <script src="admin.js?v=2.6"></script>
 
   <!-- PWA Universal Install Script -->
   <script src="pwa-install.js"></script>
