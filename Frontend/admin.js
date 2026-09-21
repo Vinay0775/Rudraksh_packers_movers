@@ -53,13 +53,13 @@ function onAdminAuthSuccess() {
   _adminAutoRefreshTimer = setInterval(autoRefreshParcelPanel, 15000);
 }
 
-// Auto-refresh only the parcel panel silently
+// Auto-refresh parcel panel and rider applications silently
 async function autoRefreshParcelPanel() {
   if (!getAuthToken()) return;
   try {
     await loadAdminParcels();
+    await loadRiderApplications();
     updateDashboardMetrics();
-    renderDashboardRiderApps();
     _adminLastRefreshTime = new Date();
     updateAdminRefreshBadge();
   } catch {}
@@ -1361,18 +1361,30 @@ function updateDashboardMetrics() {
 }
 
 async function refreshAdminAll() {
-  await checkBackendHealth();
-  await loadFleetVehicles();
-  await loadAdminRates();
-  await loadAdminCoupons();
-  await loadCompanyBranding();
-  await loadDriversFromBackend();
-  await loadBookingsFromBackend();
-  await loadAdminParcels();
-  loadAdminThemeSettings();
-  updateDashboardMetrics();
-  _adminLastRefreshTime = new Date();
-  updateAdminRefreshBadge();
+  const syncBtn = document.getElementById('btnAdminTopSync') || document.querySelector("button[onclick='refreshAdminAll()']");
+  const icon = syncBtn?.querySelector('i');
+  if (icon) icon.classList.add('fa-spin');
+
+  try {
+    await checkBackendHealth();
+    await loadFleetVehicles();
+    await loadAdminRates();
+    await loadAdminCoupons();
+    await loadCompanyBranding();
+    await loadDriversFromBackend();
+    await loadBookingsFromBackend();
+    await loadAdminParcels();
+    await loadRiderApplications();
+    loadAdminThemeSettings();
+    updateDashboardMetrics();
+    _adminLastRefreshTime = new Date();
+    updateAdminRefreshBadge();
+    showAdminToast('✅ Sync Complete: All bookings & rider applications updated!', 'success');
+  } catch (err) {
+    console.warn('Sync refresh error:', err);
+  } finally {
+    if (icon) setTimeout(() => icon.classList.remove('fa-spin'), 600);
+  }
 }
 
 /* ==========================================================================
@@ -1515,6 +1527,7 @@ async function loadRiderApplications() {
       const data = await res.json();
       allRiderApplications = Array.isArray(data.applications) ? data.applications : [];
       localStorage.setItem('rudraksha_rider_applications', JSON.stringify(allRiderApplications));
+      updateRiderApplicationsViews();
       return;
     }
   } catch (err) {
@@ -1523,34 +1536,16 @@ async function loadRiderApplications() {
 
   const saved = localStorage.getItem('rudraksha_rider_applications');
   if (saved) {
-    allRiderApplications = JSON.parse(saved);
+    try { allRiderApplications = JSON.parse(saved); } catch { allRiderApplications = []; }
   } else {
-    allRiderApplications = [
-      {
-        name: 'Mukesh Kumar Sharma',
-        phone: '9829012345',
-        city: 'Jaipur (Mansarovar / Vaishali)',
-        shift: 'Full Time (8-10 Hours)',
-        vehType: 'Bike / Scooter',
-        vehNum: 'RJ14 AB 1234',
-        dlNum: 'RJ14 20210012345',
-        status: 'Approved',
-        date: new Date(Date.now() - 2 * 86400000).toISOString()
-      },
-      {
-        name: 'Dinesh Gurjar',
-        phone: '9414077889',
-        city: 'Jaipur (Malviya Nagar / Jagatpura)',
-        shift: 'Full Time (8-10 Hours)',
-        vehType: 'Tata Ace / Mini Truck',
-        vehNum: 'RJ14 GA 5566',
-        dlNum: 'RJ14 20190098765',
-        status: 'Pending',
-        date: new Date(Date.now() - 4 * 3600000).toISOString()
-      }
-    ];
-    localStorage.setItem('rudraksha_rider_applications', JSON.stringify(allRiderApplications));
+    allRiderApplications = [];
   }
+  updateRiderApplicationsViews();
+}
+
+function updateRiderApplicationsViews() {
+  renderDashboardRiderApps();
+  renderRiderApplicationsTable(currentRiderFilter);
 }
 
 let currentRiderFilter = 'all';
@@ -1571,7 +1566,6 @@ function filterRiderApps(filter) {
 }
 
 function renderDashboardRiderApps() {
-  loadRiderApplications();
   const tbody = document.getElementById('dashRiderApplicationsTableBody');
   const badge = document.getElementById('dashRiderBadge');
   const dockBadge = document.getElementById('dockRiderBadgeCount');
@@ -1656,7 +1650,6 @@ function renderDashboardRiderApps() {
 }
 
 function renderRiderApplicationsTable(filter = currentRiderFilter) {
-  loadRiderApplications();
   const tbody = document.getElementById('riderApplicationsTableBody');
 
   // Update Stats in Dedicated Tab

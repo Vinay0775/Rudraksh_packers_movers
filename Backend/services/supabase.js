@@ -283,7 +283,15 @@ module.exports = {
     if (supabase) {
       try {
         const { data, error } = await supabase.from('rider_applications').select('*').order('created_at', { ascending: false });
-        if (!error && data) return data;
+        if (!error && data) {
+          return data.map(r => ({
+            ...r,
+            vehType: r.vehtype || r.vehType || 'Bike / Scooter',
+            vehNum: r.vehnum || r.vehNum || '',
+            dlNum: r.dlnum || r.dlNum || '',
+            driverId: r.driverid || r.driverId || r.driver_id
+          }));
+        }
         console.warn('Supabase rider applications read fallback to local:', error?.message || 'empty response');
       } catch (err) {
         console.warn('Supabase rider applications read fallback to local:', err.message);
@@ -293,27 +301,65 @@ module.exports = {
   },
 
   async createRiderApplication(payload) {
+    const dbPayload = {
+      id: payload.id || `app-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: payload.name,
+      phone: String(payload.phone || '').replace(/\D/g, ''),
+      city: payload.city,
+      shift: payload.shift || 'Full Time (8-10 Hours)',
+      vehtype: payload.vehType || payload.vehtype || 'Bike / Scooter',
+      vehnum: payload.vehNum || payload.vehnum || '',
+      dlnum: payload.dlNum || payload.dlnum || '',
+      status: payload.status || 'Pending',
+      driverid: payload.driverId || payload.driverid || null,
+      pin: payload.pin || null,
+      date: payload.date || new Date().toISOString(),
+      created_at: payload.created_at || new Date().toISOString()
+    };
+
     if (supabase) {
       try {
-        const { data, error } = await supabase.from('rider_applications').insert([payload]).select().single();
-        if (!error && data) return data;
+        const { data, error } = await supabase.from('rider_applications').insert([dbPayload]).select().single();
+        if (!error && data) {
+          return {
+            ...data,
+            vehType: data.vehtype,
+            vehNum: data.vehnum,
+            dlNum: data.dlnum,
+            driverId: data.driverid
+          };
+        }
         console.warn('Supabase rider application insert fallback to local:', error?.message || 'empty response');
       } catch (err) {
         console.warn('Supabase rider application insert fallback to local:', err.message);
       }
     }
     const apps = await readLocal(riderApplicationsFile, defaultRiderApplications);
-    const newApp = { id: payload.id || `app-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ...payload, created_at: new Date().toISOString() };
+    const newApp = { ...dbPayload, vehType: dbPayload.vehtype, vehNum: dbPayload.vehnum, dlNum: dbPayload.dlnum };
     apps.unshift(newApp);
     await writeLocal(riderApplicationsFile, apps);
     return newApp;
   },
 
   async updateRiderApplication(id, updates) {
+    const dbUpdates = { ...updates };
+    if ('vehType' in updates) { dbUpdates.vehtype = updates.vehType; delete dbUpdates.vehType; }
+    if ('vehNum' in updates) { dbUpdates.vehnum = updates.vehNum; delete dbUpdates.vehNum; }
+    if ('dlNum' in updates) { dbUpdates.dlnum = updates.dlNum; delete dbUpdates.dlNum; }
+    if ('driverId' in updates) { dbUpdates.driverid = updates.driverId; delete dbUpdates.driverId; }
+
     if (supabase) {
       try {
-        const { data, error } = await supabase.from('rider_applications').update(updates).eq('id', id).select().single();
-        if (!error && data) return data;
+        const { data, error } = await supabase.from('rider_applications').update(dbUpdates).eq('id', id).select().single();
+        if (!error && data) {
+          return {
+            ...data,
+            vehType: data.vehtype,
+            vehNum: data.vehnum,
+            dlNum: data.dlnum,
+            driverId: data.driverid
+          };
+        }
         console.warn('Supabase rider application update fallback to local:', error?.message || 'empty response');
       } catch (err) {
         console.warn('Supabase rider application update fallback to local:', err.message);

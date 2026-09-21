@@ -212,10 +212,21 @@ app.post('/api/rider-applications', async (req, res, next) => {
     const existingApps = await db.getRiderApplications();
     const duplicate = existingApps.find(app => String(app.phone || '').replace(/\D/g, '') === cleanPhone);
     if (duplicate) {
+      if (duplicate.status === 'Pending') {
+        const updated = await db.updateRiderApplication(duplicate.id, {
+          name: String(name).trim(),
+          city: String(city).trim(),
+          shift: shift || duplicate.shift,
+          vehType: vehType || duplicate.vehType,
+          vehNum: String(vehNum).trim(),
+          dlNum: String(dlNum).trim(),
+          date: new Date().toISOString()
+        });
+        return res.status(200).json({ success: true, application: updated || duplicate, message: 'Application updated successfully.' });
+      }
       return res.status(409).json({
-        error: 'This mobile number already has a rider application on file.',
-        application: duplicate,
-        message: `Application already submitted for +91 ${cleanPhone}.`
+        error: `This mobile number +91 ${cleanPhone} is already registered as a rider partner (${duplicate.status}).`,
+        application: duplicate
       });
     }
 
