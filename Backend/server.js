@@ -519,7 +519,7 @@ app.post('/api/rider/jobs/:id/accept', requireRider, async (req, res, next) => {
   }
 });
 
-// 7. Rider Earnings & Payout Wallet (Strictly Private to Logged-in Rider)
+// 7. Rider Earnings & Financial Ledger (100% Direct Customer Payment • Zero Commission)
 app.get('/api/rider/earnings', requireRider, async (req, res, next) => {
   try {
     const riderId = req.rider.id;
@@ -536,50 +536,56 @@ app.get('/api/rider/earnings', requireRider, async (req, res, next) => {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const sevenDaysAgo = now.getTime() - (7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = now.getTime() - (30 * 24 * 60 * 60 * 1000);
+    const sixMonthsAgo = now.getTime() - (180 * 24 * 60 * 60 * 1000);
+    const oneYearAgo = now.getTime() - (365 * 24 * 60 * 60 * 1000);
 
     let todayEarnings = 0;
-    let weeklyEarnings = 0;
-    let totalEarnings = 0;
+    let last7DaysEarnings = 0;
+    let last30DaysEarnings = 0;
+    let last6MonthsEarnings = 0;
+    let last1YearEarnings = 0;
+    let allTimeEarnings = 0;
 
     const trips = myDelivered.map(p => {
+      // 100% of customer booking amount is kept directly by the rider (Zero commission)
       const orderFare = Number(p.total_amount || 0);
-      // Driver gets 80% of parcel delivery fare (standard aggregator model)
-      const driverShare = Math.round(orderFare * 0.8) || 60;
       const tripTime = new Date(p.delivery_time || p.updated_at || p.created_at).getTime();
 
-      totalEarnings += driverShare;
-      if (tripTime >= startOfToday) todayEarnings += driverShare;
-      if (tripTime >= sevenDaysAgo) weeklyEarnings += driverShare;
+      allTimeEarnings += orderFare;
+      if (tripTime >= startOfToday) todayEarnings += orderFare;
+      if (tripTime >= sevenDaysAgo) last7DaysEarnings += orderFare;
+      if (tripTime >= thirtyDaysAgo) last30DaysEarnings += orderFare;
+      if (tripTime >= sixMonthsAgo) last6MonthsEarnings += orderFare;
+      if (tripTime >= oneYearAgo) last1YearEarnings += orderFare;
 
       return {
         id: p.parcel_id || p.id,
         date: p.delivery_time || p.updated_at || p.created_at,
+        timestamp: tripTime,
         pickup: p.pickup_address,
         drop: p.drop_address,
         distance_km: p.distance_km || 4,
-        order_fare: orderFare,
-        driver_earning: driverShare,
+        customer_price: orderFare,
+        driver_earning: orderFare, // 100% received by driver directly from customer
+        payment_mode: p.payment_method || 'Cash / Direct UPI',
         status: 'Delivered'
       };
     });
 
-    // Payout requests by this rider
-    const payouts = await db.getPayoutRequests(riderId);
-    const paidOut = payouts.filter(p => p.status === 'paid').reduce((sum, p) => sum + Number(p.amount || 0), 0);
-    const pendingPayout = payouts.filter(p => p.status === 'pending').reduce((sum, p) => sum + Number(p.amount || 0), 0);
-    const availableBalance = Math.max(0, totalEarnings - paidOut - pendingPayout);
-
     res.json({
       success: true,
+      commission_rate: 0, // 0% commission
+      driver_share_percent: 100, // 100% goes to driver
+      dateOfJoining: req.rider.approved_at || req.rider.created_at || req.rider.date || '2026-08-01T00:00:00.000Z',
       todayEarnings,
-      weeklyEarnings,
-      totalEarnings,
-      paidOut,
-      pendingPayout,
-      walletBalance: availableBalance,
+      last7DaysEarnings,
+      last30DaysEarnings,
+      last6MonthsEarnings,
+      last1YearEarnings,
+      allTimeEarnings,
       completedTripsCount: myDelivered.length,
-      trips: trips.slice(0, 30),
-      payouts: payouts.slice(0, 10)
+      trips
     });
   } catch (err) {
     next(err);

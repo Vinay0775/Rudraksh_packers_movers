@@ -80,6 +80,28 @@
       border-radius: 24px; padding: 24px; width: 100%; max-width: 440px;
       box-shadow: 0 20px 50px rgba(0,0,0,0.8);
     }
+    .btn-time-filter {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #cbd5e1;
+      border-radius: 20px;
+      padding: 7px 15px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .btn-time-filter:hover {
+      border-color: rgba(249,115,22,0.4);
+      color: #fff;
+    }
+    .btn-time-filter.active {
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      color: #fff;
+      border-color: #f97316;
+      box-shadow: 0 4px 14px rgba(249,115,22,0.45);
+    }
     body {
       background: var(--bg-deep);
       color: #f1f5f9;
@@ -708,6 +730,9 @@
               </div>
               <div style="font-size: 0.8rem; color: #94a3b8;" id="profileRiderPhone">+91 7296831460</div>
               <div style="font-size: 0.72rem; color: #f97316; font-weight: 600; margin-top: 2px;" id="profileRiderVehicle">Tata Ace • RJ-14-GA-1024</div>
+              <div style="font-size: 0.72rem; color: #38bdf8; font-weight: 700; margin-top: 3px;" id="profileJoiningDate">
+                <i class="fa-regular fa-calendar-check me-1"></i> Date of Joining: Loading...
+              </div>
             </div>
           </div>
           <button onclick="openSetupSheet()" style="background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; color: #cbd5e1; font-size: 0.75rem; font-weight: 600; cursor: pointer;">
@@ -739,54 +764,54 @@
         </div>
       </div>
 
-      <!-- Wallet & Payout Withdrawal Banner -->
-      <div style="background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(249,115,22,0.12)); border: 1px solid rgba(34,197,94,0.3); border-radius: 20px; padding: 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 10px 30px rgba(0,0,0,0.35);">
-        <div>
-          <div style="font-size: 0.68rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Available Wallet Balance</div>
-          <div style="font-size: 1.8rem; font-weight: 900; color: #22c55e; line-height: 1.2;" id="profileWalletBalance">₹0</div>
-          <div style="font-size: 0.72rem; color: #cbd5e1; margin-top: 4px;" id="profilePendingPayoutText">Pending: ₹0</div>
+      <!-- 100% DIRECT CUSTOMER PAYMENT & DYNAMIC TIME-FILTERED FINANCIAL CARD -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 18px; margin-bottom: 16px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.35);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+          <div>
+            <div style="font-size: 0.68rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">
+              <i class="fa-solid fa-hand-holding-dollar text-warning me-1"></i> Total Driver Income (100% Aapki Kamai)
+            </div>
+            <div style="font-size: 2rem; font-weight: 900; color: #22c55e; line-height: 1.1; margin-top: 4px;" id="filteredEarningsVal">₹0</div>
+            <div style="font-size: 0.72rem; color: #cbd5e1; margin-top: 4px;" id="filteredEarningsSub">
+              Pichhle 7 din ki kamai • Customer se direct Cash/UPI mila
+            </div>
+          </div>
+          <span style="display: inline-block; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; font-size: 0.7rem; font-weight: 800; padding: 4px 10px; border-radius: 20px; white-space: nowrap;">
+            ✓ 0% Commission
+          </span>
         </div>
-        <button type="button" onclick="openPayoutModal()" style="background: linear-gradient(135deg, #22c55e, #16a34a); border: none; border-radius: 14px; padding: 12px 18px; color: #fff; font-size: 0.86rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 24px rgba(34,197,94,0.38); transition: all 0.2s;">
-          <i class="fa-solid fa-money-bill-transfer"></i>
-          <span>Withdraw</span>
-        </button>
+
+        <!-- Time Filter Buttons: 7 Din, 30 Din (1 Mahina), 6 Mahine, 1 Saal, All Time -->
+        <div style="display: flex; gap: 6px; overflow-x: auto; padding-top: 8px; padding-bottom: 4px; margin-top: 10px; scrollbar-width: none;">
+          <button type="button" class="btn-time-filter active" id="filterBtn_7d" onclick="setTimeFilter('7d')">7 Din</button>
+          <button type="button" class="btn-time-filter" id="filterBtn_30d" onclick="setTimeFilter('30d')">30 Din (1 Mahina)</button>
+          <button type="button" class="btn-time-filter" id="filterBtn_6m" onclick="setTimeFilter('6m')">6 Mahine</button>
+          <button type="button" class="btn-time-filter" id="filterBtn_1y" onclick="setTimeFilter('1y')">1 Saal</button>
+          <button type="button" class="btn-time-filter" id="filterBtn_all" onclick="setTimeFilter('all')">All Time (Total)</button>
+        </div>
       </div>
 
-      <!-- Financial Metrics Grid (Only for This Driver) -->
+      <!-- Financial Metrics Grid -->
       <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px;">
         <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; position: relative;">
-          <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Total Lifetime Payout</div>
-          <div style="font-size: 1.4rem; font-weight: 900; color: #22c55e; margin: 4px 0;" id="profileTotalEarnings">₹0</div>
-          <div style="font-size: 0.68rem; color: #94a3b8;">80% guaranteed net share</div>
-        </div>
-        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px;">
-          <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Completed Trips</div>
-          <div style="font-size: 1.4rem; font-weight: 900; color: #ffffff; margin: 4px 0;" id="profileCompletedTrips">0</div>
-          <div style="font-size: 0.68rem; color: #94a3b8;">Delivered safely with OTP</div>
-        </div>
-        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px;">
-          <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Today's Payout</div>
+          <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Today's Income</div>
           <div style="font-size: 1.4rem; font-weight: 900; color: #f97316; margin: 4px 0;" id="profileTodayEarnings">₹0</div>
-          <div style="font-size: 0.68rem; color: #94a3b8;">Calculated for today</div>
+          <div style="font-size: 0.68rem; color: #94a3b8;">Directly in hand today</div>
         </div>
         <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px;">
-          <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Rider Fleet Rating</div>
+          <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Completed Orders</div>
+          <div style="font-size: 1.4rem; font-weight: 900; color: #ffffff; margin: 4px 0;" id="profileCompletedTrips">0</div>
+          <div style="font-size: 0.68rem; color: #94a3b8;">Delivered with OTP</div>
+        </div>
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px;">
+          <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">All Time Total</div>
+          <div style="font-size: 1.4rem; font-weight: 900; color: #22c55e; margin: 4px 0;" id="profileTotalEarnings">₹0</div>
+          <div style="font-size: 0.68rem; color: #94a3b8;">100% rider earned</div>
+        </div>
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px;">
+          <div style="font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Rider Rating</div>
           <div style="font-size: 1.4rem; font-weight: 900; color: #fbbf24; margin: 4px 0;" id="profileFleetRating">★ 4.9</div>
-          <div style="font-size: 0.68rem; color: #94a3b8;">Top fleet performance</div>
-        </div>
-      </div>
-
-      <!-- Past Payout Requests Section -->
-      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; margin-bottom: 18px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-          <div style="font-size: 0.86rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 6px;">
-            <i class="fa-solid fa-receipt" style="color: #22c55e;"></i>
-            Payout Requests
-          </div>
-          <span id="profilePayoutsCount" style="font-size: 0.72rem; color: #94a3b8;">0 requests</span>
-        </div>
-        <div id="myPayoutRequestsList">
-          <div style="font-size: 0.78rem; color: #64748b; text-align: center; padding: 10px;">No payout requests yet.</div>
+          <div style="font-size: 0.68rem; color: #94a3b8;">Customer satisfaction</div>
         </div>
       </div>
 
@@ -817,64 +842,6 @@
     </div>
 
   </main>
-
-  <!-- =================== PAYOUT REQUEST MODAL =================== -->
-  <div class="payout-modal-overlay" id="payoutModal">
-    <div class="payout-modal-card">
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-        <h5 style="font-weight: 800; color: #fff; margin: 0; font-size: 1.1rem;">
-          <i class="fa-solid fa-money-bill-transfer text-success me-2"></i> Request Payout
-        </h5>
-        <button type="button" onclick="closePayoutModal()" style="background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer;">&times;</button>
-      </div>
-
-      <div style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); border-radius: 14px; padding: 12px; margin-bottom: 16px;">
-        <div style="font-size: 0.7rem; color: #94a3b8;">Available to Withdraw:</div>
-        <div style="font-size: 1.4rem; font-weight: 800; color: #22c55e;" id="modalAvailableBalance">₹0</div>
-      </div>
-
-      <form id="payoutForm" onsubmit="event.preventDefault(); submitPayoutRequest();">
-        <div class="mb-3">
-          <label class="setup-field-label">Withdrawal Amount (Min ₹100)</label>
-          <input type="number" id="payoutAmountInput" class="setup-input" placeholder="e.g. 500" min="100" required>
-        </div>
-
-        <div class="mb-3">
-          <label class="setup-field-label">Payout Method</label>
-          <select id="payoutMethodSelect" class="setup-input" onchange="togglePayoutFields()">
-            <option value="upi">Instant UPI (GPay / PhonePe / Paytm)</option>
-            <option value="bank">Bank Transfer (NEFT / IMPS)</option>
-          </select>
-        </div>
-
-        <div id="payoutUpiFields" class="mb-3">
-          <label class="setup-field-label">UPI ID / VPA</label>
-          <input type="text" id="payoutUpiId" class="setup-input" placeholder="e.g. 9829012345@upi or name@okaxis">
-        </div>
-
-        <div id="payoutBankFields" style="display: none;">
-          <div class="mb-2">
-            <label class="setup-field-label">Bank Name</label>
-            <input type="text" id="payoutBankName" class="setup-input" placeholder="e.g. SBI, HDFC, ICICI">
-          </div>
-          <div class="mb-2">
-            <label class="setup-field-label">Account Number</label>
-            <input type="text" id="payoutAccountNo" class="setup-input" placeholder="e.g. 1234567890">
-          </div>
-          <div class="mb-3">
-            <label class="setup-field-label">IFSC Code</label>
-            <input type="text" id="payoutIfsc" class="setup-input" placeholder="e.g. SBIN0001234">
-          </div>
-        </div>
-
-        <div id="payoutErrorMsg" style="display: none; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 10px; font-size: 0.78rem; color: #f87171; margin-bottom: 14px;"></div>
-
-        <button type="submit" class="btn-save-profile" id="btnSubmitPayout" style="background: linear-gradient(135deg, #22c55e, #16a34a); font-size: 0.95rem;">
-          <i class="fa-solid fa-paper-plane me-2"></i> Submit Payout Request
-        </button>
-      </form>
-    </div>
-  </div>
 
   <!-- =================== BOTTOM TAB BAR (Admin replaced with Driver Profile) =================== -->
   <div class="bottom-bar">

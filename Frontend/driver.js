@@ -281,16 +281,45 @@ function renderDriverProfileView() {
 
 /**
  * Handle Camera / Gallery Photo Upload
- * Compresses image to canvas and uploads Base64 to /api/rider/profile
+ * 1. Compresses image on canvas
+ * 2. Uploads to Free Image Cloud Hosting (ImgBB CDN) to keep zero load on website
+ * 3. Saves lightweight Cloud URL to backend
  */
+async function uploadToCloudImageHost(base64Data) {
+  try {
+    const cleanBase64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
+    const formData = new FormData();
+    formData.append('image', cleanBase64);
+
+    // Free ImgBB Cloud CDN API
+    const res = await fetch('https://api.imgbb.com/1/upload?key=6d207e021d1221e525e9690d8012ad7b', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.data?.url) {
+        console.log('✅ Image successfully saved on Cloud CDN:', data.data.url);
+        return data.data.url;
+      }
+    }
+  } catch (cloudErr) {
+    console.warn('Cloud CDN upload fallback to local URI:', cloudErr);
+  }
+  return base64Data; // fallback to compressed data
+}
+
 function handleRiderPhotoUpload(event) {
   const file = event.target.files?.[0];
   if (!file) return;
 
+  showToast('📸 Compressing & uploading to Cloud CDN...', 'info');
+
   const reader = new FileReader();
   reader.onload = (e) => {
     const img = new Image();
-    img.onload = () => {
+    img.onload = async () => {
       // Compress to max 400x400 JPEG
       const canvas = document.createElement('canvas');
       const MAX_SIZE = 400;
@@ -314,37 +343,40 @@ function handleRiderPhotoUpload(event) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
 
-      const base64Data = canvas.toDataURL('image/jpeg', 0.82);
+      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
 
-      // Instantly update UI
+      // Instantly update UI with local preview
       const pAvatar = document.getElementById('profileAvatarImg');
       const navAvatar = document.getElementById('navAvatarImg');
       const navIcon = document.getElementById('navAvatarIcon');
 
-      if (pAvatar) pAvatar.src = base64Data;
-      if (navAvatar) { navAvatar.src = base64Data; navAvatar.style.display = 'block'; }
+      if (pAvatar) pAvatar.src = compressedBase64;
+      if (navAvatar) { navAvatar.src = compressedBase64; navAvatar.style.display = 'block'; }
       if (navIcon) navIcon.style.display = 'none';
 
-      if (currentDriver) currentDriver.avatar_url = base64Data;
+      // Upload to Cloud Hosting
+      const cloudUrl = await uploadToCloudImageHost(compressedBase64);
+
+      if (currentDriver) currentDriver.avatar_url = cloudUrl;
       localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(currentDriver));
 
       // Sync with backend
-      syncPhotoToBackend(base64Data);
+      syncPhotoToBackend(cloudUrl);
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-async function syncPhotoToBackend(base64Data) {
+async function syncPhotoToBackend(photoUrl) {
   try {
     const res = await fetch(`${DRIVER_API_BASE}/rider/profile`, {
       method: 'PATCH',
       headers: getRiderHeaders(),
-      body: JSON.stringify({ avatar_url: base64Data })
+      body: JSON.stringify({ avatar_url: photoUrl })
     });
     if (res.ok) {
-      showToast('📸 Profile photo updated successfully!', 'success');
+      showToast('✅ Photo saved to Cloud CDN successfully!', 'success');
     }
   } catch (err) {
     console.warn('Photo backend sync offline:', err);
@@ -452,8 +484,12 @@ function updateDutyDisplay() {
 }
 
 /* ==========================================================================
-   5. EARNINGS & PAYOUT WALLET (Strictly Private to this Rider)
+   5. EARNINGS & TIME-FILTERED FINANCIAL LEDGER (100% Direct Customer Payment)
    ========================================================================== */
+let allRiderTrips = [];
+let allRiderEarningsData = null;
+let currentEarningsFilter = '7d';
+
 async function loadDriverEarnings() {
   if (!getRiderToken()) return;
 
@@ -464,16 +500,17 @@ async function loadDriverEarnings() {
 
     if (res.ok) {
       const data = await res.json();
+      allRiderEarningsData = data;
+      allRiderTrips = data.trips || [];
+
       updateEarningsUI(data);
-      renderPastDeliveriesList(data.trips || []);
-      renderPayoutRequestsList(data.payouts || []);
+      applyEarningsTimeFilter();
       return;
     }
   } catch (e) {
     console.warn('Earnings load offline fallback:', e);
   }
 
-  // Local calculation fallback if backend is momentarily unreachable
   fallbackLocalEarnings();
 }
 
@@ -483,22 +520,77 @@ function updateEarningsUI(data) {
   const pTotal = document.getElementById('profileTotalEarnings');
   const pTrips = document.getElementById('profileCompletedTrips');
   const pToday = document.getElementById('profileTodayEarnings');
-  const pWallet = document.getElementById('profileWalletBalance');
-  const modalBal = document.getElementById('modalAvailableBalance');
-  const pPending = document.getElementById('profilePendingPayoutText');
+  const jDateEl = document.getElementById('profileJoiningDate');
 
   const todayStr = `₹${(data.todayEarnings || 0).toLocaleString('en-IN')}`;
-  const totalStr = `₹${(data.totalEarnings || 0).toLocaleString('en-IN')}`;
-  const walletStr = `₹${(data.walletBalance || 0).toLocaleString('en-IN')}`;
+  const totalStr = `₹${(data.allTimeEarnings || data.totalEarnings || 0).toLocaleString('en-IN')}`;
 
   if (statEarn) statEarn.innerText = todayStr;
   if (statTrips) statTrips.innerText = data.completedTripsCount || 0;
   if (pTotal) pTotal.innerText = totalStr;
   if (pTrips) pTrips.innerText = data.completedTripsCount || 0;
   if (pToday) pToday.innerText = todayStr;
-  if (pWallet) pWallet.innerText = walletStr;
-  if (modalBal) modalBal.innerText = walletStr;
-  if (pPending) pPending.innerText = `Pending Payout: ₹${(data.pendingPayout || 0).toLocaleString('en-IN')}`;
+
+  // Render Date of Joining
+  if (jDateEl && data.dateOfJoining) {
+    const d = new Date(data.dateOfJoining);
+    const dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const daysAgo = Math.max(0, Math.floor((Date.now() - d.getTime()) / (24 * 60 * 60 * 1000)));
+    jDateEl.innerHTML = `<i class="fa-regular fa-calendar-check me-1"></i> Date of Joining: <strong style="color:#fff;">${dateStr}</strong> (${daysAgo === 0 ? 'Aaj jude hain' : `${daysAgo} din pehle`})`;
+  }
+}
+
+/**
+ * Handle Time Filter clicks: 7d, 30d, 6m, 1y, all
+ */
+function setTimeFilter(filterKey) {
+  currentEarningsFilter = filterKey;
+
+  // Toggle button active classes
+  ['7d', '30d', '6m', '1y', 'all'].forEach(k => {
+    const btn = document.getElementById(`filterBtn_${k}`);
+    if (btn) {
+      if (k === filterKey) btn.classList.add('active');
+      else btn.classList.remove('active');
+    }
+  });
+
+  applyEarningsTimeFilter();
+}
+
+function applyEarningsTimeFilter() {
+  if (!allRiderEarningsData) return;
+
+  const now = Date.now();
+  const timeWindows = {
+    '7d': { ms: 7 * 24 * 60 * 60 * 1000, label: 'Pichhle 7 din ki kamai • Customer se direct Cash/UPI mila', amount: allRiderEarningsData.last7DaysEarnings },
+    '30d': { ms: 30 * 24 * 60 * 60 * 1000, label: 'Pichhle 30 din (1 Mahina) ki kamai • 100% Aapka', amount: allRiderEarningsData.last30DaysEarnings },
+    '6m': { ms: 180 * 24 * 60 * 60 * 1000, label: 'Pichhle 6 mahine ki total kamai • 0% Commission', amount: allRiderEarningsData.last6MonthsEarnings },
+    '1y': { ms: 365 * 24 * 60 * 60 * 1000, label: 'Pichhle 1 saal ki kamai • Complete Ledger', amount: allRiderEarningsData.last1YearEarnings },
+    'all': { ms: Infinity, label: 'Jab se aap Jude hain tab se All Time kamai', amount: allRiderEarningsData.allTimeEarnings }
+  };
+
+  const selected = timeWindows[currentEarningsFilter] || timeWindows['7d'];
+  const filteredValEl = document.getElementById('filteredEarningsVal');
+  const filteredSubEl = document.getElementById('filteredEarningsSub');
+
+  if (filteredValEl) {
+    const amt = selected.amount !== undefined ? selected.amount : 0;
+    filteredValEl.innerText = `₹${amt.toLocaleString('en-IN')}`;
+  }
+  if (filteredSubEl) {
+    filteredSubEl.innerText = selected.label;
+  }
+
+  // Filter delivery history list according to selected window
+  const cutoff = now - selected.ms;
+  const filteredTrips = allRiderTrips.filter(t => {
+    if (selected.ms === Infinity) return true;
+    const tTime = t.timestamp || new Date(t.date).getTime();
+    return tTime >= cutoff;
+  });
+
+  renderPastDeliveriesList(filteredTrips);
 }
 
 function renderPastDeliveriesList(trips) {
@@ -512,168 +604,51 @@ function renderPastDeliveriesList(trips) {
     container.innerHTML = `
       <div style="background: rgba(255,255,255,0.02); border: 1px dashed var(--border); border-radius: 14px; padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">
         <i class="fa-solid fa-box-open" style="font-size: 1.6rem; color: #475569; margin-bottom: 8px; display: block;"></i>
-        No completed deliveries yet. Accept orders from the feed to earn!
+        Is time period mein koi delivery record nahi mila.
       </div>
     `;
     return;
   }
 
   container.innerHTML = trips.map(t => `
-    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-        <span style="font-size: 0.75rem; font-weight: 800; color: #fff;">${t.id}</span>
-        <span style="font-size: 0.85rem; font-weight: 900; color: var(--green);">+₹${t.driver_earning}</span>
+    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+        <div>
+          <span style="font-size: 0.76rem; font-weight: 800; color: #fff;">${t.id}</span>
+          <span style="display: inline-block; margin-left: 6px; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 12px;">
+            ✓ Customer se Prapt
+          </span>
+        </div>
+        <div style="text-align: right;">
+          <span style="font-size: 1.1rem; font-weight: 900; color: var(--green);">+₹${t.customer_price || t.driver_earning}</span>
+        </div>
       </div>
-      <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+      <div style="font-size: 0.74rem; color: #cbd5e1; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
         <i class="fa-solid fa-circle" style="font-size: 6px; color: var(--accent);"></i>
-        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${t.pickup || 'Pickup'}</span>
+        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><strong>Pickup:</strong> ${t.pickup || 'Pickup Point'}</span>
       </div>
-      <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+      <div style="font-size: 0.74rem; color: #cbd5e1; display: flex; align-items: center; gap: 6px;">
         <i class="fa-solid fa-location-dot" style="font-size: 8px; color: var(--green);"></i>
-        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${t.drop || 'Drop'}</span>
+        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><strong>Drop:</strong> ${t.drop || 'Drop Point'}</span>
       </div>
-      <div style="font-size: 0.65rem; color: #64748b; margin-top: 6px; text-align: right;">
-        ${t.date ? new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Delivered'}
+      <div style="font-size: 0.68rem; color: #64748b; margin-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+        <span>Payment: <strong>${t.payment_mode || 'Cash / Direct UPI'}</strong></span>
+        <span>${t.date ? new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Delivered'}</span>
       </div>
     </div>
   `).join('');
 }
 
-function renderPayoutRequestsList(payouts) {
-  const container = document.getElementById('myPayoutRequestsList');
-  const countEl = document.getElementById('profilePayoutsCount');
-  if (!container) return;
-
-  if (countEl) countEl.innerText = `${payouts.length} request(s)`;
-
-  if (!payouts || payouts.length === 0) {
-    container.innerHTML = `<div style="font-size: 0.78rem; color: #64748b; text-align: center; padding: 10px;">No payout requests yet.</div>`;
-    return;
-  }
-
-  const statusColors = {
-    pending: { text: '#fbbf24', bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.3)' },
-    paid: { text: '#22c55e', bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.3)' },
-    rejected: { text: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)' }
-  };
-
-  container.innerHTML = payouts.map(p => {
-    const c = statusColors[p.status] || statusColors.pending;
-    return `
-      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
-        <div>
-          <div style="font-size: 0.84rem; font-weight: 800; color: #fff;">₹${p.amount}</div>
-          <div style="font-size: 0.68rem; color: #94a3b8;">${(p.payment_method || 'UPI').toUpperCase()} • ${new Date(p.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}</div>
-        </div>
-        <span style="font-size: 0.7rem; font-weight: 800; padding: 3px 10px; border-radius: 20px; background: ${c.bg}; border: 1px solid ${c.border}; color: ${c.text}; text-transform: uppercase;">
-          ${p.status}
-        </span>
-      </div>
-    `;
-  }).join('');
-}
-
 function fallbackLocalEarnings() {
   updateEarningsUI({
     todayEarnings: 0,
-    weeklyEarnings: 0,
-    totalEarnings: 0,
-    walletBalance: 0,
+    last7DaysEarnings: 0,
+    last30DaysEarnings: 0,
+    last6MonthsEarnings: 0,
+    last1YearEarnings: 0,
+    allTimeEarnings: 0,
     completedTripsCount: 0
   });
-}
-
-/* ==========================================================================
-   6. PAYOUT WITHDRAWAL MODAL HANDLERS
-   ========================================================================== */
-function openPayoutModal() {
-  const modal = document.getElementById('payoutModal');
-  if (modal) modal.style.display = 'flex';
-}
-
-function closePayoutModal() {
-  const modal = document.getElementById('payoutModal');
-  if (modal) modal.style.display = 'none';
-}
-
-function togglePayoutFields() {
-  const method = document.getElementById('payoutMethodSelect')?.value;
-  const upiFields = document.getElementById('payoutUpiFields');
-  const bankFields = document.getElementById('payoutBankFields');
-
-  if (method === 'bank') {
-    if (upiFields) upiFields.style.display = 'none';
-    if (bankFields) bankFields.style.display = 'block';
-  } else {
-    if (upiFields) upiFields.style.display = 'block';
-    if (bankFields) bankFields.style.display = 'none';
-  }
-}
-
-async function submitPayoutRequest() {
-  const amountInput = document.getElementById('payoutAmountInput');
-  const methodSelect = document.getElementById('payoutMethodSelect');
-  const upiInput = document.getElementById('payoutUpiId');
-  const bankNameInput = document.getElementById('payoutBankName');
-  const accInput = document.getElementById('payoutAccountNo');
-  const ifscInput = document.getElementById('payoutIfsc');
-  const errorEl = document.getElementById('payoutErrorMsg');
-  const btn = document.getElementById('btnSubmitPayout');
-
-  const amount = Number(amountInput?.value || 0);
-  const method = methodSelect?.value || 'upi';
-
-  if (!amount || amount < 100) {
-    if (errorEl) { errorEl.innerText = 'Minimum withdrawal amount is ₹100.'; errorEl.style.display = 'block'; }
-    return;
-  }
-
-  const payload = { amount, payment_method: method };
-
-  if (method === 'upi') {
-    const upiId = upiInput?.value.trim();
-    if (!upiId || !upiId.includes('@')) {
-      if (errorEl) { errorEl.innerText = 'Please enter a valid UPI ID (e.g. yourname@okaxis).'; errorEl.style.display = 'block'; }
-      return;
-    }
-    payload.upi_id = upiId;
-  } else {
-    const acc = accInput?.value.trim();
-    const ifsc = ifscInput?.value.trim().toUpperCase();
-    if (!acc || !ifsc) {
-      if (errorEl) { errorEl.innerText = 'Please provide Account Number and IFSC Code.'; errorEl.style.display = 'block'; }
-      return;
-    }
-    payload.account_number = acc;
-    payload.ifsc_code = ifsc;
-    payload.bank_name = bankNameInput?.value.trim() || 'Bank';
-  }
-
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Submitting...'; }
-
-  try {
-    const res = await fetch(`${DRIVER_API_BASE}/rider/payout-request`, {
-      method: 'POST',
-      headers: getRiderHeaders(),
-      body: JSON.stringify(payload)
-    });
-
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to submit payout request.');
-    }
-
-    closePayoutModal();
-    showToast(`✅ Payout request of ₹${amount} submitted! Processing takes 12-24 hours.`, 'success');
-    loadDriverEarnings();
-  } catch (err) {
-    if (errorEl) {
-      errorEl.innerText = err.message;
-      errorEl.style.display = 'block';
-    }
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Submit Payout Request'; }
-  }
 }
 
 /* ==========================================================================
@@ -750,8 +725,8 @@ function buildActiveTripCard(trip) {
   const st = trip.booking_status || trip.status || 'driver_assigned';
   const pickupAddr = trip.pickup_address || 'Pickup Point';
   const dropAddr = trip.drop_address || 'Drop Point';
-  const fare = trip.total_amount || 0;
-  const riderShare = Math.round(fare * 0.8) || 60;
+  const fare = Number(trip.total_amount || 0);
+  const riderShare = fare; // 100% Direct Customer Payment, 0% Company Commission
   const isPickedUp = st === 'picked_up' || st === 'in_transit' || st === 'out_for_delivery';
 
   const customerPhone = isPickedUp ? (trip.receiver_phone || trip.sender_phone) : (trip.sender_phone || trip.receiver_phone);
@@ -771,7 +746,7 @@ function buildActiveTripCard(trip) {
           <div class="trip-id-val">${pId}</div>
         </div>
         <div style="text-align: right;">
-          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Your Earning</div>
+          <div style="font-size: 0.65rem; color: #22c55e; font-weight: 800; text-transform: uppercase;">100% Direct Cash/UPI</div>
           <div style="font-size: 1.4rem; font-weight: 900; color: var(--green);">₹${riderShare}</div>
         </div>
       </div>
@@ -821,8 +796,8 @@ function buildActiveTripCard(trip) {
 
 function buildFeedCard(parcel) {
   const pId = parcel.parcel_id || parcel.id;
-  const fare = parcel.total_amount || 100;
-  const riderShare = Math.round(fare * 0.8) || 60;
+  const fare = Number(parcel.total_amount || 0);
+  const riderShare = fare; // 100% Direct to Rider
 
   return `
     <div class="feed-card" id="card-${pId}">
@@ -833,7 +808,7 @@ function buildFeedCard(parcel) {
         </div>
         <div class="feed-fare">
           <div class="feed-fare-val">₹${riderShare}</div>
-          <div class="feed-fare-sub">Driver Net Share</div>
+          <div class="feed-fare-sub">100% Direct Cash/UPI</div>
         </div>
       </div>
 
