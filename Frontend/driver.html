@@ -42,25 +42,32 @@
       --text-dim: #cbd5e1;
     }
 
-    /* PWA Install Button Icon in Navbar (No annoying popups) */
+    /* PWA Install Button Icon in Navbar */
     .btn-install-icon {
       background: linear-gradient(135deg, #f97316, #ea580c);
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 10px;
-      padding: 6px 11px;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 12px;
+      padding: 7px 13px;
       color: #fff;
-      font-size: 0.74rem;
-      font-weight: 700;
+      font-size: 0.78rem;
+      font-weight: 800;
       cursor: pointer;
-      display: none;
+      display: inline-flex;
       align-items: center;
-      gap: 5px;
-      box-shadow: 0 4px 14px rgba(249,115,22,0.4);
+      gap: 6px;
+      box-shadow: 0 4px 14px rgba(249,115,22,0.45);
       transition: all 0.2s;
     }
     .btn-install-icon:hover {
       transform: translateY(-1px);
-      box-shadow: 0 6px 18px rgba(249,115,22,0.55);
+      box-shadow: 0 6px 18px rgba(249,115,22,0.65);
+    }
+    .btn-install-icon i {
+      animation: icon-bounce 2s infinite ease-in-out;
+    }
+    @keyframes icon-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
     }
     .avatar-photo-btn {
       position: absolute; bottom: -3px; right: -3px;
@@ -613,6 +620,14 @@
         </button>
       </form>
 
+      <!-- Direct PWA App Download Button on Login Screen -->
+      <div style="margin-top: 14px;" id="loginInstallContainer">
+        <button type="button" onclick="triggerPwaInstall()" style="width: 100%; background: rgba(249,115,22,0.12); border: 1.5px dashed rgba(249,115,22,0.45); color: #fb923c; border-radius: 14px; padding: 11px; font-size: 0.82rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+          <i class="fa-solid fa-download"></i>
+          <span>📲 Download / Install Driver App on Phone</span>
+        </button>
+      </div>
+
       <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); text-align: center;">
         <div style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 8px;">New to Rudraksha Express?</div>
         <a href="parcel.html#riderPartner" class="btn btn-sm btn-outline-light rounded-pill px-3 py-1 fw-bold" style="font-size: 0.78rem; text-decoration: none;">
@@ -638,10 +653,10 @@
       </div>
     </div>
     <div style="display:flex; gap:8px; align-items:center;">
-      <!-- PWA Action Download Icon (Strictly manual click, NO auto-popups) -->
+      <!-- PWA Action Download Icon -->
       <button type="button" id="btnInstallRiderApp" class="btn-install-icon" title="Download & Install Rider App" onclick="triggerPwaInstall()">
         <i class="fa-solid fa-download"></i>
-        <span class="d-none d-sm-inline">Install App</span>
+        <span>Install App</span>
       </button>
 
       <!-- Duty Badge Toggle -->
@@ -758,6 +773,21 @@
             Go Off Duty
           </button>
         </div>
+      </div>
+
+      <!-- Prominent Rider App Install Card in Profile -->
+      <div id="cardInstallRiderApp" style="background: linear-gradient(135deg, rgba(249,115,22,0.18) 0%, rgba(20,20,26,0.98) 100%); border: 1.5px solid rgba(249,115,22,0.4); border-radius: 18px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <img src="driver-icon-192.png" alt="Driver App Icon" style="width: 46px; height: 46px; border-radius: 14px; border: 1.5px solid #f97316; object-fit: cover; box-shadow: 0 4px 14px rgba(249,115,22,0.35);">
+          <div>
+            <div style="font-size: 0.88rem; font-weight: 800; color: #fff;">Download Rudraksha Driver App</div>
+            <div style="font-size: 0.72rem; color: #94a3b8;">Install directly on mobile home screen</div>
+          </div>
+        </div>
+        <button type="button" onclick="triggerPwaInstall()" style="background: linear-gradient(135deg, #f97316, #ea580c); border: none; color: #fff; border-radius: 12px; padding: 9px 15px; font-size: 0.82rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(249,115,22,0.4);">
+          <i class="fa-solid fa-download"></i>
+          <span>Download App</span>
+        </button>
       </div>
 
       <!-- 100% DIRECT CUSTOMER PAYMENT & DYNAMIC TIME-FILTERED FINANCIAL CARD -->
@@ -905,7 +935,38 @@
     </div>
   </div>
 
+  <!-- PWA Install Guide Modal (Native fallback for iOS / Android / Desktop) -->
+  <div id="pwaInstallGuideModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 10000; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: #13141a; border: 1.5px solid rgba(249,115,22,0.45); border-radius: 24px; padding: 26px 22px; width: 100%; max-width: 420px; box-shadow: 0 25px 60px rgba(0,0,0,0.9); animation: zoomIn 0.25s ease;">
+      <div style="text-align: center; margin-bottom: 14px;">
+        <img src="driver-icon-192.png" alt="Rudraksha Driver" style="width: 72px; height: 72px; border-radius: 18px; border: 2px solid #f97316; box-shadow: 0 8px 24px rgba(249,115,22,0.45); object-fit: cover;">
+      </div>
+      <h4 style="font-weight: 800; color: #fff; text-align: center; margin-bottom: 6px; font-size: 1.15rem;">Download Rudraksha Driver App</h4>
+      <p style="font-size: 0.8rem; color: #94a3b8; text-align: center; margin-bottom: 18px;">
+        App ko phone ki home screen par install karein taaki aap bina browser khole direct 1-tap me orders accept kar sakein:
+      </p>
+
+      <div id="pwaAndroidSteps" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px; margin-bottom: 14px; font-size: 0.82rem; color: #cbd5e1; line-height: 1.6;">
+        <div style="font-weight: 700; color: #f97316; margin-bottom: 6px;"><i class="fa-brands fa-android me-1"></i> Android (Chrome / Samsung) Par Install:</div>
+        <div>1. Browser ke upar ya niche <strong>3 Dots (⋮)</strong> ya Menu par tap karein.</div>
+        <div>2. <strong>'Install app'</strong> ya <strong>'Add to Home screen'</strong> (होम स्क्रीन पर जोड़ें) select karein.</div>
+        <div>3. <strong>Install</strong> dabayein — Driver App icon phone me aa jayega!</div>
+      </div>
+
+      <div id="pwaIosSteps" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px; margin-bottom: 18px; font-size: 0.82rem; color: #cbd5e1; line-height: 1.6;">
+        <div style="font-weight: 700; color: #38bdf8; margin-bottom: 6px;"><i class="fa-brands fa-apple me-1"></i> iPhone (Safari) Par Install:</div>
+        <div>1. Niche Safari bar me <strong>Share Button (<i class="fa-solid fa-arrow-up-from-bracket"></i>)</strong> par tap karein.</div>
+        <div>2. Scroll karke <strong>'Add to Home Screen' (<i class="fa-regular fa-square-plus"></i>)</strong> select karein.</div>
+        <div>3. Upar <strong>'Add'</strong> dabayein!</div>
+      </div>
+
+      <button type="button" onclick="closePwaInstallModal()" style="width: 100%; background: linear-gradient(135deg, #f97316, #ea580c); border: none; color: #fff; border-radius: 14px; padding: 13px; font-size: 0.9rem; font-weight: 800; cursor: pointer; box-shadow: 0 4px 14px rgba(249,115,22,0.4);">
+        <i class="fa-solid fa-check me-1"></i> Samajh Gaya (Got It)
+      </button>
+    </div>
+  </div>
+
   <!-- Dedicated Rider Partner Engine JS -->
-  <script src="driver.js"></script>
+  <script src="driver.js?v=2.6"></script>
 </body>
 </html>

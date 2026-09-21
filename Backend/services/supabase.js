@@ -472,29 +472,35 @@ module.exports = {
   },
 
   async getDriverById(id) {
+    let result = null;
     if (supabase) {
       try {
         const { data, error } = await supabase.from('drivers').select('*').eq('id', id).single();
-        if (!error && data) return data;
+        if (!error && data) result = data;
       } catch {}
     }
     const drivers = await readLocal(driversFile, defaultDrivers);
-    return drivers.find(d => d.id === id) || null;
+    const local = drivers.find(d => d.id === id);
+    if (!result) return local || null;
+    return { ...local, ...result, avatar_url: local?.avatar_url || result?.avatar_url || null };
   },
 
   async getDriverByPhone(phone) {
     const cleanPhone = String(phone || '').replace(/\D/g, '');
+    let result = null;
     if (supabase) {
       try {
         const { data, error } = await supabase.from('drivers').select('*').limit(100);
         if (!error && Array.isArray(data)) {
           const found = data.find(d => String(d.phone || '').replace(/\D/g, '') === cleanPhone);
-          if (found) return found;
+          if (found) result = found;
         }
       } catch {}
     }
     const drivers = await readLocal(driversFile, defaultDrivers);
-    return drivers.find(d => String(d.phone || '').replace(/\D/g, '') === cleanPhone) || null;
+    const local = drivers.find(d => String(d.phone || '').replace(/\D/g, '') === cleanPhone);
+    if (!result) return local || null;
+    return { ...local, ...result, avatar_url: local?.avatar_url || result?.avatar_url || null };
   },
 
   // PAYOUT REQUESTS

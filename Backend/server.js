@@ -325,6 +325,8 @@ app.post('/api/rider-applications/:id/reject', requireAdmin, async (req, res, ne
    Full Data Isolation • PWA Profile • Earnings Wallet • Duty Engine
    ========================================================================== */
 
+const riderAvatarStore = new Map();
+
 // 1. Rider Login with Phone & 4-Digit Security PIN
 app.post('/api/rider/login', async (req, res, next) => {
   try {
@@ -403,6 +405,10 @@ app.post('/api/rider/login', async (req, res, next) => {
     delete sanitizedDriver.pin;
     delete sanitizedDriver.password;
 
+    if (!sanitizedDriver.avatar_url && riderAvatarStore.has(cleanPhone)) {
+      sanitizedDriver.avatar_url = riderAvatarStore.get(cleanPhone);
+    }
+
     res.json({
       success: true,
       token,
@@ -417,7 +423,11 @@ app.post('/api/rider/login', async (req, res, next) => {
 // 2. Get Authenticated Rider's Own Profile (100% Private & Isolated)
 app.get('/api/rider/me', requireRider, async (req, res, next) => {
   try {
+    const cleanPhone = String(req.rider.phone || '').replace(/\D/g, '');
     const driver = { ...req.rider };
+    if (!driver.avatar_url && cleanPhone && riderAvatarStore.has(cleanPhone)) {
+      driver.avatar_url = riderAvatarStore.get(cleanPhone);
+    }
     delete driver.pin;
     delete driver.password;
     res.json({ success: true, rider: driver });
@@ -430,6 +440,12 @@ app.get('/api/rider/me', requireRider, async (req, res, next) => {
 app.patch('/api/rider/profile', requireRider, async (req, res, next) => {
   try {
     const { avatar_url, driver_name, vehicle_number, vehicle_type, dl_number, city, shift } = req.body;
+    const cleanPhone = String(req.rider.phone || '').replace(/\D/g, '');
+
+    if (avatar_url && cleanPhone) {
+      riderAvatarStore.set(cleanPhone, avatar_url);
+    }
+
     const updates = {};
     if (avatar_url !== undefined) updates.avatar_url = avatar_url;
     if (driver_name) updates.driver_name = String(driver_name).trim();
@@ -442,6 +458,9 @@ app.patch('/api/rider/profile', requireRider, async (req, res, next) => {
 
     const updated = await db.updateDriver(req.rider.id, updates);
     const sanitized = { ...(updated || req.rider) };
+    if (!sanitized.avatar_url && cleanPhone && riderAvatarStore.has(cleanPhone)) {
+      sanitized.avatar_url = riderAvatarStore.get(cleanPhone);
+    }
     delete sanitized.pin;
     delete sanitized.password;
 

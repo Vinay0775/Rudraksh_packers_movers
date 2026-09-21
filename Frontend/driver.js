@@ -71,6 +71,12 @@ function hideLoginOverlay() {
   }
 }
 
+function getActiveRiderAvatar() {
+  if (!currentDriver) return null;
+  const cleanPhone = String(currentDriver.phone || '').replace(/\D/g, '');
+  return currentDriver.avatar_url || (cleanPhone ? localStorage.getItem(AVATAR_PREFIX + cleanPhone) : null);
+}
+
 /**
  * Validate current session with backend /api/rider/me
  */
@@ -79,7 +85,16 @@ async function checkDriverAuth() {
   const cachedSession = localStorage.getItem(RIDER_SESSION_KEY);
 
   if (cachedSession) {
-    try { currentDriver = JSON.parse(cachedSession); } catch {}
+    try {
+      currentDriver = JSON.parse(cachedSession);
+      const cleanPhone = String(currentDriver?.phone || '').replace(/\D/g, '');
+      if (cleanPhone) {
+        const localAvatar = localStorage.getItem(AVATAR_PREFIX + cleanPhone);
+        if (localAvatar && !currentDriver.avatar_url) {
+          currentDriver.avatar_url = localAvatar;
+        }
+      }
+    } catch {}
   }
 
   if (!token) return false;
@@ -96,6 +111,19 @@ async function checkDriverAuth() {
     if (res.ok) {
       const data = await res.json();
       if (data.rider) {
+        const cleanPhone = String(data.rider.phone || currentDriver?.phone || '').replace(/\D/g, '');
+        const savedAvatar = cleanPhone ? localStorage.getItem(AVATAR_PREFIX + cleanPhone) : null;
+
+        // Preserve avatar_url: if backend provided one, keep and store it; otherwise restore from local persistent avatar!
+        if (data.rider.avatar_url) {
+          if (cleanPhone) localStorage.setItem(AVATAR_PREFIX + cleanPhone, data.rider.avatar_url);
+        } else if (savedAvatar) {
+          data.rider.avatar_url = savedAvatar;
+        } else if (currentDriver?.avatar_url) {
+          data.rider.avatar_url = currentDriver.avatar_url;
+          if (cleanPhone) localStorage.setItem(AVATAR_PREFIX + cleanPhone, currentDriver.avatar_url);
+        }
+
         currentDriver = data.rider;
         localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(currentDriver));
         return true;
@@ -157,17 +185,24 @@ async function submitDriverLogin() {
       throw new Error(data.error || 'Access Denied: Invalid mobile number or PIN.');
     }
 
+    // Restore persistent avatar if existing for this phone
+    const cleanPhone = String(data.driver?.phone || phoneInput).replace(/\D/g, '');
+    const savedAvatar = cleanPhone ? localStorage.getItem(AVATAR_PREFIX + cleanPhone) : null;
+    if (savedAvatar && !data.driver.avatar_url) {
+      data.driver.avatar_url = savedAvatar;
+    }
+
     // Save cryptographic token & sanitized driver session
     const storage = rememberCheck ? localStorage : sessionStorage;
     storage.setItem(RIDER_TOKEN_KEY, data.token);
     localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(data.driver));
     currentDriver = data.driver;
 
+    showToast(`🎉 Welcome back, ${currentDriver.driver_name || 'Rider'}!`, 'success');
     onRiderAuthSuccess();
-    showToast(`🎉 Login successful! Welcome, ${currentDriver.driver_name}!`, 'success');
   } catch (err) {
     if (errorEl) {
-      errorEl.innerText = err.message || 'Unable to connect to Rider Service.';
+      errorEl.innerText = err.message || 'Login failed. Please verify your phone & PIN.';
       errorEl.style.display = 'block';
     }
   }
@@ -176,42 +211,57 @@ async function submitDriverLogin() {
 /**
  * Rider Logout
  */
-function logoutDriver(skipConfirm = false) {
-  try {
-    const name = currentDriver?.driver_name || 'Rider';
-    if (!skipConfirm && typeof confirm === 'function') {
-      const ok = confirm(`Are you sure you want to log out from ${name}'s account?`);
-      if (!ok) return;
-    }
-  } catch {}
-
-  localStorage.removeItem(RIDER_TOKEN_KEY);
-  sessionStorage.removeItem(RIDER_TOKEN_KEY);
-  localStorage.removeItem(RIDER_SESSION_KEY);
-  currentDriver = null;
-  currentActiveTrip = null;
-
-  showLoginOverlay();
-  showToast('🔒 Logged out safely.', 'info');
-  setTimeout(() => window.location.reload(), 250);
+function logoutDriver() {
+  if (confirm('Are you sure you want to log out from Rudraksha Rider?')) {
+    localStorage.removeItem(RIDER_TOKEN_KEY);
+    sessionStorage.removeItem(RIDER_TOKEN_KEY);
+    localStorage.removeItem(RIDER_SESSION_KEY);
+    currentDriver = null;
+    currentActiveTrip = null;
+    showLoginOverlay();
+    showToast('👋 Successfully logged out. Stay safe on the road!', 'info');
+  }
 }
 
 /* ==========================================================================
-   2. PWA INSTALL ACTION ICON (NO AUTO-POPUPS)
+   2. PWA INSTALL ACTION ICON & DIRECT DOWNLOAD
    ========================================================================== */
+const isStandaloneDriver = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
 function initPwaInstallIcon() {
-  const btn = document.getElementById('btnInstallRiderApp');
+  // 1. Register Service Worker for PWA installability
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        console.log('[Rider SW] registered:', reg.scope);
+      }).catch((err) => console.warn('[Rider SW] registration failed:', err));
+    });
+  }
+
+  // 2. Hide install buttons if already running inside installed standalone app
+  if (isStandaloneDriver) {
+    document.querySelectorAll('#btnInstallRiderApp, #cardInstallRiderApp, #loginInstallContainer').forEach(el => {
+      if (el) el.style.display = 'none';
+    });
+    return;
+  }
 
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
-    if (btn) btn.style.display = 'inline-flex';
+    console.log('[Rider PWA] Native install prompt captured!');
+    if (window._riderWaitingForInstall) {
+      window._riderWaitingForInstall = false;
+      triggerPwaInstall();
+    }
   });
 
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
-    if (btn) btn.style.display = 'none';
-    showToast('🚀 Rudraksha Rider App installed on your device!', 'success');
+    document.querySelectorAll('#btnInstallRiderApp, #cardInstallRiderApp, #loginInstallContainer').forEach(el => {
+      if (el) el.style.display = 'none';
+    });
+    showToast('🚀 Rudraksha Rider App successfully installed on your device!', 'success');
   });
 }
 
@@ -220,14 +270,26 @@ function triggerPwaInstall() {
     deferredInstallPrompt.prompt();
     deferredInstallPrompt.userChoice.then((choice) => {
       if (choice.outcome === 'accepted') {
-        const btn = document.getElementById('btnInstallRiderApp');
-        if (btn) btn.style.display = 'none';
+        document.querySelectorAll('#btnInstallRiderApp, #cardInstallRiderApp, #loginInstallContainer').forEach(el => {
+          if (el) el.style.display = 'none';
+        });
       }
       deferredInstallPrompt = null;
     });
   } else {
-    showToast('📲 To install: Tap browser menu (⋮ or Share) > "Add to Home Screen"', 'info');
+    window._riderWaitingForInstall = true;
+    showPwaInstallModal();
   }
+}
+
+function showPwaInstallModal() {
+  const modal = document.getElementById('pwaInstallGuideModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closePwaInstallModal() {
+  const modal = document.getElementById('pwaInstallGuideModal');
+  if (modal) modal.style.display = 'none';
 }
 
 /* ==========================================================================
@@ -243,8 +305,16 @@ function renderNavProfile() {
   if (nameEl) nameEl.innerText = currentDriver.driver_name || 'Rudraksha Rider';
   if (vehEl) vehEl.innerText = `${currentDriver.vehicle_type || 'Vehicle'} • ${currentDriver.vehicle_number || '-'}`;
 
-  if (currentDriver.avatar_url) {
-    if (avatarImg) { avatarImg.src = currentDriver.avatar_url; avatarImg.style.display = 'block'; }
+  const activeAvatar = getActiveRiderAvatar();
+  if (activeAvatar) {
+    if (avatarImg) {
+      avatarImg.src = activeAvatar;
+      avatarImg.style.display = 'block';
+      avatarImg.onerror = () => {
+        avatarImg.style.display = 'none';
+        if (avatarIcon) avatarIcon.style.display = 'block';
+      };
+    }
     if (avatarIcon) avatarIcon.style.display = 'none';
   } else {
     if (avatarImg) avatarImg.style.display = 'none';
@@ -272,8 +342,10 @@ function renderDriverProfileView() {
   if (pCity) pCity.innerText = `${currentDriver.city || 'Jaipur'} • ${currentDriver.shift || 'Full Time'}`;
   if (logPhone) logPhone.innerText = currentDriver.phone ? `+91 ${currentDriver.phone}` : '-';
 
-  if (pAvatar && currentDriver.avatar_url) {
-    pAvatar.src = currentDriver.avatar_url;
+  const activeAvatar = getActiveRiderAvatar();
+  if (pAvatar && activeAvatar) {
+    pAvatar.src = activeAvatar;
+    pAvatar.onerror = () => { pAvatar.src = 'logo.png'; };
   }
 
   updateDutyDisplay();
@@ -283,7 +355,7 @@ function renderDriverProfileView() {
  * Handle Camera / Gallery Photo Upload
  * 1. Compresses image on canvas
  * 2. Uploads to Free Image Cloud Hosting (ImgBB CDN) to keep zero load on website
- * 3. Saves lightweight Cloud URL to backend
+ * 3. Saves lightweight Cloud URL to backend and persistent local storage
  */
 async function uploadToCloudImageHost(base64Data) {
   try {
@@ -357,11 +429,19 @@ function handleRiderPhotoUpload(event) {
       // Upload to Cloud Hosting
       const cloudUrl = await uploadToCloudImageHost(compressedBase64);
 
-      if (currentDriver) currentDriver.avatar_url = cloudUrl;
-      localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(currentDriver));
+      // Permanently save to dedicated local persistent key by phone
+      const cleanPhone = String(currentDriver?.phone || '').replace(/\D/g, '');
+      if (cleanPhone) {
+        localStorage.setItem(AVATAR_PREFIX + cleanPhone, cloudUrl);
+      }
+
+      if (currentDriver) {
+        currentDriver.avatar_url = cloudUrl;
+        localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(currentDriver));
+      }
 
       // Sync with backend
-      syncPhotoToBackend(cloudUrl);
+      await syncPhotoToBackend(cloudUrl);
     };
     img.src = e.target.result;
   };
@@ -376,7 +456,7 @@ async function syncPhotoToBackend(photoUrl) {
       body: JSON.stringify({ avatar_url: photoUrl })
     });
     if (res.ok) {
-      showToast('✅ Photo saved to Cloud CDN successfully!', 'success');
+      showToast('✅ Face photo saved permanently to profile!', 'success');
     }
   } catch (err) {
     console.warn('Photo backend sync offline:', err);

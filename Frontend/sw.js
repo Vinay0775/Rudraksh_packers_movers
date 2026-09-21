@@ -3,7 +3,7 @@
  * Ultra-resilient, crash-proof caching with live network priority
  */
 
-const CACHE_NAME = 'rudraksha-pwa-v3.1.0';
+const CACHE_NAME = 'rudraksha-pwa-v3.2.0';
 const STATIC_ASSETS = [
   './index.html',
   './parcel.html',
@@ -25,7 +25,11 @@ const STATIC_ASSETS = [
   './favicon.ico',
   './app-icon.png',
   './app-icon-192.png',
-  './app-logo.png'
+  './app-logo.png',
+  './driver-manifest.json',
+  './driver-icon.png',
+  './driver-icon-192.png',
+  './driver-icon-512.png'
 ];
 
 // Install Event - Pre-cache with resilient per-item handling
