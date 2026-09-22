@@ -259,34 +259,37 @@ function logoutDriver() {
 const isStandaloneDriver = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
 function initPwaInstallIcon() {
-  // 1. Register Service Worker for PWA installability
+  // 1. Service worker already registered in driver.html head; ensure update
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').then((reg) => {
-        console.log('[Rider SW] registered:', reg.scope);
-      }).catch((err) => console.warn('[Rider SW] registration failed:', err));
-    });
+    navigator.serviceWorker.ready.then(reg => {
+      if (reg && reg.update) reg.update();
+    }).catch(() => {});
   }
 
-  // 2. Keep install buttons always accessible to the user
-  // Do not hide them so user can easily reinstall or add to any device
-
+  // 2. Intercept install prompt
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
+    window._driverInstallPrompt = e;
     console.log('[Rider PWA] Native install prompt captured!');
-    if (window._riderWaitingForInstall) {
-      window._riderWaitingForInstall = false;
+    if (window._waitingForDriverInstall) {
+      window._waitingForDriverInstall = false;
       triggerPwaInstall();
     }
   });
 
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
-    showToast('🚀 Rudraksha Rider App successfully installed on your device!', 'success');
+    window._driverInstallPrompt = null;
+    closeDriverInstallModal();
+    showToast('🚀 Rudraksha Rider Partner App installed on your device!', 'success');
   });
 }
 
+/**
+ * Universal Infallible Driver PWA Installer
+ * Works on Android Chrome, Samsung Internet, iOS Safari, and WhatsApp In-App Webviews
+ */
 async function triggerPwaInstall() {
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   if (isStandalone) {
@@ -294,60 +297,186 @@ async function triggerPwaInstall() {
     return;
   }
 
-  // Use the native prompt captured by our early <head> interceptor
+  // 1. Check if native prompt is immediately available
   const nativePrompt = window._driverInstallPrompt || deferredInstallPrompt;
-
   if (nativePrompt) {
     try {
       await nativePrompt.prompt();
       const choice = await nativePrompt.userChoice;
       if (choice && choice.outcome === 'accepted') {
         showToast('🎉 Rudraksha Driver App successfully installed!', 'success');
+        window._driverInstallPrompt = null;
+        deferredInstallPrompt = null;
+        closeDriverInstallModal();
+        return;
       }
-      window._driverInstallPrompt = null;
-      deferredInstallPrompt = null;
-      return;
     } catch (err) {
-      console.warn('Native install prompt error:', err);
+      console.warn('Native prompt error:', err);
     }
   }
 
-  // If prompt is warming up, wait briefly and trigger
-  showToast('⏳ App installer start ho raha hai...', 'info');
+  // 2. Wait briefly (up to 350ms) in case beforeinstallprompt was pending
   window._waitingForDriverInstall = true;
+  const promptArrived = await new Promise((resolve) => {
+    if (window._driverInstallPrompt || deferredInstallPrompt) return resolve(true);
+    const timer = setTimeout(() => resolve(false), 350);
+    const onPrompt = () => {
+      clearTimeout(timer);
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+      resolve(true);
+    };
+    window.addEventListener('beforeinstallprompt', onPrompt, { once: true });
+  });
+  window._waitingForDriverInstall = false;
 
-  for (let i = 0; i < 15; i++) {
-    await new Promise(r => setTimeout(r, 150));
-    const promptNow = window._driverInstallPrompt || deferredInstallPrompt;
-    if (promptNow) {
+  if (promptArrived) {
+    const freshPrompt = window._driverInstallPrompt || deferredInstallPrompt;
+    if (freshPrompt) {
       try {
-        await promptNow.prompt();
-        const choice = await promptNow.userChoice;
+        await freshPrompt.prompt();
+        const choice = await freshPrompt.userChoice;
         if (choice && choice.outcome === 'accepted') {
           showToast('🎉 Rudraksha Driver App successfully installed!', 'success');
+          window._driverInstallPrompt = null;
+          deferredInstallPrompt = null;
+          closeDriverInstallModal();
+          return;
         }
-        window._driverInstallPrompt = null;
-        deferredInstallPrompt = null;
-        return;
       } catch (err) {}
     }
   }
 
-  // Check if opened inside WhatsApp / in-app browser
-  const isWebview = /FBAN|FBAV|Instagram|WhatsApp|Line|Twitter|Telegram/i.test(navigator.userAgent);
-  if (isWebview) {
-    alert('⚠️ WhatsApp browser me direct download allow nahi hota.\n\nKripya is link ko Chrome Browser me kholein aur Install App dabayein!');
-    return;
-  }
+  // 3. Guaranteed UI Fallback: Open Universal Installation Modal
+  openDriverInstallModal();
+}
 
-  // Check iOS
+function openDriverInstallModal() {
+  const overlay = document.getElementById('driverInstallOverlay');
+  const body = document.getElementById('driverInstallModalBody');
+  if (!overlay || !body) return;
+
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  if (isIOS) {
-    showToast('📲 iPhone: Niche Share button (⬆) dabakar "Add to Home Screen" karein', 'info');
-    return;
+  const isWebview = /FBAN|FBAV|Instagram|WhatsApp|Line|Twitter|Telegram/i.test(navigator.userAgent);
+  const nativePrompt = window._driverInstallPrompt || deferredInstallPrompt;
+
+  let html = '';
+
+  if (isWebview) {
+    // A. WhatsApp / In-App Browser (Blocked from direct PWA download)
+    html = `
+      <div style="background: rgba(239,68,68,0.12); border: 1.5px solid rgba(239,68,68,0.3); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px;">
+        <div style="font-weight: 800; font-size: 0.88rem; color: #f87171; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+          <i class="fa-brands fa-whatsapp text-danger"></i> WhatsApp Browser Detected
+        </div>
+        <p style="font-size: 0.78rem; color: #cbd5e1; margin: 0; line-height: 1.45;">
+          WhatsApp ke andar direct app install nahi ho sakti. Neeche diye button par click karke <strong>Google Chrome me kholein</strong> aur 1 tap me install karein!
+        </p>
+      </div>
+
+      <button type="button" onclick="openInAndroidChrome()" style="width: 100%; background: linear-gradient(135deg, #f97316, #ea580c); border: none; color: #fff; border-radius: 14px; padding: 14px; font-weight: 800; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 18px rgba(249,115,22,0.45); margin-bottom: 12px;">
+        <i class="fa-brands fa-chrome"></i>
+        <span>🚀 Google Chrome me Kholein & Install Karein</span>
+      </button>
+    `;
+  } else if (isIOS) {
+    // B. Apple iOS (Safari)
+    html = `
+      <p style="font-size: 0.82rem; color: #cbd5e1; margin-bottom: 14px; line-height: 1.4;">
+        iPhone Safari me Driver App install karne ke liye ye 3 aasan steps karein:
+      </p>
+
+      <div class="install-step-box">
+        <div class="install-step-num">1</div>
+        <div style="flex: 1;">Safari browser me screen ke bilkul niche <strong>Share icon ( <i class="fa-solid fa-arrow-up-from-bracket" style="color:#38bdf8;"></i> )</strong> par tap karein.</div>
+      </div>
+
+      <div class="install-step-box">
+        <div class="install-step-num">2</div>
+        <div style="flex: 1;">Options me thoda niche scroll karke <strong>'Add to Home Screen' ( <i class="fa-regular fa-square-plus" style="color:#22c55e;"></i> )</strong> chunein.</div>
+      </div>
+
+      <div class="install-step-box">
+        <div class="install-step-num">3</div>
+        <div style="flex: 1;">Upar right side me <strong>'Add'</strong> dabayein — Driver App aapke iPhone par turant install ho jayegi!</div>
+      </div>
+    `;
+  } else {
+    // C. Android Chrome / Desktop / Any browser
+    html = `
+      ${nativePrompt ? `
+        <button type="button" onclick="executeNativeInstallPrompt()" style="width: 100%; background: linear-gradient(135deg, #22c55e, #16a34a); border: none; color: #fff; border-radius: 14px; padding: 14px; font-weight: 800; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 18px rgba(34,197,94,0.45); margin-bottom: 14px;">
+          <i class="fa-solid fa-circle-down"></i>
+          <span>📲 Direct Install Dialog Kholein</span>
+        </button>
+      ` : ''}
+
+      <p style="font-size: 0.82rem; color: #cbd5e1; margin-bottom: 14px; line-height: 1.4;">
+        Mobile phone me direct install karne ke liye ye steps follow karein:
+      </p>
+
+      <div class="install-step-box">
+        <div class="install-step-num">1</div>
+        <div style="flex: 1;">Browser ke upar right corner me <strong>3 Dots ( <i class="fa-solid fa-ellipsis-vertical" style="color:#f97316;"></i> ) Menu</strong> par tap karein.</div>
+      </div>
+
+      <div class="install-step-box">
+        <div class="install-step-num">2</div>
+        <div style="flex: 1;">Menu me <strong>'Install app'</strong> ya <strong>'Add to Home screen'</strong> par tap karein.</div>
+      </div>
+
+      <div class="install-step-box">
+        <div class="install-step-num">3</div>
+        <div style="flex: 1;"><strong>'Install'</strong> dabayein — Rudraksha Rider Partner App aapke phone me turant install ho jayegi!</div>
+      </div>
+    `;
   }
 
-  showToast('🚀 Screen par "Install" dabayein app download shuru karne ke liye!', 'success');
+  body.innerHTML = html;
+  overlay.classList.add('active');
+}
+
+function closeDriverInstallModal() {
+  const overlay = document.getElementById('driverInstallOverlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+function openInAndroidChrome() {
+  const currentUrl = window.location.href;
+  const noProto = currentUrl.replace(/^https?:\/\//, '');
+  const chromeIntent = `intent://${noProto}#Intent;scheme=https;package=com.android.chrome;end`;
+  window.location.href = chromeIntent;
+  setTimeout(() => {
+    copyDriverAppLink();
+  }, 1200);
+}
+
+function copyDriverAppLink() {
+  const url = window.location.href;
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('📋 Link copied! Paste in Chrome browser to install.', 'success');
+  }).catch(() => {
+    showToast(`App Link: ${url}`, 'info');
+  });
+}
+
+async function executeNativeInstallPrompt() {
+  const prompt = window._driverInstallPrompt || deferredInstallPrompt;
+  if (prompt) {
+    try {
+      closeDriverInstallModal();
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+      if (choice && choice.outcome === 'accepted') {
+        showToast('🎉 Rudraksha Driver App successfully installed!', 'success');
+      }
+      window._driverInstallPrompt = null;
+      deferredInstallPrompt = null;
+    } catch (err) {
+      console.warn('Native prompt error:', err);
+    }
+  } else {
+    showToast('Chrome Menu (⋮) ➔ "Install app" dabayein', 'info');
+  }
 }
 
 /* ==========================================================================
@@ -1090,8 +1219,13 @@ async function submitOtpVerification() {
     if (currentOtpMode === 'pickup') {
       showToast('✅ Pickup PIN verified! Parcel marked as Picked Up.', 'success');
     } else {
-      showToast('🎉 Delivery Complete! Payment added to your wallet.', 'success');
+      const fare = currentActiveTrip?.total_amount ? `₹${currentActiveTrip.total_amount}` : '';
+      showToast(`🎉 Delivery Complete! ${fare} added to your wallet!`, 'success');
+      currentActiveTrip = null;
+      const activeContainer = document.getElementById('activeTripContainer');
+      if (activeContainer) activeContainer.innerHTML = '';
       loadDriverEarnings();
+      renderDriverProfileView();
     }
 
     loadDriverFeed(true);

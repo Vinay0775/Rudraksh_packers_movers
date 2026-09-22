@@ -1142,8 +1142,20 @@ app.patch('/api/parcels/:id/status', requireAdmin, async (req, res, next) => {
 app.post('/api/parcels/:id/verify-pickup-otp', requireAdminOrRider, async (req, res, next) => {
   try {
     const { otp } = req.body;
-    if (!otp) return res.status(400).json({ error: 'OTP is required' });
+    if (!otp) return res.status(400).json({ error: 'Pickup OTP is required' });
     const updated = await db.verifyParcelOtp(req.params.id, 'pickup', otp);
+
+    // Send Telegram alert
+    const msg = `📦 *PARCEL PICKED UP* 🛵\n` +
+                `━━━━━━━━━━━━━━━━━━━━\n` +
+                `🆔 *Order:* \`${updated.parcel_id || req.params.id}\`\n` +
+                `👨‍✈️ *Rider:* ${updated.assigned_driver_name || 'Driver'}\n` +
+                `📍 *Pickup:* ${updated.pickup_address}\n` +
+                `🏁 *Drop:* ${updated.drop_address}\n` +
+                `✅ *Pickup OTP Verified:* YES\n` +
+                `━━━━━━━━━━━━━━━━━━━━`;
+    telegram.sendTelegramMessage(msg).catch(console.error);
+
     res.json({ success: true, parcel: updated, message: 'Pickup OTP verified! Parcel marked as Picked Up.' });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -1154,8 +1166,22 @@ app.post('/api/parcels/:id/verify-pickup-otp', requireAdminOrRider, async (req, 
 app.post('/api/parcels/:id/verify-delivery-otp', requireAdminOrRider, async (req, res, next) => {
   try {
     const { otp } = req.body;
-    if (!otp) return res.status(400).json({ error: 'OTP is required' });
+    if (!otp) return res.status(400).json({ error: 'Delivery OTP is required' });
     const updated = await db.verifyParcelOtp(req.params.id, 'delivery', otp);
+
+    // Send Telegram alert on successful delivery
+    const fare = Number(updated.total_amount || 0);
+    const msg = `🎉 *PARCEL DELIVERED SUCCESSFULLY* 🏁\n` +
+                `━━━━━━━━━━━━━━━━━━━━\n` +
+                `🆔 *Order:* \`${updated.parcel_id || req.params.id}\`\n` +
+                `👨‍✈️ *Rider:* ${updated.assigned_driver_name || 'Driver'}\n` +
+                `📍 *Drop Address:* ${updated.drop_address}\n` +
+                `💰 *Collected Fare:* ₹${fare}\n` +
+                `🛡️ *Delivery OTP Verified:* YES ✅\n` +
+                `🎉 *Status:* DELIVERED\n` +
+                `━━━━━━━━━━━━━━━━━━━━`;
+    telegram.sendTelegramMessage(msg).catch(console.error);
+
     res.json({ success: true, parcel: updated, message: 'Delivery OTP verified! Parcel marked as Delivered.' });
   } catch (err) {
     res.status(400).json({ error: err.message });

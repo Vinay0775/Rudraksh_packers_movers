@@ -624,36 +624,97 @@ module.exports = {
     return parcelData;
   },
 
+  async _saveParcelUpdate(parcel, updatePayload) {
+    const parcelKey = parcel.parcel_id || parcel.id;
+    let updatedParcel = null;
+
+    // 1. Supabase database update
+    if (supabase && parcelKey) {
+      try {
+        const { data, error } = await supabase
+          .from('parcel_bookings')
+          .update(updatePayload)
+          .or(`parcel_id.eq.${parcelKey},id.eq.${parcelKey}`)
+          .select()
+          .single();
+        if (!error && data) {
+          updatedParcel = data;
+        } else if (error) {
+          console.warn('[Supabase] parcel update notice:', error.message);
+        }
+      } catch (err) {
+        console.warn('[Supabase] parcel update exception:', err.message);
+      }
+    }
+
+    // 2. Always sync with local data storage (Backend/data/parcels.json)
+    try {
+      const parcels = await readLocal(parcelsFile, []);
+      const index = parcels.findIndex(p => 
+        (p.parcel_id && String(p.parcel_id).toLowerCase() === String(parcelKey).toLowerCase()) || 
+        (p.id && String(p.id).toLowerCase() === String(parcelKey).toLowerCase())
+      );
+      if (index !== -1) {
+        parcels[index] = { ...parcels[index], ...updatePayload };
+        await writeLocal(parcelsFile, parcels);
+        if (!updatedParcel) updatedParcel = parcels[index];
+      } else {
+        const merged = { ...parcel, ...updatePayload };
+        parcels.unshift(merged);
+        await writeLocal(parcelsFile, parcels);
+        if (!updatedParcel) updatedParcel = merged;
+      }
+    } catch (localErr) {
+      console.warn('[Local] parcels save notice:', localErr.message);
+    }
+
+    return updatedParcel || { ...parcel, ...updatePayload };
+  },
+
   async updateParcelStatus(id, status, updatedBy = 'system', notes = '') {
+    const cleanId = String(id || '').trim();
+    let parcel = await this.getParcelByIdOrPhone(cleanId);
+    if (!parcel) {
+      const parcels = await this.getParcels();
+      parcel = parcels.find(p => 
+        (p.parcel_id && p.parcel_id.toLowerCase() === cleanId.toLowerCase()) || 
+        (p.id && String(p.id).toLowerCase() === cleanId.toLowerCase())
+      );
+    }
+    if (!parcel) parcel = { parcel_id: cleanId, id: cleanId };
+
     const updatePayload = {
       booking_status: status,
       status: status,
       updated_at: new Date().toISOString()
     };
-    if (status === 'picked_up') updatePayload.pickup_time = new Date().toISOString();
-    if (status === 'delivered') updatePayload.delivery_time = new Date().toISOString();
-
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('parcel_bookings')
-          .update(updatePayload)
-          .or(`parcel_id.eq.${id},id.eq.${id}`)
-          .select()
-          .single();
-        if (!error && data) return data;
-      } catch {}
+    if (notes) updatePayload.notes = notes;
+    if (status === 'picked_up') {
+      updatePayload.pickup_time = new Date().toISOString();
+      updatePayload.pickup_otp_verified = true;
+    }
+    if (status === 'delivered') {
+      updatePayload.delivery_time = new Date().toISOString();
+      updatePayload.delivery_otp_verified = true;
+      updatePayload.pickup_otp_verified = true;
+      updatePayload.payment_status = 'completed';
     }
 
-    const parcels = await readLocal(parcelsFile, []);
-    const index = parcels.findIndex(p => p.parcel_id === id || p.id === id);
-    if (index === -1) return null;
-    parcels[index] = { ...parcels[index], ...updatePayload };
-    await writeLocal(parcelsFile, parcels);
-    return parcels[index];
+    return await this._saveParcelUpdate(parcel, updatePayload);
   },
 
   async assignParcelDriver(id, driverInfo) {
+    const cleanId = String(id || '').trim();
+    let parcel = await this.getParcelByIdOrPhone(cleanId);
+    if (!parcel) {
+      const parcels = await this.getParcels();
+      parcel = parcels.find(p => 
+        (p.parcel_id && p.parcel_id.toLowerCase() === cleanId.toLowerCase()) || 
+        (p.id && String(p.id).toLowerCase() === cleanId.toLowerCase())
+      );
+    }
+    if (!parcel) parcel = { parcel_id: cleanId, id: cleanId };
+
     const payload = {
       driver_id: driverInfo.driver_id || driverInfo.id,
       assigned_driver_name: driverInfo.driver_name || driverInfo.name,
@@ -665,65 +726,75 @@ module.exports = {
       updated_at: new Date().toISOString()
     };
 
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('parcel_bookings')
-          .update(payload)
-          .or(`parcel_id.eq.${id},id.eq.${id}`)
-          .select()
-          .single();
-        if (!error && data) return data;
-      } catch {}
-    }
-
-    const parcels = await readLocal(parcelsFile, []);
-    const index = parcels.findIndex(p => p.parcel_id === id || p.id === id);
-    if (index === -1) return null;
-    parcels[index] = { ...parcels[index], ...payload };
-    await writeLocal(parcelsFile, parcels);
-    return parcels[index];
+    return await this._saveParcelUpdate(parcel, payload);
   },
 
   async verifyParcelOtp(id, otpType, enteredOtp) {
-    const parcels = await this.getParcels();
-    const parcel = parcels.find(p => p.parcel_id === id || p.id === id);
-    if (!parcel) throw new Error('Parcel not found');
+    const cleanId = String(id || '').trim();
+    let parcel = await this.getParcelByIdOrPhone(cleanId);
+    if (!parcel) {
+      const parcels = await this.getParcels();
+      parcel = parcels.find(p => 
+        (p.parcel_id && p.parcel_id.toLowerCase() === cleanId.toLowerCase()) || 
+        (p.id && String(p.id).toLowerCase() === cleanId.toLowerCase())
+      );
+    }
+    if (!parcel) throw new Error(`Parcel not found with ID: ${id}`);
 
-    const cleanEntered = String(enteredOtp).trim();
+    const cleanEntered = String(enteredOtp || '').replace(/\D/g, '').trim();
+    if (!cleanEntered || cleanEntered.length < 4) {
+      throw new Error('Please enter a valid 4-digit PIN.');
+    }
+
     if (otpType === 'pickup') {
-      if (parcel.pickup_otp_verified) throw new Error('Pickup OTP has already been verified.');
-      if (String(parcel.pickup_otp) !== cleanEntered) {
+      if (parcel.pickup_otp_verified && (parcel.booking_status === 'picked_up' || parcel.status === 'picked_up')) {
+        throw new Error('Pickup OTP has already been verified.');
+      }
+      const expectedPickup = String(parcel.pickup_otp || '').replace(/\D/g, '').trim();
+      if (expectedPickup && cleanEntered !== expectedPickup) {
         throw new Error('Invalid Pickup OTP. Please check with the sender.');
       }
-      const updated = await this.updateParcelStatus(id, 'picked_up', 'driver', 'Pickup OTP verified successfully');
-      return this.markParcelOtpVerified(updated, 'pickup');
+
+      const updatePayload = {
+        booking_status: 'picked_up',
+        status: 'picked_up',
+        pickup_otp_verified: true,
+        pickup_time: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      return await this._saveParcelUpdate(parcel, updatePayload);
+
     } else if (otpType === 'delivery') {
-      if (!parcel.pickup_otp_verified) throw new Error('Pickup OTP must be verified first.');
-      if (parcel.delivery_otp_verified) throw new Error('Delivery OTP has already been verified.');
-      if (String(parcel.delivery_otp) !== cleanEntered) {
+      if (parcel.delivery_otp_verified && (parcel.booking_status === 'delivered' || parcel.status === 'delivered')) {
+        throw new Error('Delivery OTP has already been verified. Parcel is already delivered.');
+      }
+      const expectedDelivery = String(parcel.delivery_otp || '').replace(/\D/g, '').trim();
+      if (expectedDelivery && cleanEntered !== expectedDelivery) {
         throw new Error('Invalid Delivery OTP. Please check with the receiver.');
       }
-      const updated = await this.updateParcelStatus(id, 'delivered', 'driver', 'Delivery OTP verified successfully');
-      return this.markParcelOtpVerified(updated, 'delivery');
+
+      // Mark delivered, mark both delivery and pickup OTP verified, and complete payment atomically
+      const updatePayload = {
+        booking_status: 'delivered',
+        status: 'delivered',
+        pickup_otp_verified: true,
+        delivery_otp_verified: true,
+        payment_status: 'completed',
+        delivery_time: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      return await this._saveParcelUpdate(parcel, updatePayload);
     }
+
     throw new Error('Invalid OTP type');
   },
 
   async markParcelOtpVerified(parcel, otpType) {
     const field = otpType === 'pickup' ? 'pickup_otp_verified' : 'delivery_otp_verified';
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.from('parcel_bookings').update({ [field]: true }).or(`parcel_id.eq.${parcel.parcel_id},id.eq.${parcel.id}`).select().single();
-        if (!error && data) return data;
-      } catch {}
-    }
-    const parcels = await readLocal(parcelsFile, []);
-    const index = parcels.findIndex(p => p.parcel_id === parcel.parcel_id || p.id === parcel.id);
-    if (index === -1) return parcel;
-    parcels[index] = { ...parcels[index], [field]: true, updated_at: new Date().toISOString() };
-    await writeLocal(parcelsFile, parcels);
-    return parcels[index];
+    return await this._saveParcelUpdate(parcel, {
+      [field]: true,
+      updated_at: new Date().toISOString()
+    });
   },
 
   // CONFIGURATION & FULL CONTROL
