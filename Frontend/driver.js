@@ -1359,6 +1359,7 @@ async function submitOtpVerification() {
 
   const endpoint = currentOtpMode === 'pickup' ? 'verify-pickup-otp' : 'verify-delivery-otp';
 
+  try {
     let isSuccess = false;
     let serverMessage = '';
 
@@ -1424,7 +1425,7 @@ async function submitOtpVerification() {
 
     loadDriverFeed(true);
   } catch (err) {
-    showToast(err.message, 'error');
+    showToast(err.message || 'Verification failed.', 'error');
     // Shake inputs
     const wrap = document.querySelector('.otp-input-wrap');
     if (wrap) {
