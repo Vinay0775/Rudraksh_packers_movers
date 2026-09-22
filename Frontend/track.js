@@ -490,13 +490,13 @@ function initParcelTrackingMode(booking) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
         <div style="background:${pickupVerified ? 'rgba(34,197,94,0.08)' : 'rgba(249,115,22,0.08)'};border:1.5px solid ${pickupVerified ? 'rgba(34,197,94,0.3)' : 'rgba(249,115,22,0.3)'};border-radius:14px;padding:12px;text-align:center;">
           <div style="font-size:0.62rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">${pickupVerified ? '✅ Pickup Verified' : '🔑 Pickup OTP'}</div>
-          <div style="font-size:1.6rem;font-weight:900;color:${pickupVerified ? '#22c55e' : '#f97316'};letter-spacing:5px;">${booking.pickup_otp || '––––'}</div>
-          <div style="font-size:0.62rem;color:#64748b;margin-top:4px;">${pickupVerified ? 'OTP confirmed by rider' : 'Share with rider at pickup'}</div>
+          <div style="font-size:${booking.pickup_otp ? '1.6rem' : '0.9rem'};font-weight:900;color:${pickupVerified ? '#22c55e' : (booking.pickup_otp ? '#f97316' : '#94a3b8')};letter-spacing:${booking.pickup_otp ? '5px' : '0px'};padding: ${booking.pickup_otp ? '0' : '8px 0'};">${booking.pickup_otp || 'Awaiting Admin'}</div>
+          <div style="font-size:0.62rem;color:#64748b;margin-top:4px;">${pickupVerified ? 'OTP confirmed by rider' : (booking.pickup_otp ? 'Share with rider at pickup' : 'Issued upon admin rider dispatch')}</div>
         </div>
         <div style="background:${isDelivered ? 'rgba(34,197,94,0.08)' : 'rgba(34,197,94,0.05)'};border:1.5px solid ${isDelivered ? 'rgba(34,197,94,0.4)' : 'rgba(34,197,94,0.2)'};border-radius:14px;padding:12px;text-align:center;">
           <div style="font-size:0.62rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">${isDelivered ? '✅ Delivery Verified' : '🛡️ Delivery OTP'}</div>
-          <div style="font-size:1.6rem;font-weight:900;color:${isDelivered ? '#22c55e' : '#22c55e'};letter-spacing:5px;opacity:${isDelivered ? '1' : '0.8'};">${booking.delivery_otp || '––––'}</div>
-          <div style="font-size:0.62rem;color:#64748b;margin-top:4px;">${isDelivered ? 'OTP confirmed by rider' : 'Share with rider at delivery'}</div>
+          <div style="font-size:${booking.delivery_otp ? '1.6rem' : '0.82rem'};font-weight:900;color:${isDelivered ? '#22c55e' : (booking.delivery_otp ? '#22c55e' : '#94a3b8')};letter-spacing:${booking.delivery_otp ? '5px' : '0px'};padding: ${booking.delivery_otp ? '0' : '8px 0'};">${isDelivered ? (booking.delivery_otp || 'VERIFIED') : (booking.delivery_otp ? booking.delivery_otp : 'Dispatched to Receiver')}</div>
+          <div style="font-size:0.62rem;color:#64748b;margin-top:4px;">${isDelivered ? 'OTP confirmed by rider' : (booking.delivery_otp ? 'Receiver shares with rider at drop' : 'Sent via WhatsApp to Receiver')}</div>
         </div>
       </div>
 

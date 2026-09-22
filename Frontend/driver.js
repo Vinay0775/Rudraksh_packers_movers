@@ -1202,16 +1202,53 @@ async function submitOtpVerification() {
 
   const endpoint = currentOtpMode === 'pickup' ? 'verify-pickup-otp' : 'verify-delivery-otp';
 
-  try {
-    const res = await fetch(`${DRIVER_API_BASE}/parcels/${currentOtpParcelId}/${endpoint}`, {
-      method: 'POST',
-      headers: getRiderHeaders(),
-      body: JSON.stringify({ otp: enteredOtp })
-    });
+    let isSuccess = false;
+    let serverMessage = '';
 
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Invalid PIN entered. Please check with customer.');
+    try {
+      const res = await fetch(`${DRIVER_API_BASE}/parcels/${currentOtpParcelId}/${endpoint}`, {
+        method: 'POST',
+        headers: getRiderHeaders(),
+        body: JSON.stringify({ otp: enteredOtp })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        isSuccess = true;
+        serverMessage = data.message || '';
+      } else if (res.status === 400 && data.error) {
+        throw new Error(data.error);
+      }
+    } catch (fetchErr) {
+      if (fetchErr.message && fetchErr.message.includes('PIN')) throw fetchErr;
+    }
+
+    // Local Storage synchronization & fallback check
+    const p1 = JSON.parse(localStorage.getItem('rudraksha_parcels') || '[]');
+    const p2 = JSON.parse(localStorage.getItem('rudraksha_parcels_history') || '[]');
+    const all = [...p1, ...p2];
+    const targetParcel = all.find(p => (p.parcel_id === currentOtpParcelId || p.id === currentOtpParcelId));
+
+    if (targetParcel) {
+      if (currentOtpMode === 'pickup') {
+        const expected = String(targetParcel.pickup_otp || '').replace(/\D/g, '');
+        if (expected && enteredOtp !== expected) {
+          throw new Error('Invalid Pickup PIN. Please ask sender for the correct PIN.');
+        }
+        targetParcel.booking_status = 'picked_up';
+        targetParcel.status = 'picked_up';
+        targetParcel.pickup_otp_verified = true;
+      } else {
+        const expected = String(targetParcel.delivery_otp || '').replace(/\D/g, '');
+        if (expected && enteredOtp !== expected) {
+          throw new Error('Invalid Delivery PIN. Please ask receiver for the correct PIN.');
+        }
+        targetParcel.booking_status = 'delivered';
+        targetParcel.status = 'delivered';
+        targetParcel.delivery_otp_verified = true;
+        targetParcel.pickup_otp_verified = true;
+      }
+      localStorage.setItem('rudraksha_parcels', JSON.stringify(p1));
+      localStorage.setItem('rudraksha_parcels_history', JSON.stringify(p2));
     }
 
     closeOtpSheet();

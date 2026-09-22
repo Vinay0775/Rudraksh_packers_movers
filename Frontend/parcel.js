@@ -1001,17 +1001,14 @@ async function handleRequestParcelDelivery() {
   const parcelId = `RP-PCL-${randomSuffix}`;
   parcelBookingState.generatedParcelId = parcelId;
 
-  // Generate 4-digit Pickup and Delivery OTPs
-  const pickupOtp = String(Math.floor(1000 + Math.random() * 9000));
-  const deliveryOtp = String(Math.floor(1000 + Math.random() * 9000));
-
   // Selected Vehicle Name
   const vehicleName = VEHICLE_CONFIG[parcelBookingState.selectedVehicle]?.name || 'Bike';
 
   // Driver Dispatch URL (Relative & absolute link)
   const dispatchUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}driver.html?jobId=${parcelId}`;
+  const trackUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}track.html?id=${parcelId}`;
 
-  // Format WhatsApp Click-to-Chat Message
+  // Format WhatsApp Click-to-Chat Message (Customer sends order request to Admin - OTPs are assigned by Admin)
   const whatsappMessage = 
 `📦 *NEW PARCEL DELIVERY REQUEST*
 ━━━━━━━━━━━━━━━━━━━━
@@ -1040,12 +1037,11 @@ async function handleRequestParcelDelivery() {
 
 💰 *Estimated Fare:* *₹${fareCalc.estimatedTotal}* (${document.getElementById('pclPaymentOption')?.value || 'Cash'})
 
-🔑 *Security OTPs:*
-• Pickup OTP: ${pickupOtp}
-• Delivery OTP: ${deliveryOtp}
-
 ━━━━━━━━━━━━━━━━━━━━
-📢 *RIDER DISPATCH LINK (Tap to Accept):*
+🔍 *Live Tracking Link:*
+${trackUrl}
+
+📢 *RIDER DISPATCH LINK:*
 ${dispatchUrl}`;
 
   // WhatsApp Link
@@ -1076,8 +1072,10 @@ ${dispatchUrl}`;
     payment_status: 'pending',
     booking_status: 'searching_driver',
     status: 'searching_driver',
-    pickup_otp: pickupOtp,
-    delivery_otp: deliveryOtp,
+    pickup_otp: null,
+    delivery_otp: null,
+    pickup_otp_verified: false,
+    delivery_otp_verified: false,
     dispatch_url: dispatchUrl,
     created_at: new Date().toISOString()
   };
@@ -1214,7 +1212,8 @@ function shareBookingToReceiver() {
   const b = window._lastParcelBooking;
   if (!b) return;
   const trackUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}track.html?id=${b.parcel_id}`;
-  const msg = `📦 *Your Parcel is On the Way!*\n\nHi ${b.receiver_name},\n*${b.sender_name}* has sent you a parcel via Rudraksha Express.\n\n🆔 Parcel ID: *${b.parcel_id}*\n📍 From: ${b.pickup_address}\n📍 To: ${b.drop_address}\n💰 Fare: ₹${b.total_amount}\n\n🛡️ *Delivery OTP: ${b.delivery_otp}* (Share only with rider at delivery)\n\n🔍 Track live status here:\n${trackUrl}`;
+  const deliveryOtpText = b.delivery_otp ? `\n\n🛡️ *Delivery OTP: ${b.delivery_otp}* (Share with rider at drop)` : `\n\n🛡️ *Delivery OTP:* Rudraksha Admin will dispatch your security delivery PIN upon order confirmation.`;
+  const msg = `📦 *Your Parcel Delivery Alert!*\n\nHi ${b.receiver_name},\n*${b.sender_name}* has sent you a parcel via Rudraksha Express.\n\n🆔 Parcel ID: *${b.parcel_id}*\n📍 From: ${b.pickup_address}\n📍 To: ${b.drop_address}\n💰 Fare: ₹${b.total_amount}${deliveryOtpText}\n\n🔍 Track live status here:\n${trackUrl}`;
   const waUrl = `https://wa.me/91${b.receiver_phone}?text=${encodeURIComponent(msg)}`;
   window.open(waUrl, '_blank');
 }

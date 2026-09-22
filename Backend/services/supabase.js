@@ -726,6 +726,30 @@ module.exports = {
       updated_at: new Date().toISOString()
     };
 
+    if (driverInfo.pickup_otp) payload.pickup_otp = driverInfo.pickup_otp;
+    if (driverInfo.delivery_otp) payload.delivery_otp = driverInfo.delivery_otp;
+
+    return await this._saveParcelUpdate(parcel, payload);
+  },
+
+  async assignParcelOtps(id, pickupOtp, deliveryOtp) {
+    const cleanId = String(id || '').trim();
+    let parcel = await this.getParcelByIdOrPhone(cleanId);
+    if (!parcel) {
+      const parcels = await this.getParcels();
+      parcel = parcels.find(p => 
+        (p.parcel_id && p.parcel_id.toLowerCase() === cleanId.toLowerCase()) || 
+        (p.id && String(p.id).toLowerCase() === cleanId.toLowerCase())
+      );
+    }
+    if (!parcel) parcel = { parcel_id: cleanId, id: cleanId };
+
+    const payload = {
+      pickup_otp: String(pickupOtp || '').trim(),
+      delivery_otp: String(deliveryOtp || '').trim(),
+      updated_at: new Date().toISOString()
+    };
+
     return await this._saveParcelUpdate(parcel, payload);
   },
 

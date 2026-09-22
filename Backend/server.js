@@ -1101,7 +1101,7 @@ app.post('/api/parcels', async (req, res, next) => {
 // 5. Assign Driver to Parcel
 app.post('/api/parcels/:id/assign', requireAdmin, async (req, res, next) => {
   try {
-    const { driver_id, driver_name, driver_phone, vehicle_number, vehicle_type } = req.body;
+    const { driver_id, driver_name, driver_phone, vehicle_number, vehicle_type, pickup_otp, delivery_otp } = req.body;
     if (!driver_name || !driver_phone) {
       return res.status(400).json({ error: 'Please provide driver name and phone.' });
     }
@@ -1111,9 +1111,26 @@ app.post('/api/parcels/:id/assign', requireAdmin, async (req, res, next) => {
       driver_name,
       driver_phone,
       vehicle_number,
-      vehicle_type
+      vehicle_type,
+      pickup_otp,
+      delivery_otp
     });
 
+    if (!updated) return res.status(404).json({ error: 'Parcel not found' });
+    res.json({ parcel: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 5B. Assign / Update Security OTPs for Parcel (Admin)
+app.patch('/api/parcels/:id/otps', requireAdmin, async (req, res, next) => {
+  try {
+    const { pickup_otp, delivery_otp } = req.body;
+    if (!pickup_otp && !delivery_otp) {
+      return res.status(400).json({ error: 'Please provide pickup_otp or delivery_otp to update.' });
+    }
+    const updated = await db.assignParcelOtps(req.params.id, pickup_otp, delivery_otp);
     if (!updated) return res.status(404).json({ error: 'Parcel not found' });
     res.json({ parcel: updated });
   } catch (err) {

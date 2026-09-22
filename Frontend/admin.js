@@ -1916,7 +1916,7 @@ function renderParcelsTable(list = allAdminParcels) {
   if (!tbody) return;
 
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted"><i class="fa-solid fa-box-open me-2"></i>No parcel deliveries found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted"><i class="fa-solid fa-box-open me-2"></i>No parcel deliveries found.</td></tr>`;
     return;
   }
 
@@ -1935,6 +1935,11 @@ function renderParcelsTable(list = allAdminParcels) {
     const status = p.booking_status || p.status || 'searching_driver';
     const dPhone = p.assigned_driver_phone || '7296831460';
     const dName = p.assigned_driver_name || 'Assigned Driver';
+
+    const pickupOtp = p.pickup_otp || null;
+    const deliveryOtp = p.delivery_otp || null;
+    const isPickupDone = p.pickup_otp_verified || ['picked_up', 'in_transit', 'out_for_delivery', 'delivered'].includes(status);
+    const isDelivered = p.delivery_otp_verified || status === 'delivered';
 
     const driverDisplay = p.assigned_driver_name
       ? `<div><strong class="text-white small">👨‍✈️ ${p.assigned_driver_name}</strong><br><span class="small text-muted">+91 ${dPhone}</span></div>`
@@ -1964,10 +1969,53 @@ function renderParcelsTable(list = allAdminParcels) {
       'cancelled': '🔴 Cancelled'
     };
 
-    // 1. WhatsApp Customer Message
-    const custWaMsg = `Hello ${sName}, this is Rudraksha Express Logistics. Your parcel order ${pId} status is: ${statusLabels[status] || status}. For any support, reply to this message.`;
+    const trackUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}track.html?id=${pId}`;
 
-    // 2. WhatsApp Driver Dispatch Message
+    // Admin Dispatch WhatsApp Message for Sender (Pickup OTP)
+    const senderOtpWaMsg = 
+`📦 *RUDRAKSHA EXPRESS - ORDER CONFIRMED & PICKUP PIN*
+━━━━━━━━━━━━━━━━━━━━
+Namaste *${sName}*,
+Aapka parcel delivery order *${pId}* confirm ho gaya hai!
+
+🔑 *Aapka Pickup OTP / PIN:* *${pickupOtp || '----'}*
+
+⚠️ *Zaroori:* Yeh PIN keval tabhi hamare rider ke sath share karein jab wo aapke pickup location par parcel lene pahunch jayein.
+
+📍 *Pickup Address:* ${pickup}
+📍 *Drop Address:* ${drop}
+👨‍✈️ *Assigned Rider:* ${p.assigned_driver_name || 'Rudraksha Rider'} (+91 ${dPhone})
+💰 *Estimated Fare:* ${amount} (${p.payment_method || 'Cash'})
+
+🔍 *Live Track Your Order:*
+${trackUrl}
+━━━━━━━━━━━━━━━━━━━━
+_Rudraksha Express Logistics • Safe & Express Delivery_`;
+
+    // Admin Dispatch WhatsApp Message for Receiver (Delivery OTP)
+    const receiverOtpWaMsg = 
+`📦 *RUDRAKSHA EXPRESS - INCOMING PARCEL & DELIVERY PIN*
+━━━━━━━━━━━━━━━━━━━━
+Namaste *${rName}*,
+*${sName}* ne aapke liye Rudraksha Express se ek parcel bheja hai.
+
+🆔 *Parcel ID:* ${pId}
+🛡️ *Aapka Delivery OTP / PIN:* *${deliveryOtp || '----'}*
+
+⚠️ *Zaroori:* Yeh Delivery PIN keval tabhi rider ke sath share karein jab parcel sahi salamat aapke paas deliver ho jaye.
+
+📍 *Delivery Address:* ${drop}
+💰 *Payable Amount:* ${amount} (${p.payment_method || 'Cash'})
+
+🔍 *Live Track Status:*
+${trackUrl}
+━━━━━━━━━━━━━━━━━━━━
+_Rudraksha Express Logistics • Always on Time_`;
+
+    // Customer Generic Status Message
+    const custWaMsg = `Hello ${sName}, this is Rudraksha Express Logistics. Your parcel order ${pId} status is: ${statusLabels[status] || status}. Track here: ${trackUrl}`;
+
+    // Driver Dispatch Message
     const driverWaMsg = 
 `📦 *RUDRAKSHA EXPRESS - PARCEL DELIVERY ASSIGNMENT*
 ━━━━━━━━━━━━━━━━━━━━
@@ -1981,6 +2029,24 @@ function renderParcelsTable(list = allAdminParcels) {
 💰 *Collect Amount:* ${amount} (${p.payment_method || 'Cash'})
 ━━━━━━━━━━━━━━━━━━━━
 Please confirm pickup on your driver portal.`;
+
+    const otpColumnHtml = `
+      <div style="font-size: 0.72rem; line-height: 1.4;">
+        <div>
+          <span class="text-muted">Pickup:</span>
+          ${pickupOtp ? (isPickupDone ? `<span class="badge bg-success bg-opacity-25 text-success font-monospace px-1">✅ ${pickupOtp}</span>` : `<strong class="text-warning font-monospace fs-6">${pickupOtp}</strong>`) : '<span class="badge bg-warning text-dark py-0" style="font-size:0.65rem;">Not Set</span>'}
+        </div>
+        <div class="mt-1">
+          <span class="text-muted">Delivery:</span>
+          ${deliveryOtp ? (isDelivered ? `<span class="badge bg-success bg-opacity-25 text-success font-monospace px-1">✅ ${deliveryOtp}</span>` : `<strong class="text-success font-monospace fs-6">${deliveryOtp}</strong>`) : '<span class="badge bg-secondary text-white py-0" style="font-size:0.65rem;">Not Set</span>'}
+        </div>
+        <div class="mt-1 d-flex gap-1">
+          <button class="btn btn-sm btn-outline-warning py-0 px-1 fw-bold" style="font-size: 0.66rem;" onclick="openAdminOtpModal('${pId}')" title="Assign & WhatsApp OTPs">
+            <i class="fa-solid fa-key me-1"></i>Manage PINs
+          </button>
+        </div>
+      </div>
+    `;
 
     return `
       <tr class="border-bottom border-secondary border-opacity-10">
@@ -2009,13 +2075,14 @@ Please confirm pickup on your driver portal.`;
           <strong class="text-success">${amount}</strong>
           <div class="small text-muted" style="font-size: 0.68rem;">${(p.payment_method || 'Cash')}</div>
         </td>
+        <td>${otpColumnHtml}</td>
         <td>
           <span class="badge ${statusBadgeClass} rounded-pill py-1 px-2 small">${statusLabels[status] || status}</span>
         </td>
         <td>${driverDisplay}</td>
         <td>
           <div class="d-flex gap-1 align-items-center flex-wrap">
-            <select class="form-select form-select-sm bg-dark text-white border-secondary py-0" style="font-size: 0.72rem; width: 120px;" onchange="quickUpdateParcelStatus('${pId}', this.value)">
+            <select class="form-select form-select-sm bg-dark text-white border-secondary py-0" style="font-size: 0.72rem; width: 110px;" onchange="quickUpdateParcelStatus('${pId}', this.value)">
               <option value="searching_driver" ${status==='searching_driver'?'selected':''}>🟡 Request Sent</option>
               <option value="confirmed" ${status==='confirmed'?'selected':''}>🔵 Confirmed</option>
               <option value="driver_assigned" ${status==='driver_assigned'?'selected':''}>🟣 Driver Assigned</option>
@@ -2027,13 +2094,13 @@ Please confirm pickup on your driver portal.`;
               <option value="cancelled" ${status==='cancelled'?'selected':''}>🔴 Cancelled</option>
             </select>
             <button class="btn btn-sm btn-outline-warning py-0 px-2 fw-bold" style="font-size: 0.72rem;" onclick="openBroadcastModal('${pId}')" title="📢 Broadcast to Rider WhatsApp Group">
-              <i class="fa-solid fa-tower-broadcast text-warning me-1"></i>Broadcast
+              <i class="fa-solid fa-tower-broadcast text-warning"></i>
             </button>
-            <a href="https://wa.me/91${sPhone}?text=${encodeURIComponent(custWaMsg)}" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2" title="WhatsApp Customer">
-              <i class="fa-brands fa-whatsapp"></i>
+            <a href="https://wa.me/91${sPhone}?text=${encodeURIComponent(senderOtpWaMsg)}" target="_blank" class="btn btn-sm btn-outline-warning py-0 px-2 fw-bold" style="font-size: 0.72rem;" title="📲 WhatsApp Pickup PIN to Sender (+91 ${sPhone})">
+              <i class="fa-solid fa-key me-1"></i>PIN
             </a>
-            <a href="https://wa.me/91${dPhone}?text=${encodeURIComponent(driverWaMsg)}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2" title="Direct WhatsApp Driver">
-              <i class="fa-solid fa-paper-plane"></i>
+            <a href="https://wa.me/91${rPhone}?text=${encodeURIComponent(receiverOtpWaMsg)}" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2 fw-bold" style="font-size: 0.72rem;" title="📲 WhatsApp Delivery PIN to Receiver (+91 ${rPhone})">
+              <i class="fa-solid fa-shield-halved me-1"></i>PIN
             </a>
             <a href="track.html?id=${pId}" target="_blank" class="btn btn-sm btn-outline-info py-0 px-2" title="Live Tracking">
               <i class="fa-solid fa-location-crosshairs"></i>
@@ -2049,22 +2116,31 @@ function openAssignParcelDriverModal(parcelId) {
   const parcel = allAdminParcels.find(p => (p.parcel_id === parcelId || p.id === parcelId));
   if (!parcel) return;
 
+  // Auto-generate 4-digit OTPs if not yet assigned
+  if (!parcel.pickup_otp) parcel.pickup_otp = String(Math.floor(1000 + Math.random() * 9000));
+  if (!parcel.delivery_otp) parcel.delivery_otp = String(Math.floor(1000 + Math.random() * 9000));
+
   document.getElementById('assignParcelId').value = parcelId;
   document.getElementById('assignParcelDisplayId').innerText = parcelId;
   document.getElementById('assignParcelSender').innerText = parcel.sender_name || 'Sender';
   document.getElementById('assignParcelReceiver').innerText = parcel.receiver_name || 'Receiver';
 
+  const otp1El = document.getElementById('assignModalPickupOtp');
+  const otp2El = document.getElementById('assignModalDeliveryOtp');
+  if (otp1El) otp1El.innerText = parcel.pickup_otp;
+  if (otp2El) otp2El.innerText = parcel.delivery_otp;
+
   const select = document.getElementById('assignParcelDriverSelect');
   if (select) {
     if (allRiderApplications.length > 0) {
       select.innerHTML = allRiderApplications.map(d => `
-        <option value="${d.name}">${d.name} - ${d.vehType} (${d.vehNum}) • Phone: ${d.phone}</option>
+        <option value="${d.name}" data-phone="${d.phone}" data-veh="${d.vehType}" data-vehnum="${d.vehNum || ''}">${d.name} - ${d.vehType} (${d.vehNum || ''}) • Phone: ${d.phone}</option>
       `).join('');
     } else {
       select.innerHTML = `
-        <option value="Mukesh Sharma">Mukesh Sharma - Bike (RJ-14-AB-1234) • 9829012345</option>
-        <option value="Vikram Singh">Vikram Singh - EV Scooter (RJ-14-MB-2244) • 9414012345</option>
-        <option value="Rajesh Kumar">Rajesh Kumar - Tata Ace (RJ-14-GA-1024) • 7296831460</option>
+        <option value="Mukesh Sharma" data-phone="9829012345" data-veh="Bike" data-vehnum="RJ-14-AB-1234">Mukesh Sharma - Bike (RJ-14-AB-1234) • 9829012345</option>
+        <option value="Vikram Singh" data-phone="9414012345" data-veh="EV Scooter" data-vehnum="RJ-14-MB-2244">Vikram Singh - EV Scooter (RJ-14-MB-2244) • 9414012345</option>
+        <option value="Rajesh Kumar" data-phone="7296831460" data-veh="Tata Ace" data-vehnum="RJ-14-GA-1024">Rajesh Kumar - Tata Ace (RJ-14-GA-1024) • 7296831460</option>
       `;
     }
   }
@@ -2076,27 +2152,195 @@ function openAssignParcelDriverModal(parcelId) {
 async function submitParcelDriverAssignment() {
   const parcelId = document.getElementById('assignParcelId')?.value;
   const select = document.getElementById('assignParcelDriverSelect');
+  const selectedOption = select?.selectedOptions?.[0];
   const driverName = select?.value || 'Assigned Driver';
+  const driverPhone = selectedOption?.getAttribute('data-phone') || '7296831460';
+  const driverVeh = selectedOption?.getAttribute('data-veh') || 'Bike';
+  const driverVehNum = selectedOption?.getAttribute('data-vehnum') || '-';
 
   const p = allAdminParcels.find(x => (x.parcel_id === parcelId || x.id === parcelId));
   if (p) {
     p.assigned_driver_name = driverName;
-    p.assigned_driver_phone = '7296831460';
+    p.assigned_driver_phone = driverPhone;
+    p.assigned_vehicle_type = driverVeh;
+    p.assigned_vehicle_no = driverVehNum;
     p.booking_status = 'driver_assigned';
+    p.status = 'driver_assigned';
+
+    // Ensure OTPs are set and persisted
+    if (!p.pickup_otp) p.pickup_otp = String(Math.floor(1000 + Math.random() * 9000));
+    if (!p.delivery_otp) p.delivery_otp = String(Math.floor(1000 + Math.random() * 9000));
+
+    localStorage.setItem('rudraksha_parcels_history', JSON.stringify(allAdminParcels));
+    localStorage.setItem('rudraksha_parcels', JSON.stringify(allAdminParcels));
+
+    // Sync with backend API
+    try {
+      await fetch(`${API_BASE}/parcels/${parcelId}/assign`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          driver_name: driverName,
+          driver_phone: driverPhone,
+          vehicle_type: driverVeh,
+          vehicle_number: driverVehNum,
+          pickup_otp: p.pickup_otp,
+          delivery_otp: p.delivery_otp
+        })
+      });
+    } catch (e) {
+      console.warn('Backend sync assigned rider notice:', e);
+    }
+  }
+
+  showAdminToast(`Driver "${driverName}" assigned to Parcel ${parcelId}! Pickup & Delivery OTPs active.`);
+  bootstrap.Modal.getInstance(document.getElementById('assignParcelDriverModal'))?.hide();
+  renderParcelsTable();
+  updateParcelMetrics();
+}
+
+/* ==========================================================================
+   ADMIN PARCEL OTP CONTROLLER (Admin generates & sends OTPs)
+   ========================================================================== */
+let currentActiveOtpParcel = null;
+
+function openAdminOtpModal(parcelId) {
+  const p = allAdminParcels.find(x => (x.parcel_id === parcelId || x.id === parcelId));
+  if (!p) {
+    showAdminToast('Parcel order not found', 'error');
+    return;
+  }
+
+  currentActiveOtpParcel = p;
+
+  // Auto-generate if missing
+  if (!p.pickup_otp) p.pickup_otp = String(Math.floor(1000 + Math.random() * 9000));
+  if (!p.delivery_otp) p.delivery_otp = String(Math.floor(1000 + Math.random() * 9000));
+
+  const pId = p.parcel_id || p.id;
+  document.getElementById('otpModalParcelId').value = pId;
+  document.getElementById('otpModalDisplayId').innerText = pId;
+  document.getElementById('otpModalSenderName').innerText = p.sender_name || 'Sender';
+  document.getElementById('otpModalSenderPhone').innerText = `+91 ${p.sender_phone || '-'}`;
+  document.getElementById('otpModalReceiverName').innerText = p.receiver_name || 'Receiver';
+  document.getElementById('otpModalReceiverPhone').innerText = `+91 ${p.receiver_phone || '-'}`;
+
+  document.getElementById('adminInputPickupOtp').value = p.pickup_otp || '';
+  document.getElementById('adminInputDeliveryOtp').value = p.delivery_otp || '';
+
+  const modal = new bootstrap.Modal(document.getElementById('adminParcelOtpModal'));
+  modal.show();
+}
+
+function generateAdminModalOtp(type) {
+  const random4 = String(Math.floor(1000 + Math.random() * 9000));
+  if (type === 'pickup') {
+    const el = document.getElementById('adminInputPickupOtp');
+    if (el) el.value = random4;
+  } else {
+    const el = document.getElementById('adminInputDeliveryOtp');
+    if (el) el.value = random4;
+  }
+}
+
+async function saveAdminParcelOtps() {
+  const pId = document.getElementById('otpModalParcelId')?.value;
+  const pOtp = document.getElementById('adminInputPickupOtp')?.value.trim();
+  const dOtp = document.getElementById('adminInputDeliveryOtp')?.value.trim();
+
+  if (!pOtp || pOtp.length < 4 || !dOtp || dOtp.length < 4) {
+    showAdminToast('Both Pickup and Delivery OTPs must be 4 digits.', 'error');
+    return;
+  }
+
+  const p = allAdminParcels.find(x => (x.parcel_id === pId || x.id === pId));
+  if (p) {
+    p.pickup_otp = pOtp;
+    p.delivery_otp = dOtp;
     localStorage.setItem('rudraksha_parcels_history', JSON.stringify(allAdminParcels));
     localStorage.setItem('rudraksha_parcels', JSON.stringify(allAdminParcels));
   }
 
-  showAdminToast(`Driver "${driverName}" assigned to Parcel ${parcelId}!`);
-  bootstrap.Modal.getInstance(document.getElementById('assignParcelDriverModal'))?.hide();
+  try {
+    await fetch(`${API_BASE}/parcels/${pId}/otps`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ pickup_otp: pOtp, delivery_otp: dOtp })
+    });
+  } catch (err) {}
+
+  showAdminToast(`✅ OTPs saved for Parcel ${pId}! Pickup: ${pOtp} | Delivery: ${dOtp}`);
   renderParcelsTable();
-  updateParcelMetrics();
+}
+
+function dispatchPickupOtpToSenderWhatsApp() {
+  if (!currentActiveOtpParcel) return;
+  const p = currentActiveOtpParcel;
+  const pId = p.parcel_id || p.id;
+  const pOtp = document.getElementById('adminInputPickupOtp')?.value.trim() || p.pickup_otp;
+  const sPhone = (p.sender_phone || '').replace(/\D/g, '');
+  const trackUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}track.html?id=${pId}`;
+
+  const msg = 
+`📦 *RUDRAKSHA EXPRESS - ORDER CONFIRMED & PICKUP PIN*
+━━━━━━━━━━━━━━━━━━━━
+Namaste *${p.sender_name || 'Customer'}*,
+Aapka parcel delivery order *${pId}* confirm ho gaya hai!
+
+🔑 *Aapka Pickup OTP / PIN:* *${pOtp}*
+
+⚠️ *Zaroori Suraksha:* Yeh PIN keval tabhi hamare rider ke sath share karein jab wo aapke pickup location par parcel lene pahunch jayein.
+
+📍 *Pickup:* ${p.pickup_address || '-'}
+📍 *Drop:* ${p.drop_address || '-'}
+👨‍✈️ *Assigned Rider:* ${p.assigned_driver_name || 'Rudraksha Rider'} (+91 ${p.assigned_driver_phone || '7296831460'})
+💰 *Estimated Fare:* ₹${p.total_amount || 0} (${p.payment_method || 'Cash'})
+
+🔍 *Live Track Your Order:*
+${trackUrl}
+━━━━━━━━━━━━━━━━━━━━
+_Rudraksha Express Logistics • Fast & Secure Delivery_`;
+
+  window.open(`https://wa.me/91${sPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function dispatchDeliveryOtpToReceiverWhatsApp() {
+  if (!currentActiveOtpParcel) return;
+  const p = currentActiveOtpParcel;
+  const pId = p.parcel_id || p.id;
+  const dOtp = document.getElementById('adminInputDeliveryOtp')?.value.trim() || p.delivery_otp;
+  const rPhone = (p.receiver_phone || '').replace(/\D/g, '');
+  const trackUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}track.html?id=${pId}`;
+
+  const msg = 
+`📦 *RUDRAKSHA EXPRESS - INCOMING PARCEL & DELIVERY PIN*
+━━━━━━━━━━━━━━━━━━━━
+Namaste *${p.receiver_name || 'Customer'}*,
+*${p.sender_name || 'Customer'}* ne aapke liye Rudraksha Express se ek parcel bheja hai.
+
+🆔 *Parcel ID:* ${pId}
+🛡️ *Aapka Delivery OTP / PIN:* *${dOtp}*
+
+⚠️ *Zaroori Suraksha:* Yeh Delivery PIN keval tabhi rider ke sath share karein jab parcel sahi salamat aapke haath mein deliver ho jaye.
+
+📍 *Delivery Address:* ${p.drop_address || '-'}
+💰 *Payable Amount:* ₹${p.total_amount || 0} (${p.payment_method || 'Cash'})
+
+🔍 *Live Track Status:*
+${trackUrl}
+━━━━━━━━━━━━━━━━━━━━
+_Rudraksha Express Logistics • Always on Time_`;
+
+  window.open(`https://wa.me/91${rPhone}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 async function quickUpdateParcelStatus(parcelId, newStatus) {
   const p = allAdminParcels.find(x => (x.parcel_id === parcelId || x.id === parcelId));
   if (p) {
     p.booking_status = newStatus;
+    p.status = newStatus;
+    if (newStatus === 'picked_up') p.pickup_otp_verified = true;
+    if (newStatus === 'delivered') { p.delivery_otp_verified = true; p.pickup_otp_verified = true; }
     localStorage.setItem('rudraksha_parcels_history', JSON.stringify(allAdminParcels));
     localStorage.setItem('rudraksha_parcels', JSON.stringify(allAdminParcels));
   }
