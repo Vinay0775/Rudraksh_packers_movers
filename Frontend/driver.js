@@ -172,14 +172,12 @@ function onRiderAuthSuccess() {
   loadDriverFeed(true);
 }
 
-/**
- * Rider Login Submission (Phone + 4-Digit PIN)
- */
 async function submitDriverLogin() {
   const phoneInput = document.getElementById('loginDriverPhone')?.value.trim().replace(/\D/g, '');
   const pinInput = document.getElementById('loginDriverPin')?.value.trim();
   const rememberCheck = document.getElementById('rememberDriverCheck')?.checked;
   const errorEl = document.getElementById('loginErrorMsg');
+  const btnLogin = document.getElementById('btnLoginDriver');
 
   if (!phoneInput || phoneInput.length < 10) {
     if (errorEl) {
@@ -197,43 +195,112 @@ async function submitDriverLogin() {
   }
 
   if (errorEl) errorEl.style.display = 'none';
+  if (btnLogin) {
+    btnLogin.disabled = true;
+    btnLogin.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Logging in...';
+  }
 
   try {
-    const res = await fetch(`${DRIVER_API_BASE}/rider/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: phoneInput, pin: pinInput })
-    });
+    let authSuccess = false;
+    let driverData = null;
+    let token = null;
 
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Access Denied: Invalid mobile number or PIN.');
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(`${DRIVER_API_BASE}/rider/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneInput, pin: pinInput }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        authSuccess = true;
+        driverData = data.driver;
+        token = data.token;
+      } else if (res.status === 401 || res.status === 403 || res.status === 400) {
+        throw new Error(data.error || 'Access Denied: Invalid phone or PIN.');
+      }
+    } catch (networkErr) {
+      if (networkErr.message && networkErr.message.includes('Access Denied')) throw networkErr;
     }
 
-    // Restore persistent avatar if existing for this phone (Protected with Try-Catch)
+    // Local Fallback Authorization if backend is sleeping or waking up
+    if (!authSuccess) {
+      const approvedList = JSON.parse(localStorage.getItem('rudraksha_approved_drivers') || '[]');
+      const appsList = JSON.parse(localStorage.getItem('rudraksha_rider_applications') || '[]');
+      
+      const foundApproved = approvedList.find(d => String(d.driver_phone || d.phone || '').replace(/\D/g, '') === phoneInput);
+      const foundApp = appsList.find(a => String(a.phone || '').replace(/\D/g, '') === phoneInput);
+
+      if (foundApproved) {
+        if (foundApproved.pin && String(foundApproved.pin).trim() !== pinInput) {
+          throw new Error('❌ Incorrect Security PIN. Please enter the 4-digit PIN sent to your WhatsApp.');
+        }
+        driverData = {
+          id: foundApproved.id || `RDR-${phoneInput.slice(-4)}`,
+          driver_name: foundApproved.driver_name || foundApproved.name || 'Rider Partner',
+          phone: phoneInput,
+          vehicle_type: foundApproved.vehicle_type || 'Bike',
+          vehicle_number: foundApproved.vehicle_number || '',
+          status: 'Active',
+          onDuty: true
+        };
+        token = `local_token_${phoneInput}_${Date.now()}`;
+        authSuccess = true;
+      } else if (foundApp && foundApp.status === 'Approved') {
+        if (foundApp.pin && String(foundApp.pin).trim() !== pinInput) {
+          throw new Error('❌ Incorrect Security PIN. Please check your WhatsApp approval message.');
+        }
+        driverData = {
+          id: foundApp.driverId || `RDR-${phoneInput.slice(-4)}`,
+          driver_name: foundApp.name,
+          phone: phoneInput,
+          vehicle_type: foundApp.vehType || 'Bike',
+          vehicle_number: foundApp.vehNum || '',
+          status: 'Active',
+          onDuty: true
+        };
+        token = `local_token_${phoneInput}_${Date.now()}`;
+        authSuccess = true;
+      } else if (foundApp && foundApp.status === 'Pending') {
+        throw new Error('⏳ Your driver application is under review. You will receive your PIN on WhatsApp once approved.');
+      } else if (foundApp && foundApp.status === 'Rejected') {
+        throw new Error('❌ Your driver application was declined. Please contact Rudraksha Support at +91 7296831460.');
+      } else {
+        throw new Error(`❌ No approved driver account found for +91 ${phoneInput}. Please register as a rider partner first.`);
+      }
+    }
+
+    // Save persistent avatar
     try {
-      const cleanPhone = String(data.driver?.phone || phoneInput).replace(/\D/g, '');
+      const cleanPhone = String(driverData?.phone || phoneInput).replace(/\D/g, '');
       const prefix = getAvatarStoragePrefix();
       const savedAvatar = cleanPhone ? localStorage.getItem(prefix + cleanPhone) : null;
-      if (savedAvatar && !data.driver.avatar_url) {
-        data.driver.avatar_url = savedAvatar;
+      if (savedAvatar && !driverData.avatar_url) {
+        driverData.avatar_url = savedAvatar;
       }
-    } catch (avatarErr) {
-      console.warn('Non-blocking avatar restore notice:', avatarErr);
-    }
+    } catch {}
 
-    // Save cryptographic token & sanitized driver session
     const storage = rememberCheck ? localStorage : sessionStorage;
-    storage.setItem(RIDER_TOKEN_KEY, data.token);
-    localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(data.driver));
-    currentDriver = data.driver;
+    storage.setItem(RIDER_TOKEN_KEY, token);
+    localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(driverData));
+    currentDriver = driverData;
 
-    showToast(`🎉 Welcome back, ${currentDriver.driver_name || 'Rider'}!`, 'success');
+    showToast(`🎉 Welcome, ${currentDriver.driver_name || 'Rider'}!`, 'success');
     onRiderAuthSuccess();
   } catch (err) {
     if (errorEl) {
       errorEl.innerText = err.message || 'Login failed. Please verify your phone & PIN.';
       errorEl.style.display = 'block';
+    }
+  } finally {
+    if (btnLogin) {
+      btnLogin.disabled = false;
+      btnLogin.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket me-2"></i> Login to Driver Dashboard';
     }
   }
 }
@@ -912,15 +979,49 @@ function renderPastDeliveriesList(trips) {
 }
 
 function fallbackLocalEarnings() {
-  updateEarningsUI({
-    todayEarnings: 0,
-    last7DaysEarnings: 0,
-    last30DaysEarnings: 0,
-    last6MonthsEarnings: 0,
-    last1YearEarnings: 0,
-    allTimeEarnings: 0,
-    completedTripsCount: 0
-  });
+  if (!currentDriver) return;
+  const cleanPhone = String(currentDriver.phone || '').replace(/\D/g, '');
+  const driverId = currentDriver.id;
+
+  const p1 = JSON.parse(localStorage.getItem('rudraksha_parcels') || '[]');
+  const p2 = JSON.parse(localStorage.getItem('rudraksha_parcels_history') || '[]');
+  const map = new Map();
+  [...p1, ...p2].forEach(p => { if (p && (p.parcel_id || p.id)) map.set(p.parcel_id || p.id, p); });
+  const allParcels = Array.from(map.values());
+
+  const myDeliveredTrips = allParcels.filter(p => {
+    const isThisDriver = (driverId && p.driver_id === driverId) ||
+                         (cleanPhone && p.assigned_driver_phone && String(p.assigned_driver_phone).replace(/\D/g, '') === cleanPhone);
+    const st = p.booking_status || p.status;
+    const isDelivered = st === 'delivered' || p.delivery_otp_verified;
+    return isThisDriver && isDelivered;
+  }).map(p => ({
+    id: p.parcel_id || p.id,
+    customer_price: Number(p.total_amount || 0),
+    driver_earning: Number(p.total_amount || 0),
+    pickup: p.pickup_address,
+    drop: p.drop_address,
+    payment_mode: p.payment_method || 'Cash on Delivery',
+    date: p.created_at || new Date().toISOString(),
+    timestamp: new Date(p.created_at || Date.now()).getTime()
+  }));
+
+  const totalEarnings = myDeliveredTrips.reduce((acc, t) => acc + t.driver_earning, 0);
+
+  allRiderTrips = myDeliveredTrips;
+  allRiderEarningsData = {
+    todayEarnings: totalEarnings,
+    last7DaysEarnings: totalEarnings,
+    last30DaysEarnings: totalEarnings,
+    last6MonthsEarnings: totalEarnings,
+    last1YearEarnings: totalEarnings,
+    allTimeEarnings: totalEarnings,
+    completedTripsCount: myDeliveredTrips.length,
+    dateOfJoining: currentDriver.approved_at || currentDriver.created_at || new Date().toISOString()
+  };
+
+  updateEarningsUI(allRiderEarningsData);
+  applyEarningsTimeFilter();
 }
 
 /* ==========================================================================
@@ -940,6 +1041,10 @@ async function loadDriverFeed(showRefreshAnim = false) {
     }
   }
 
+  let activeTripFound = null;
+  let availableList = [];
+  let feedLoadedFromBackend = false;
+
   try {
     const res = await fetch(`${DRIVER_API_BASE}/rider/jobs`, {
       headers: getRiderHeaders()
@@ -947,54 +1052,106 @@ async function loadDriverFeed(showRefreshAnim = false) {
 
     if (res.ok) {
       const data = await res.json();
-      currentActiveTrip = data.activeTrip || null;
-
-      // Render Active Trip if rider is assigned
-      if (activeContainer) {
-        if (currentActiveTrip) {
-          activeContainer.innerHTML = buildActiveTripCard(currentActiveTrip);
-        } else {
-          activeContainer.innerHTML = '';
+      feedLoadedFromBackend = true;
+      
+      // Filter out any trip that has status delivered
+      if (data.activeTrip) {
+        const st = data.activeTrip.booking_status || data.activeTrip.status;
+        if (st !== 'delivered' && !data.activeTrip.delivery_otp_verified) {
+          activeTripFound = data.activeTrip;
         }
       }
 
-      // Render Available Jobs Feed
-      const available = data.availableJobs || [];
-      if (feedCountEl) feedCountEl.innerText = available.length > 0 ? available.length : '';
-
-      if (currentActiveTrip) {
-        feedList.innerHTML = `
-          <div class="empty-state" style="padding: 24px 16px;">
-            <div class="empty-icon" style="color: var(--green);"><i class="fa-solid fa-circle-check"></i></div>
-            <div class="empty-title">Trip in Progress</div>
-            <div class="empty-sub">Complete your active trip above to receive new orders.</div>
-          </div>
-        `;
-        return;
-      }
-
-      if (available.length === 0) {
-        feedList.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-icon"><i class="fa-solid fa-satellite-dish"></i></div>
-            <div class="empty-title">Scanning for Delivery Jobs...</div>
-            <div class="empty-sub">New orders appear here automatically every 8 seconds.</div>
-          </div>
-        `;
-        return;
-      }
-
-      feedList.innerHTML = available.map(p => buildFeedCard(p)).join('');
-      return;
+      availableList = (data.availableJobs || []).filter(p => {
+        const st = p.booking_status || p.status;
+        return st !== 'delivered' && !p.delivery_otp_verified && (st === 'searching_driver' || st === 'received');
+      });
     }
   } catch (err) {
-    console.warn('Jobs feed error:', err);
+    console.warn('Jobs feed network notice, using local cache:', err);
   }
+
+  // Local Storage Fallback if backend is offline or waking up
+  if (!feedLoadedFromBackend) {
+    const p1 = JSON.parse(localStorage.getItem('rudraksha_parcels') || '[]');
+    const p2 = JSON.parse(localStorage.getItem('rudraksha_parcels_history') || '[]');
+    const map = new Map();
+    [...p1, ...p2].forEach(p => { if (p && (p.parcel_id || p.id)) map.set(p.parcel_id || p.id, p); });
+    const allParcels = Array.from(map.values());
+
+    const cleanPhone = String(currentDriver?.phone || '').replace(/\D/g, '');
+    const driverId = currentDriver?.id;
+
+    // Check active trip for this driver
+    const localActive = allParcels.find(p => {
+      const isAssigned = (driverId && p.driver_id === driverId) ||
+                         (cleanPhone && p.assigned_driver_phone && String(p.assigned_driver_phone).replace(/\D/g, '') === cleanPhone);
+      const st = p.booking_status || p.status || '';
+      const isDelivered = st === 'delivered' || p.delivery_otp_verified;
+      const isActiveStatus = ['driver_assigned', 'reached_pickup', 'picked_up', 'in_transit', 'out_for_delivery'].includes(st);
+      return isAssigned && isActiveStatus && !isDelivered;
+    });
+
+    activeTripFound = localActive || null;
+
+    if (!activeTripFound && currentDriver?.onDuty !== false) {
+      availableList = allParcels.filter(p => {
+        const st = p.booking_status || p.status || '';
+        const isDelivered = st === 'delivered' || p.delivery_otp_verified;
+        return (st === 'searching_driver' || st === 'received') && !p.driver_id && !isDelivered;
+      });
+    }
+  }
+
+  currentActiveTrip = activeTripFound;
+
+  // Render Active Trip if rider is assigned
+  if (activeContainer) {
+    if (currentActiveTrip) {
+      activeContainer.innerHTML = buildActiveTripCard(currentActiveTrip);
+    } else {
+      activeContainer.innerHTML = '';
+    }
+  }
+
+  // Render Available Jobs Feed
+  if (feedCountEl) feedCountEl.innerText = availableList.length > 0 ? availableList.length : '';
+
+  if (currentActiveTrip) {
+    feedList.innerHTML = `
+      <div class="empty-state" style="padding: 24px 16px;">
+        <div class="empty-icon" style="color: var(--green);"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="empty-title">Trip in Progress</div>
+        <div class="empty-sub">Complete your active trip above to receive new orders.</div>
+      </div>
+    `;
+    return;
+  }
+
+  if (availableList.length === 0) {
+    feedList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon"><i class="fa-solid fa-satellite-dish"></i></div>
+        <div class="empty-title">Scanning for Delivery Jobs...</div>
+        <div class="empty-sub">New orders appear here automatically every 8 seconds.</div>
+      </div>
+    `;
+    return;
+  }
+
+  feedList.innerHTML = availableList.map(p => buildFeedCard(p)).join('');
 }
 
 function buildActiveTripCard(trip) {
   const pId = trip.parcel_id || trip.id;
   const st = trip.booking_status || trip.status || 'driver_assigned';
+  const isDelivered = st === 'delivered' || trip.delivery_otp_verified;
+
+  // Safety check: Never render active trip box if trip is delivered
+  if (isDelivered) {
+    return '';
+  }
+
   const pickupAddr = trip.pickup_address || 'Pickup Point';
   const dropAddr = trip.drop_address || 'Drop Point';
   const fare = Number(trip.total_amount || 0);

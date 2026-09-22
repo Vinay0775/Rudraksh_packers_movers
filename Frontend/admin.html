@@ -244,19 +244,19 @@
           <!-- WIDGET 2: EARNINGS & BALANCE (Col 3) -->
           <div class="cyber-card cyber-grid-col-3">
             <div class="cyber-card-header">
-              <span class="cyber-badge-pill active-glow"><span class="dot"></span> 30% Better</span>
+              <span class="cyber-badge-pill active-glow"><span class="dot"></span> Live Fleet Earning</span>
               <button class="cyber-card-menu-btn" onclick="switchAdminTab('rates')"><i class="fa-solid fa-ellipsis-vertical"></i></button>
             </div>
 
             <div class="small text-muted">Total Earning Volume</div>
             <div class="cyber-earning-amount">
-              <span id="dashTotalRevenue">₹45,250</span>
+              <span id="dashTotalRevenue">₹0</span>
               <!-- Mini vector sparkline -->
               <svg class="cyber-sparkline-mini" viewBox="0 0 80 35" fill="none">
                 <path d="M2 28 C 15 28, 25 15, 40 22 C 55 29, 65 8, 78 5" stroke="#D0FD38" stroke-width="2.5" stroke-linecap="round"/>
               </svg>
             </div>
-            <div class="small text-muted mb-2" id="dashRevenueBreakdown" style="font-size: 0.7rem;">Movers: ₹45,250 • Parcels: ₹0</div>
+            <div class="small text-muted mb-2" id="dashRevenueBreakdown" style="font-size: 0.7rem;">Movers: ₹0 • Parcels: ₹0</div>
 
             <button class="btn-cyber-neon w-100 py-2 mt-1" onclick="switchAdminTab('rates')">
               <i class="fa-solid fa-wallet me-1"></i> Manage Rates
@@ -284,7 +284,7 @@
             <div class="cyber-speedometer-box">
               <div class="cyber-speed-display">
                 <div>
-                  <span class="cyber-speed-val" id="dashTotalKm">1,745</span>
+                  <span class="cyber-speed-val" id="dashTotalKm">0</span>
                   <span class="cyber-speed-unit">km/transit</span>
                 </div>
                 <span class="cyber-badge-pill" style="font-size: 0.7rem;">Live Fleet <i class="fa-solid fa-chevron-down ms-1"></i></span>
@@ -1467,20 +1467,28 @@
           </div>
 
           <div class="d-flex flex-column gap-2 mt-4">
+            <button type="button" class="btn btn-warning w-100 py-3 fw-bold text-dark d-flex align-items-center justify-content-center gap-2 mb-1" style="background: linear-gradient(135deg, #f97316, #fbbf24); border: none; border-radius: 12px; font-size: 0.95rem;" onclick="dispatchOtpsToBothWhatsApp(document.getElementById('otpModalParcelId').value)">
+              <i class="fa-solid fa-bolt"></i> <span>⚡ 1-Click Send OTPs to Both (Sender & Receiver)</span>
+            </button>
+
             <button type="button" class="btn-cyber-neon w-100 py-2 fw-bold" onclick="saveAdminParcelOtps()">
               <i class="fa-solid fa-floppy-disk me-1"></i> Save OTPs to System
             </button>
             
             <div class="border-top border-secondary border-opacity-25 my-2"></div>
             
-            <button type="button" class="btn btn-outline-warning w-100 py-2 fw-bold text-start d-flex align-items-center justify-content-between" onclick="dispatchPickupOtpToSenderWhatsApp()">
-              <span><i class="fa-brands fa-whatsapp text-success me-2"></i>Send Pickup OTP to Sender</span>
-              <i class="fa-solid fa-arrow-up-right-from-square small"></i>
-            </button>
-            <button type="button" class="btn btn-outline-success w-100 py-2 fw-bold text-start d-flex align-items-center justify-content-between" onclick="dispatchDeliveryOtpToReceiverWhatsApp()">
-              <span><i class="fa-brands fa-whatsapp text-success me-2"></i>Send Delivery OTP to Receiver</span>
-              <i class="fa-solid fa-arrow-up-right-from-square small"></i>
-            </button>
+            <div class="row g-2">
+              <div class="col-6">
+                <button type="button" class="btn btn-sm btn-outline-warning w-100 py-2 fw-bold text-truncate" onclick="dispatchPickupOtpToSenderWhatsApp()" title="Send only to Sender">
+                  <i class="fa-brands fa-whatsapp text-success me-1"></i>Sender Only
+                </button>
+              </div>
+              <div class="col-6">
+                <button type="button" class="btn btn-sm btn-outline-success w-100 py-2 fw-bold text-truncate" onclick="dispatchDeliveryOtpToReceiverWhatsApp()" title="Send only to Receiver">
+                  <i class="fa-brands fa-whatsapp text-success me-1"></i>Receiver Only
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

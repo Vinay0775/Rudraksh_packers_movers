@@ -1270,40 +1270,43 @@ async function saveAdminTheme() {
    10. METRICS & RECENT HISTORY SYNCHRONIZATION
    ========================================================================== */
 function updateDashboardMetrics() {
-  // 1. Calculate Combined Revenue & Distance (Relocation + Parcels)
+  // 1. Calculate Combined Revenue & Distance from REAL bookings (Relocation + Parcels)
   const relocationRev = adminBookings.reduce((acc, b) => acc + (Number(b.total_amount) || 0), 0);
   const parcelRev = allAdminParcels.reduce((acc, p) => acc + (Number(p.total_amount) || 0), 0);
-  const totalRevenue = (relocationRev > 0 ? relocationRev : 45250) + parcelRev;
+  const totalRevenue = relocationRev + parcelRev;
 
-  const relocationKm = adminBookings.reduce((acc, b) => acc + (Number(b.distance_km) || 25), 0);
+  const relocationKm = adminBookings.reduce((acc, b) => acc + (Number(b.distance_km) || 0), 0);
   const parcelKm = allAdminParcels.reduce((acc, p) => acc + (Number(p.distance_km) || 0), 0);
-  const totalKm = (relocationKm > 0 ? relocationKm : 1745) + Math.round(parcelKm);
+  const totalKm = relocationKm + Math.round(parcelKm);
 
   // Smooth Count-Up Animations
-  animateCountUp('dashTotalRevenue', totalRevenue, 1500, '₹');
-  animateCountUp('dashTotalKm', totalKm, 1400);
+  animateCountUp('dashTotalRevenue', totalRevenue, 1200, '₹');
+  animateCountUp('dashTotalKm', totalKm, 1000);
 
   // Revenue Breakdown Subtitle
   const breakdownEl = document.getElementById('dashRevenueBreakdown');
   if (breakdownEl) {
-    const rDisp = (relocationRev > 0 ? relocationRev : 45250).toLocaleString('en-IN');
+    const rDisp = relocationRev.toLocaleString('en-IN');
     const pDisp = parcelRev.toLocaleString('en-IN');
     breakdownEl.innerText = `Movers: ₹${rDisp} • Parcels: ₹${pDisp}`;
   }
 
   // 2. Next Dispatch Card (Picks latest active relocation OR parcel dispatch)
-  const activeParcel = allAdminParcels.find(p => ['driver_assigned', 'reached_pickup', 'in_transit', 'out_for_delivery'].includes(p.booking_status || p.status));
+  const activeParcel = allAdminParcels.find(p => ['driver_assigned', 'reached_pickup', 'picked_up', 'in_transit', 'out_for_delivery'].includes(p.booking_status || p.status));
   if (activeParcel) {
-    const dName = activeParcel.assigned_driver_name || 'Rajesh Kumar (Express Rider)';
-    const route = `📦 ${activeParcel.pickup_address?.split(',')[0] || 'Jaipur'} ➔ ${activeParcel.drop_address?.split(',')[0] || 'Destination'}`;
+    const dName = activeParcel.assigned_driver_name || 'Express Rider';
+    const route = `📦 ${activeParcel.pickup_address?.split(',')[0] || 'Pickup'} ➔ ${activeParcel.drop_address?.split(',')[0] || 'Drop'}`;
     if (document.getElementById('dashNextDriver')) document.getElementById('dashNextDriver').innerText = dName;
     if (document.getElementById('dashNextRoute')) document.getElementById('dashNextRoute').innerText = route;
   } else if (adminBookings.length > 0) {
     const latest = adminBookings[0];
-    const dName = latest.assigned_driver_name || 'Mukesh Sharma (Fleet Captain)';
-    const route = `🏠 ${latest.pickup_address?.split(',')[0] || 'Jaipur'} ➔ ${latest.drop_address?.split(',')[0] || 'Delhi'}`;
+    const dName = latest.assigned_driver_name || 'Fleet Captain';
+    const route = `🏠 ${latest.pickup_address?.split(',')[0] || 'Origin'} ➔ ${latest.drop_address?.split(',')[0] || 'Destination'}`;
     if (document.getElementById('dashNextDriver')) document.getElementById('dashNextDriver').innerText = dName;
     if (document.getElementById('dashNextRoute')) document.getElementById('dashNextRoute').innerText = route;
+  } else {
+    if (document.getElementById('dashNextDriver')) document.getElementById('dashNextDriver').innerText = 'Fleet on Standby';
+    if (document.getElementById('dashNextRoute')) document.getElementById('dashNextRoute').innerText = 'No Active Dispatches';
   }
 
   // 3. Merged Recent History List Widget (Relocations + Parcels)
@@ -1312,19 +1315,19 @@ function updateDashboardMetrics() {
     const unifiedHistory = [
       ...adminBookings.map(b => ({
         type: 'relocation',
-        title: `${b.pickup_address?.split(',')[0] || 'Jaipur'} ➔ ${b.drop_address?.split(',')[0] || 'Delhi'}`,
+        title: `${b.pickup_address?.split(',')[0] || 'Origin'} ➔ ${b.drop_address?.split(',')[0] || 'Destination'}`,
         subtitle: `${b.shifting_date || 'Today'} • ${b.customer_name || 'Customer'}`,
-        amount: b.total_amount ? `₹${Number(b.total_amount).toLocaleString('en-IN')}` : '₹15,090',
+        amount: b.total_amount ? `₹${Number(b.total_amount).toLocaleString('en-IN')}` : '₹0',
         detail: b.selected_vehicle || 'Dedicated Truck',
-        date: new Date(b.created_at || Date.now() - 40 * 60000)
+        date: new Date(b.created_at || Date.now())
       })),
       ...allAdminParcels.map(p => ({
         type: 'parcel',
-        title: `📦 ${p.pickup_address?.split(',')[0] || 'Jaipur'} ➔ ${p.drop_address?.split(',')[0] || 'Drop'}`,
+        title: `📦 ${p.pickup_address?.split(',')[0] || 'Pickup'} ➔ ${p.drop_address?.split(',')[0] || 'Drop'}`,
         subtitle: `${p.parcel_id} • ${p.sender_name || 'Sender'}`,
         amount: `₹${p.total_amount || 0}`,
         detail: `${(p.vehicle_type || 'bike').toUpperCase()} • ${p.parcel_type || 'Package'}`,
-        date: new Date(p.created_at || Date.now() - 10 * 60000)
+        date: new Date(p.created_at || Date.now())
       }))
     ].sort((a, b) => b.date - a.date).slice(0, 3);
 
@@ -1334,30 +1337,46 @@ function updateDashboardMetrics() {
       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80'
     ];
 
-    historyContainer.innerHTML = unifiedHistory.map((item, idx) => {
-      const av = avatars[idx % avatars.length];
-      const typeBadge = item.type === 'parcel'
-        ? `<span class="badge bg-warning text-dark py-0 px-1" style="font-size: 0.62rem;">PARCEL</span>`
-        : `<span class="badge bg-primary text-white py-0 px-1" style="font-size: 0.62rem;">RELOCATION</span>`;
+    if (unifiedHistory.length === 0) {
+      historyContainer.innerHTML = `<div class="text-center py-4 text-muted small"><i class="fa-solid fa-clock-rotate-left me-1"></i> No recent orders yet.</div>`;
+    } else {
+      historyContainer.innerHTML = unifiedHistory.map((item, idx) => {
+        const av = avatars[idx % avatars.length];
+        const typeBadge = item.type === 'parcel'
+          ? `<span class="badge bg-warning text-dark py-0 px-1" style="font-size: 0.62rem;">PARCEL</span>`
+          : `<span class="badge bg-info text-dark py-0 px-1" style="font-size: 0.62rem;">RELOCATION</span>`;
 
-      return `
-        <div class="cyber-history-item" onclick="switchAdminTab('${item.type === 'parcel' ? 'parcels' : 'bookings'}')">
-          <div class="cyber-history-user">
-            <img src="${av}" alt="User" class="cyber-history-avatar">
-            <div>
-              <div class="fw-bold text-white small d-flex align-items-center gap-1">${item.title} ${typeBadge}</div>
-              <div class="text-muted" style="font-size: 0.7rem;">${item.subtitle}</div>
-              <div style="color: var(--accent-neon); font-size: 0.72rem;">${item.detail} - ${item.amount}</div>
+        return `
+          <div class="cyber-history-item" onclick="switchAdminTab('${item.type === 'parcel' ? 'parcels' : 'bookings'}')">
+            <img src="${av}" alt="User Avatar" class="cyber-avatar-sm">
+            <div class="cyber-history-info">
+              <div class="title d-flex align-items-center gap-1">
+                ${item.title} ${typeBadge}
+              </div>
+              <div class="time">${item.subtitle} • <span class="text-secondary">${item.detail}</span></div>
             </div>
+            <div class="cyber-history-amount">${item.amount}</div>
           </div>
-          <i class="fa-solid fa-chevron-right text-muted small"></i>
-        </div>
-      `;
-    }).join('');
+        `;
+      }).join('');
+    }
   }
+}
 
-  updateParcelMetrics();
-  triggerDashboardAnimations();
+async function loadBookingsMetrics() {
+  if (adminBookings.length === 0) {
+    try {
+      const res = await fetch(`${API_BASE}/bookings`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        adminBookings = data.bookings || [];
+      }
+    } catch {}
+  }
+  if (allAdminParcels.length === 0) {
+    await loadAdminParcels();
+  }
+  updateDashboardMetrics();
 }
 
 async function refreshAdminAll() {
@@ -1388,7 +1407,7 @@ async function refreshAdminAll() {
 }
 
 /* ==========================================================================
-   11. RUDRAKSHA PARCEL OPERATIONS & LOGISTICS HUB CONTROLLER
+   11. ON-DEMAND PARCEL LOGISTICS MANAGEMENT (Phase 3D)
    ========================================================================== */
 let allAdminParcels = [];
 let allRiderApplications = [];
@@ -1425,72 +1444,7 @@ async function loadAdminParcels() {
       localList = Array.from(map.values());
     } catch {}
 
-    if (localList.length > 0) {
-      allAdminParcels = localList;
-    } else {
-      // Seed rich demo parcel bookings if none exist
-      allAdminParcels = [
-        {
-          parcel_id: 'RP-PCL-982104',
-          sender_name: 'Rohit Verma',
-          sender_phone: '9829012345',
-          receiver_name: 'Pooja Agarwal',
-          receiver_phone: '9829098765',
-          pickup_address: 'Mansarovar Metro Station, Jaipur',
-          drop_address: 'Vaishali Nagar Amrapali Circle, Jaipur',
-          distance_km: 8.4,
-          parcel_type: 'Documents',
-          weight_category: '1_5kg',
-          vehicle_type: 'bike',
-          total_amount: 154,
-          payment_method: 'UPI Direct',
-          booking_status: 'driver_assigned',
-          assigned_driver_name: 'Mukesh Sharma (Bike)',
-          assigned_driver_phone: '7296831460',
-          created_at: new Date(Date.now() - 35 * 60000).toISOString()
-        },
-        {
-          parcel_id: 'RP-PCL-982105',
-          sender_name: 'Anjali Singhal',
-          sender_phone: '9414011223',
-          receiver_name: 'Vikas Meena',
-          receiver_phone: '9414099887',
-          pickup_address: 'Raja Park, Jaipur',
-          drop_address: 'Malviya Nagar, Jaipur',
-          distance_km: 6.2,
-          parcel_type: 'Small Package',
-          weight_category: '5_10kg',
-          vehicle_type: 'auto',
-          total_amount: 202,
-          payment_method: 'Cash',
-          booking_status: 'searching_driver',
-          assigned_driver_name: '',
-          assigned_driver_phone: '',
-          created_at: new Date(Date.now() - 10 * 60000).toISOString()
-        },
-        {
-          parcel_id: 'RP-PCL-982102',
-          sender_name: 'Sunil Mathur',
-          sender_phone: '9828055443',
-          receiver_name: 'Deepak Sharma',
-          receiver_phone: '9828011223',
-          pickup_address: 'C-Scheme, Jaipur',
-          drop_address: 'Jagatpura, Jaipur',
-          distance_km: 12.5,
-          parcel_type: 'Electronics',
-          weight_category: '10_20kg',
-          vehicle_type: 'mini_truck',
-          total_amount: 395,
-          payment_method: 'Pay at Delivery',
-          booking_status: 'delivered',
-          assigned_driver_name: 'Rajesh Kumar (Tata Ace)',
-          assigned_driver_phone: '7296831460',
-          created_at: new Date(Date.now() - 180 * 60000).toISOString()
-        }
-      ];
-      localStorage.setItem('rudraksha_parcels_history', JSON.stringify(allAdminParcels));
-      localStorage.setItem('rudraksha_parcels', JSON.stringify(allAdminParcels));
-    }
+    allAdminParcels = localList;
   }
 
   // Load Rider Applications & sync
@@ -2093,6 +2047,9 @@ Please confirm pickup on your driver portal.`;
               <option value="delivered" ${status==='delivered'?'selected':''}>🟢 Delivered</option>
               <option value="cancelled" ${status==='cancelled'?'selected':''}>🔴 Cancelled</option>
             </select>
+            <button class="btn btn-sm btn-warning py-0 px-2 fw-bold text-dark" style="font-size: 0.72rem; background: #f97316; border: none;" onclick="dispatchOtpsToBothWhatsApp('${pId}')" title="⚡ 1-Click: Send OTPs to Both Sender & Receiver on WhatsApp">
+              <i class="fa-solid fa-bolt me-1"></i>Both OTPs
+            </button>
             <button class="btn btn-sm btn-outline-warning py-0 px-2 fw-bold" style="font-size: 0.72rem;" onclick="openBroadcastModal('${pId}')" title="📢 Broadcast to Rider WhatsApp Group">
               <i class="fa-solid fa-tower-broadcast text-warning"></i>
             </button>
@@ -2332,6 +2289,110 @@ ${trackUrl}
 _Rudraksha Express Logistics • Always on Time_`;
 
   window.open(`https://wa.me/91${rPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+/**
+ * ⚡ 1-Click Dispatch: Sends WhatsApp message to BOTH Sender (Pickup PIN) and Receiver (Delivery PIN) in one go
+ */
+async function dispatchOtpsToBothWhatsApp(parcelId) {
+  let p = allAdminParcels.find(x => (x.parcel_id === parcelId || x.id === parcelId));
+  if (!p && currentActiveOtpParcel && (currentActiveOtpParcel.parcel_id === parcelId || currentActiveOtpParcel.id === parcelId)) {
+    p = currentActiveOtpParcel;
+  }
+  if (!p) {
+    showAdminToast('Parcel not found.', 'error');
+    return;
+  }
+
+  // Check if modal inputs have custom values
+  const pOtpInput = document.getElementById('adminInputPickupOtp')?.value?.trim();
+  const dOtpInput = document.getElementById('adminInputDeliveryOtp')?.value?.trim();
+
+  if (pOtpInput && pOtpInput.length === 4) p.pickup_otp = pOtpInput;
+  if (dOtpInput && dOtpInput.length === 4) p.delivery_otp = dOtpInput;
+
+  // Auto-generate 4-digit OTPs if missing
+  if (!p.pickup_otp) p.pickup_otp = String(Math.floor(1000 + Math.random() * 9000));
+  if (!p.delivery_otp) p.delivery_otp = String(Math.floor(1000 + Math.random() * 9000));
+
+  // Persist locally & sync with backend
+  localStorage.setItem('rudraksha_parcels_history', JSON.stringify(allAdminParcels));
+  localStorage.setItem('rudraksha_parcels', JSON.stringify(allAdminParcels));
+
+  try {
+    fetch(`${API_BASE}/parcels/${parcelId}/otps`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ pickup_otp: p.pickup_otp, delivery_otp: p.delivery_otp })
+    }).catch(() => {});
+  } catch (e) {}
+
+  const pId = p.parcel_id || p.id;
+  const sPhone = (p.sender_phone || '').replace(/\D/g, '');
+  const rPhone = (p.receiver_phone || '').replace(/\D/g, '');
+  const sName = p.sender_name || 'Sender';
+  const rName = p.receiver_name || 'Receiver';
+  const pickup = p.pickup_address || '-';
+  const drop = p.drop_address || '-';
+  const amount = `₹${p.total_amount || 0}`;
+  const dName = p.assigned_driver_name || 'Rudraksha Rider';
+  const dPhone = p.assigned_driver_phone || '7296831460';
+  const trackUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}track.html?id=${pId}`;
+
+  const senderMsg = 
+`📦 *RUDRAKSHA EXPRESS - ORDER CONFIRMED & PICKUP PIN*
+━━━━━━━━━━━━━━━━━━━━
+Namaste *${sName}*,
+Aapka parcel delivery order *${pId}* confirm ho gaya hai!
+
+🔑 *Aapka Pickup OTP / PIN:* *${p.pickup_otp}*
+
+⚠️ *Zaroori Suraksha:* Yeh PIN keval tabhi hamare rider ke sath share karein jab wo aapke pickup location par parcel lene pahunch jayein.
+
+📍 *Pickup:* ${pickup}
+📍 *Drop:* ${drop}
+👨‍✈️ *Assigned Rider:* ${dName} (+91 ${dPhone})
+💰 *Estimated Fare:* ${amount} (${p.payment_method || 'Cash'})
+
+🔍 *Live Track Your Order:*
+${trackUrl}
+━━━━━━━━━━━━━━━━━━━━
+_Rudraksha Express Logistics • Fast & Secure Delivery_`;
+
+  const receiverMsg = 
+`📦 *RUDRAKSHA EXPRESS - INCOMING PARCEL & DELIVERY PIN*
+━━━━━━━━━━━━━━━━━━━━
+Namaste *${rName}*,
+*${sName}* ne aapke liye Rudraksha Express se ek parcel bheja hai.
+
+🆔 *Parcel ID:* ${pId}
+🛡️ *Aapka Delivery OTP / PIN:* *${p.delivery_otp}*
+
+⚠️ *Zaroori Suraksha:* Yeh Delivery PIN keval tabhi rider ke sath share karein jab parcel sahi salamat aapke haath mein deliver ho jaye.
+
+📍 *Delivery Address:* ${drop}
+💰 *Payable Amount:* ${amount} (${p.payment_method || 'Cash'})
+
+🔍 *Live Track Status:*
+${trackUrl}
+━━━━━━━━━━━━━━━━━━━━
+_Rudraksha Express Logistics • Always on Time_`;
+
+  showAdminToast(`⚡ Dispatching OTPs to Sender (${sName}) & Receiver (${rName})...`, 'success');
+
+  // Open sender WhatsApp
+  if (sPhone) {
+    window.open(`https://wa.me/91${sPhone}?text=${encodeURIComponent(senderMsg)}`, '_blank');
+  }
+
+  // Open receiver WhatsApp with small delay to prevent browser popup block
+  if (rPhone) {
+    setTimeout(() => {
+      window.open(`https://wa.me/91${rPhone}?text=${encodeURIComponent(receiverMsg)}`, '_blank');
+    }, 600);
+  }
+
+  renderParcelsTable();
 }
 
 async function quickUpdateParcelStatus(parcelId, newStatus) {
