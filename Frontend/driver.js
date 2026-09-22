@@ -640,15 +640,15 @@ function handleRiderPhotoUpload(event) {
   const file = event.target.files?.[0];
   if (!file) return;
 
-  showToast('📸 Compressing & uploading to Cloud CDN...', 'info');
+  showToast('📸 Saving profile photo...', 'info');
 
   const reader = new FileReader();
   reader.onload = (e) => {
     const img = new Image();
     img.onload = async () => {
-      // Compress to max 400x400 JPEG
+      // Compress to max 320x320 JPEG
       const canvas = document.createElement('canvas');
-      const MAX_SIZE = 400;
+      const MAX_SIZE = 320;
       let width = img.width;
       let height = img.height;
 
@@ -669,38 +669,68 @@ function handleRiderPhotoUpload(event) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
 
-      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
+      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
 
       // Instantly update UI with local preview
       const pAvatar = document.getElementById('profileAvatarImg');
       const navAvatar = document.getElementById('navAvatarImg');
       const navIcon = document.getElementById('navAvatarIcon');
 
-      if (pAvatar) pAvatar.src = compressedBase64;
-      if (navAvatar) { navAvatar.src = compressedBase64; navAvatar.style.display = 'block'; }
+      if (pAvatar) {
+        pAvatar.src = compressedBase64;
+        pAvatar.style.display = 'block';
+      }
+      if (navAvatar) {
+        navAvatar.src = compressedBase64;
+        navAvatar.style.display = 'block';
+      }
       if (navIcon) navIcon.style.display = 'none';
 
-      // Upload to Cloud Hosting
-      const cloudUrl = await uploadToCloudImageHost(compressedBase64);
-
       // Permanently save to dedicated local persistent key by phone
-      try {
-        const cleanPhone = String(currentDriver?.phone || '').replace(/\D/g, '');
-        const prefix = getAvatarStoragePrefix();
-        if (cleanPhone) {
-          localStorage.setItem(prefix + cleanPhone, cloudUrl);
-        }
-      } catch (e) {
-        console.warn('Avatar local storage notice:', e);
+      const cleanPhone = String(currentDriver?.phone || '').replace(/\D/g, '');
+      const prefix = getAvatarStoragePrefix();
+      if (cleanPhone) {
+        localStorage.setItem(prefix + cleanPhone, compressedBase64);
       }
 
       if (currentDriver) {
-        currentDriver.avatar_url = cloudUrl;
+        currentDriver.avatar_url = compressedBase64;
         localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(currentDriver));
       }
 
-      // Sync with backend
-      await syncPhotoToBackend(cloudUrl);
+      // Update in local approved drivers & rider applications roster
+      try {
+        const approvedDrivers = JSON.parse(localStorage.getItem('rudraksha_approved_drivers') || '[]');
+        const dIdx = approvedDrivers.findIndex(d => String(d.driver_phone || d.phone || '').replace(/\D/g, '') === cleanPhone);
+        if (dIdx >= 0) {
+          approvedDrivers[dIdx].avatar_url = compressedBase64;
+          localStorage.setItem('rudraksha_approved_drivers', JSON.stringify(approvedDrivers));
+        }
+
+        const riderApps = JSON.parse(localStorage.getItem('rudraksha_rider_applications') || '[]');
+        const aIdx = riderApps.findIndex(a => String(a.phone || '').replace(/\D/g, '') === cleanPhone);
+        if (aIdx >= 0) {
+          riderApps[aIdx].avatar_url = compressedBase64;
+          localStorage.setItem('rudraksha_rider_applications', JSON.stringify(riderApps));
+        }
+      } catch (errLocal) {}
+
+      // Try free Cloud CDN in background for smaller payload if possible
+      let finalAvatarUrl = compressedBase64;
+      try {
+        const cloudUrl = await uploadToCloudImageHost(compressedBase64);
+        if (cloudUrl && cloudUrl.startsWith('http')) {
+          finalAvatarUrl = cloudUrl;
+          if (cleanPhone) localStorage.setItem(prefix + cleanPhone, finalAvatarUrl);
+          if (currentDriver) {
+            currentDriver.avatar_url = finalAvatarUrl;
+            localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(currentDriver));
+          }
+        }
+      } catch (cErr) {}
+
+      // Sync with backend across all devices & Admin Panel
+      await syncPhotoToBackend(finalAvatarUrl);
     };
     img.src = e.target.result;
   };
@@ -708,17 +738,40 @@ function handleRiderPhotoUpload(event) {
 }
 
 async function syncPhotoToBackend(photoUrl) {
+  const cleanPhone = String(currentDriver?.phone || '').replace(/\D/g, '');
+  let synced = false;
+
+  // 1. Send to dedicated /api/rider/avatar (updates DB + memory store immediately)
   try {
-    const res = await fetch(`${DRIVER_API_BASE}/rider/profile`, {
+    const res = await fetch(`${DRIVER_API_BASE}/rider/avatar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: cleanPhone, avatar_url: photoUrl })
+    });
+    if (res.ok) {
+      synced = true;
+      showToast('✅ Face photo saved! Synced across all devices & Admin Panel.', 'success');
+      return;
+    }
+  } catch (err1) {}
+
+  // 2. Fallback to PATCH /api/rider/profile
+  try {
+    const res2 = await fetch(`${DRIVER_API_BASE}/rider/profile`, {
       method: 'PATCH',
       headers: getRiderHeaders(),
       body: JSON.stringify({ avatar_url: photoUrl })
     });
-    if (res.ok) {
-      showToast('✅ Face photo saved permanently to profile!', 'success');
+    if (res2.ok) {
+      synced = true;
+      showToast('✅ Profile photo updated!', 'success');
     }
-  } catch (err) {
-    console.warn('Photo backend sync offline:', err);
+  } catch (err2) {
+    console.warn('Backend photo sync warning:', err2);
+  }
+
+  if (!synced) {
+    showToast('Photo saved on this phone. Will sync to other devices once online.', 'info');
   }
 }
 
@@ -992,8 +1045,9 @@ function fallbackLocalEarnings() {
   const myDeliveredTrips = allParcels.filter(p => {
     const isThisDriver = (driverId && p.driver_id === driverId) ||
                          (cleanPhone && p.assigned_driver_phone && String(p.assigned_driver_phone).replace(/\D/g, '') === cleanPhone);
-    const st = p.booking_status || p.status;
-    const isDelivered = st === 'delivered' || p.delivery_otp_verified;
+    const st = (p.booking_status || p.status || '').toLowerCase();
+    const isCancelled = st === 'cancelled' || st === 'canceled' || st === 'rejected';
+    const isDelivered = (st === 'delivered' || p.delivery_otp_verified === true) && !isCancelled && st !== 'searching_driver' && st !== 'received';
     return isThisDriver && isDelivered;
   }).map(p => ({
     id: p.parcel_id || p.id,

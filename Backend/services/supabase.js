@@ -41,31 +41,10 @@ async function writeLocal(file, data) {
   await fs.writeFile(file, JSON.stringify(data, null, 2));
 }
 
-// Initial Sample Drivers for local mode
-const defaultDrivers = [
-  { id: 'drv-101', driver_name: 'Rajesh Kumar', phone: '9876543210', vehicle_number: 'RJ-14-GA-1024', vehicle_type: 'Tata Ace (1.5 Ton)', status: 'available', rating: 4.9 },
-  { id: 'drv-102', driver_name: 'Vikram Singh', phone: '9829012345', vehicle_number: 'RJ-14-GB-5521', vehicle_type: 'Eicher 14ft (3.5 Ton)', status: 'available', rating: 4.8 },
-  { id: 'drv-103', driver_name: 'Ramesh Meena', phone: '9414098765', vehicle_number: 'RJ-14-GC-8840', vehicle_type: '19ft Container (7 Ton)', status: 'available', rating: 4.7 }
-];
+// Initial Sample Drivers for local mode (empty by default - only real approved drivers)
+const defaultDrivers = [];
 
-const defaultRiderApplications = [
-  {
-    id: 'app-demo-001',
-    name: 'Mukesh Kumar Sharma',
-    phone: '9829012345',
-    city: 'Jaipur (Mansarovar / Vaishali)',
-    shift: 'Full Time (8-10 Hours)',
-    vehType: 'Bike / Scooter',
-    vehNum: 'RJ14 AB 1234',
-    dlNum: 'RJ14 20210012345',
-    status: 'Approved',
-    driverId: 'RDR-2345',
-    pin: '4321',
-    date: new Date(Date.now() - 2 * 86400000).toISOString(),
-    created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
-    approved_at: new Date(Date.now() - 86400000).toISOString()
-  }
-];
+const defaultRiderApplications = [];
 
 const defaultConfig = {
   rates: {
@@ -287,6 +266,7 @@ module.exports = {
         if (!error && data) {
           return data.map(r => ({
             ...r,
+            avatar_url: r.avatar_url || null,
             vehType: r.vehtype || r.vehType || 'Bike / Scooter',
             vehNum: r.vehnum || r.vehNum || '',
             dlNum: r.dlnum || r.dlNum || '',
@@ -298,7 +278,8 @@ module.exports = {
         console.warn('Supabase rider applications read fallback to local:', err.message);
       }
     }
-    return await readLocal(riderApplicationsFile, defaultRiderApplications);
+    const localApps = await readLocal(riderApplicationsFile, defaultRiderApplications);
+    return localApps.map(r => ({ ...r, avatar_url: r.avatar_url || null }));
   },
 
   async createRiderApplication(payload) {
@@ -417,6 +398,7 @@ module.exports = {
       vehicle_number: driverData.vehicle_number || driverData.vehNum || '',
       vehicle_type: driverData.vehicle_type || driverData.vehType || 'Bike / Scooter',
       status: driverData.status || 'available',
+      avatar_url: driverData.avatar_url || null,
       current_location: driverData.current_location || null,
       rating: Number(driverData.rating || 4.8),
       created_at: driverData.created_at || new Date().toISOString(),
@@ -444,7 +426,7 @@ module.exports = {
 
   async updateDriver(id, driverData) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const allowed = ['driver_name', 'phone', 'vehicle_number', 'vehicle_type', 'status', 'current_location', 'rating', 'updated_at'];
+    const allowed = ['driver_name', 'phone', 'vehicle_number', 'vehicle_type', 'status', 'avatar_url', 'current_location', 'rating', 'updated_at'];
     const dbUpdates = {};
     for (const key of allowed) {
       if (key in driverData && driverData[key] !== undefined) dbUpdates[key] = driverData[key];

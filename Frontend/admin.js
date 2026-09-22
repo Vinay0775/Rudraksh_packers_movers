@@ -825,11 +825,36 @@ async function loadDriversFromBackend() {
       adminDrivers = data.drivers || [];
     }
   } catch {
-    adminDrivers = [
-      { id: 'drv-101', driver_name: 'Mukesh Sharma', phone: '9876543210', vehicle_number: 'RJ-14-GA-1024', vehicle_type: 'Tata Ace (1.5 Ton)', status: 'available', rating: 4.9 },
-      { id: 'drv-102', driver_name: 'Vikram Singh', phone: '9829012345', vehicle_number: 'RJ-14-GB-5521', vehicle_type: 'Eicher 14ft (3.5 Ton)', status: 'available', rating: 4.8 },
-      { id: 'drv-103', driver_name: 'Ramesh Meena', phone: '9414098765', vehicle_number: 'RJ-14-GC-8840', vehicle_type: '19ft Container (7 Ton)', status: 'available', rating: 4.7 }
-    ];
+    adminDrivers = [];
+  }
+
+  // Fallback to locally approved drivers if empty
+  if (!adminDrivers || adminDrivers.length === 0) {
+    const localApproved = JSON.parse(localStorage.getItem('rudraksha_approved_drivers') || '[]');
+    if (localApproved.length > 0) {
+      adminDrivers = localApproved.map(d => ({
+        id: d.driver_id || d.id || `drv-${String(d.driver_phone || d.phone).slice(-4)}`,
+        driver_name: d.driver_name || d.name,
+        phone: d.driver_phone || d.phone,
+        vehicle_number: d.vehicle_number || d.vehicle_no || '-',
+        vehicle_type: d.vehicle_type || 'Express Bike',
+        status: d.status || 'available',
+        rating: d.rating || 5.0,
+        avatar_url: d.avatar_url || ''
+      }));
+    }
+  }
+
+  // Ensure latest avatar_url from localStorage is applied if available
+  if (Array.isArray(adminDrivers)) {
+    adminDrivers = adminDrivers.map(d => {
+      const cleanPhone = String(d.phone || '').replace(/\D/g, '');
+      const localAvatar = localStorage.getItem(`rudraksha_rider_avatar_${cleanPhone}`);
+      return {
+        ...d,
+        avatar_url: localAvatar || d.avatar_url || ''
+      };
+    });
   }
 
   renderDriversTable();
@@ -839,15 +864,30 @@ function renderDriversTable() {
   const tbody = document.getElementById('driversTableBody');
   if (!tbody) return;
 
-  tbody.innerHTML = adminDrivers.map((d) => `
+  if (!adminDrivers || adminDrivers.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted"><i class="fa-solid fa-users-slash me-2"></i>No drivers currently enrolled. Real registered drivers will appear here.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = adminDrivers.map((d) => {
+    const cleanPhone = String(d.phone || '').replace(/\D/g, '');
+    const avatar = d.avatar_url || localStorage.getItem(`rudraksha_rider_avatar_${cleanPhone}`) || '';
+
+    return `
     <tr>
       <td>
         <div class="d-flex justify-content-between align-items-center w-100">
-          <div>
-            <div class="fw-bold text-white">${d.driver_name}</div>
-            <div class="small text-muted">ID: ${d.id}</div>
+          <div class="d-flex align-items-center gap-2">
+            ${avatar 
+              ? `<img src="${avatar}" alt="${d.driver_name}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #D0FD38; flex-shrink: 0;">`
+              : `<div style="width: 36px; height: 36px; border-radius: 50%; background: #26262b; border: 1px solid rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 0.85rem; flex-shrink: 0;"><i class="fa-solid fa-user"></i></div>`
+            }
+            <div>
+              <div class="fw-bold text-white">${d.driver_name}</div>
+              <div class="small text-muted">ID: ${d.id}</div>
+            </div>
           </div>
-          <span style="color: #D0FD38; font-weight: bold;">⭐ ${d.rating || 4.8}</span>
+          <span style="color: #D0FD38; font-weight: bold;">⭐ ${d.rating || 5.0}</span>
         </div>
       </td>
       <td>
@@ -860,8 +900,8 @@ function renderDriversTable() {
         <div class="d-flex justify-content-between w-100 align-items-center">
           <span class="d-md-none text-muted small">Vehicle:</span>
           <div>
-            <span class="cyber-badge-pill" style="color: #ffffff;">${d.vehicle_number}</span>
-            <span class="small text-muted ms-1">${d.vehicle_type}</span>
+            <span class="cyber-badge-pill" style="color: #ffffff;">${d.vehicle_number || '-'}</span>
+            <span class="small text-muted ms-1">${d.vehicle_type || 'Vehicle'}</span>
           </div>
         </div>
       </td>
@@ -874,10 +914,11 @@ function renderDriversTable() {
         </div>
       </td>
       <td class="d-none d-md-table-cell">
-        <span style="color: #D0FD38; font-weight: bold;">⭐ ${d.rating || 4.8}</span>
+        <span style="color: #D0FD38; font-weight: bold;">⭐ ${d.rating || 5.0}</span>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 }
 
 async function handleAddDriver() {
@@ -911,11 +952,15 @@ function openAssignDriverModal(bookingId) {
   document.getElementById('assignBookingCustName').innerText = `${booking.customer_name || booking.name} (+91 ${booking.customer_phone || booking.phone})`;
 
   const select = document.getElementById('assignDriverSelect');
-  select.innerHTML = adminDrivers.map(d => `
-    <option value="${d.id}" data-name="${d.driver_name}" data-phone="${d.phone}" data-veh="${d.vehicle_number}">
-      ${d.driver_name} - ${d.vehicle_number} (${d.vehicle_type})
-    </option>
-  `).join('');
+  if (adminDrivers && adminDrivers.length > 0) {
+    select.innerHTML = adminDrivers.map(d => `
+      <option value="${d.id}" data-name="${d.driver_name}" data-phone="${d.phone}" data-veh="${d.vehicle_number}">
+        ${d.driver_name} - ${d.vehicle_number} (${d.vehicle_type})
+      </option>
+    `).join('');
+  } else {
+    select.innerHTML = `<option value="" disabled selected>No registered drivers available in fleet</option>`;
+  }
 
   document.getElementById('assignStatusMsg').innerHTML = '';
   const modal = new bootstrap.Modal(document.getElementById('assignDriverModal'));
@@ -1270,13 +1315,25 @@ async function saveAdminTheme() {
    10. METRICS & RECENT HISTORY SYNCHRONIZATION
    ========================================================================== */
 function updateDashboardMetrics() {
-  // 1. Calculate Combined Revenue & Distance from REAL bookings (Relocation + Parcels)
-  const relocationRev = adminBookings.reduce((acc, b) => acc + (Number(b.total_amount) || 0), 0);
-  const parcelRev = allAdminParcels.reduce((acc, p) => acc + (Number(p.total_amount) || 0), 0);
+  // 1. Calculate Combined Revenue & Distance ONLY from DELIVERED / COMPLETED bookings & parcels
+  // Cancelled, rejected, and unaccepted/pending orders are strictly excluded
+  const deliveredBookings = adminBookings.filter(b => {
+    const s = String(b.status || '').toLowerCase();
+    return s === 'delivered' || s === 'completed';
+  });
+
+  const deliveredParcels = allAdminParcels.filter(p => {
+    const s = String(p.booking_status || p.status || '').toLowerCase();
+    const isCancelled = s === 'cancelled' || s === 'rejected';
+    return (s === 'delivered' || p.delivery_otp_verified === true) && !isCancelled && s !== 'searching_driver' && s !== 'received';
+  });
+
+  const relocationRev = deliveredBookings.reduce((acc, b) => acc + (Number(b.total_amount) || 0), 0);
+  const parcelRev = deliveredParcels.reduce((acc, p) => acc + (Number(p.total_amount) || 0), 0);
   const totalRevenue = relocationRev + parcelRev;
 
-  const relocationKm = adminBookings.reduce((acc, b) => acc + (Number(b.distance_km) || 0), 0);
-  const parcelKm = allAdminParcels.reduce((acc, p) => acc + (Number(p.distance_km) || 0), 0);
+  const relocationKm = deliveredBookings.reduce((acc, b) => acc + (Number(b.distance_km) || 0), 0);
+  const parcelKm = deliveredParcels.reduce((acc, p) => acc + (Number(p.distance_km) || 0), 0);
   const totalKm = relocationKm + Math.round(parcelKm);
 
   // Smooth Count-Up Animations
@@ -1288,7 +1345,7 @@ function updateDashboardMetrics() {
   if (breakdownEl) {
     const rDisp = relocationRev.toLocaleString('en-IN');
     const pDisp = parcelRev.toLocaleString('en-IN');
-    breakdownEl.innerText = `Movers: ₹${rDisp} • Parcels: ₹${pDisp}`;
+    breakdownEl.innerText = `Delivered Movers: ₹${rDisp} • Delivered Parcels: ₹${pDisp}`;
   }
 
   // 2. Next Dispatch Card (Picks latest active relocation OR parcel dispatch)
@@ -1299,9 +1356,9 @@ function updateDashboardMetrics() {
     if (document.getElementById('dashNextDriver')) document.getElementById('dashNextDriver').innerText = dName;
     if (document.getElementById('dashNextRoute')) document.getElementById('dashNextRoute').innerText = route;
   } else if (adminBookings.length > 0) {
-    const latest = adminBookings[0];
-    const dName = latest.assigned_driver_name || 'Fleet Captain';
-    const route = `🏠 ${latest.pickup_address?.split(',')[0] || 'Origin'} ➔ ${latest.drop_address?.split(',')[0] || 'Destination'}`;
+    const activeBooking = adminBookings.find(b => ['driver_assigned', 'in_transit', 'confirmed'].includes(String(b.status).toLowerCase())) || adminBookings[0];
+    const dName = activeBooking.assigned_driver_name || 'Fleet Captain';
+    const route = `🏠 ${activeBooking.pickup_address?.split(',')[0] || 'Origin'} ➔ ${activeBooking.drop_address?.split(',')[0] || 'Destination'}`;
     if (document.getElementById('dashNextDriver')) document.getElementById('dashNextDriver').innerText = dName;
     if (document.getElementById('dashNextRoute')) document.getElementById('dashNextRoute').innerText = route;
   } else {
@@ -1331,24 +1388,21 @@ function updateDashboardMetrics() {
       }))
     ].sort((a, b) => b.date - a.date).slice(0, 3);
 
-    const avatars = [
-      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80'
-    ];
-
     if (unifiedHistory.length === 0) {
       historyContainer.innerHTML = `<div class="text-center py-4 text-muted small"><i class="fa-solid fa-clock-rotate-left me-1"></i> No recent orders yet.</div>`;
     } else {
-      historyContainer.innerHTML = unifiedHistory.map((item, idx) => {
-        const av = avatars[idx % avatars.length];
+      historyContainer.innerHTML = unifiedHistory.map((item) => {
         const typeBadge = item.type === 'parcel'
           ? `<span class="badge bg-warning text-dark py-0 px-1" style="font-size: 0.62rem;">PARCEL</span>`
           : `<span class="badge bg-info text-dark py-0 px-1" style="font-size: 0.62rem;">RELOCATION</span>`;
 
+        const serviceIcon = item.type === 'parcel'
+          ? `<div class="cyber-avatar-sm d-flex align-items-center justify-content-center" style="background: rgba(249,115,22,0.15); border: 1px solid rgba(249,115,22,0.35); color: #f97316; border-radius: 10px; width: 38px; height: 38px; flex-shrink: 0;"><i class="fa-solid fa-box"></i></div>`
+          : `<div class="cyber-avatar-sm d-flex align-items-center justify-content-center" style="background: rgba(14,165,233,0.15); border: 1px solid rgba(14,165,233,0.35); color: #38bdf8; border-radius: 10px; width: 38px; height: 38px; flex-shrink: 0;"><i class="fa-solid fa-truck-moving"></i></div>`;
+
         return `
           <div class="cyber-history-item" onclick="switchAdminTab('${item.type === 'parcel' ? 'parcels' : 'bookings'}')">
-            <img src="${av}" alt="User Avatar" class="cyber-avatar-sm">
+            ${serviceIcon}
             <div class="cyber-history-info">
               <div class="title d-flex align-items-center gap-1">
                 ${item.title} ${typeBadge}
@@ -1573,11 +1627,22 @@ function renderDashboardRiderApps() {
       'Rejected': 'bg-danger text-white'
     }[status] || 'bg-secondary text-white';
 
+    const cleanPhone = String(app.phone || '').replace(/\D/g, '');
+    const avatarSrc = app.avatar_url || localStorage.getItem(`rudraksha_rider_avatar_${cleanPhone}`) || '';
+
     return `
       <tr class="border-bottom border-secondary border-opacity-10 align-middle">
         <td>
-          <strong class="text-white small">${app.name}</strong>
-          ${app.driverId ? `<div style="font-size:0.68rem;color:#f97316;font-family:monospace;font-weight:700;">ID: ${app.driverId}</div>` : ''}
+          <div class="d-flex align-items-center gap-2">
+            ${avatarSrc 
+              ? `<img src="${avatarSrc}" alt="${app.name}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1.5px solid #f97316; flex-shrink: 0;">` 
+              : `<div style="width: 32px; height: 32px; border-radius: 50%; background: #26262b; border: 1px solid rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 0.75rem; flex-shrink: 0;"><i class="fa-solid fa-user"></i></div>`
+            }
+            <div>
+              <strong class="text-white small">${app.name}</strong>
+              ${app.driverId ? `<div style="font-size:0.68rem;color:#f97316;font-family:monospace;font-weight:700;">ID: ${app.driverId}</div>` : ''}
+            </div>
+          </div>
         </td>
         <td>
           <div class="small"><a href="tel:${app.phone}" class="text-decoration-none text-muted"><i class="fa-solid fa-phone text-success me-1"></i>+91 ${app.phone}</a></div>
@@ -1682,11 +1747,22 @@ function renderRiderApplicationsTable(filter = currentRiderFilter) {
       'Rejected': 'bg-danger text-white'
     }[status] || 'bg-secondary text-white';
 
+    const cleanPhone = String(app.phone || '').replace(/\D/g, '');
+    const avatarSrc = app.avatar_url || localStorage.getItem(`rudraksha_rider_avatar_${cleanPhone}`) || '';
+
     return `
       <tr class="border-bottom border-secondary border-opacity-10 align-middle">
         <td>
-          <strong class="text-white small">${app.name}</strong>
-          ${app.driverId ? `<div style="font-size:0.68rem;color:#f97316;font-family:monospace;font-weight:700;">ID: ${app.driverId}</div>` : ''}
+          <div class="d-flex align-items-center gap-2">
+            ${avatarSrc 
+              ? `<img src="${avatarSrc}" alt="${app.name}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1.5px solid #f97316; flex-shrink: 0;">` 
+              : `<div style="width: 32px; height: 32px; border-radius: 50%; background: #26262b; border: 1px solid rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 0.75rem; flex-shrink: 0;"><i class="fa-solid fa-user"></i></div>`
+            }
+            <div>
+              <strong class="text-white small">${app.name}</strong>
+              ${app.driverId ? `<div style="font-size:0.68rem;color:#f97316;font-family:monospace;font-weight:700;">ID: ${app.driverId}</div>` : ''}
+            </div>
+          </div>
         </td>
         <td>
           <div class="small text-muted"><a href="tel:${app.phone}" class="text-decoration-none text-muted"><i class="fa-solid fa-phone text-success me-1"></i>+91 ${app.phone}</a></div>
@@ -1824,7 +1900,13 @@ async function rejectRiderPartner(idx) {
 function updateParcelMetrics() {
   const total = allAdminParcels.length;
   const active = allAdminParcels.filter(p => ['searching_driver', 'driver_assigned', 'reached_pickup', 'picked_up', 'in_transit', 'out_for_delivery'].includes(p.booking_status || p.status)).length;
-  const revenue = allAdminParcels.reduce((acc, p) => acc + (Number(p.total_amount) || 0), 0);
+  const revenue = allAdminParcels
+    .filter(p => {
+      const s = String(p.booking_status || p.status || '').toLowerCase();
+      const isCancelled = s === 'cancelled' || s === 'rejected';
+      return (s === 'delivered' || p.delivery_otp_verified === true) && !isCancelled && s !== 'searching_driver' && s !== 'received';
+    })
+    .reduce((acc, p) => acc + (Number(p.total_amount) || 0), 0);
   const ridersCount = allRiderApplications.length;
 
   if (document.getElementById('pclTotalCount')) document.getElementById('pclTotalCount').innerText = total;
@@ -2089,16 +2171,36 @@ function openAssignParcelDriverModal(parcelId) {
 
   const select = document.getElementById('assignParcelDriverSelect');
   if (select) {
-    if (allRiderApplications.length > 0) {
-      select.innerHTML = allRiderApplications.map(d => `
-        <option value="${d.name}" data-phone="${d.phone}" data-veh="${d.vehType}" data-vehnum="${d.vehNum || ''}">${d.name} - ${d.vehType} (${d.vehNum || ''}) • Phone: ${d.phone}</option>
+    const driversList = [];
+    if (Array.isArray(allRiderApplications) && allRiderApplications.length > 0) {
+      allRiderApplications.forEach(d => {
+        driversList.push({
+          name: d.name,
+          phone: d.phone,
+          veh: d.vehType || 'Express Partner',
+          vehnum: d.vehNum || ''
+        });
+      });
+    }
+    if (Array.isArray(adminDrivers) && adminDrivers.length > 0) {
+      adminDrivers.forEach(d => {
+        if (!driversList.some(x => String(x.phone).replace(/\D/g, '') === String(d.phone).replace(/\D/g, ''))) {
+          driversList.push({
+            name: d.driver_name,
+            phone: d.phone,
+            veh: d.vehicle_type || 'Dedicated Fleet',
+            vehnum: d.vehicle_number || ''
+          });
+        }
+      });
+    }
+
+    if (driversList.length > 0) {
+      select.innerHTML = driversList.map(d => `
+        <option value="${d.name}" data-phone="${d.phone}" data-veh="${d.veh}" data-vehnum="${d.vehnum}">${d.name} - ${d.veh} (${d.vehnum || 'No plate'}) • Phone: ${d.phone}</option>
       `).join('');
     } else {
-      select.innerHTML = `
-        <option value="Mukesh Sharma" data-phone="9829012345" data-veh="Bike" data-vehnum="RJ-14-AB-1234">Mukesh Sharma - Bike (RJ-14-AB-1234) • 9829012345</option>
-        <option value="Vikram Singh" data-phone="9414012345" data-veh="EV Scooter" data-vehnum="RJ-14-MB-2244">Vikram Singh - EV Scooter (RJ-14-MB-2244) • 9414012345</option>
-        <option value="Rajesh Kumar" data-phone="7296831460" data-veh="Tata Ace" data-vehnum="RJ-14-GA-1024">Rajesh Kumar - Tata Ace (RJ-14-GA-1024) • 7296831460</option>
-      `;
+      select.innerHTML = `<option value="" disabled selected>No registered drivers available - please register driver first</option>`;
     }
   }
 
@@ -2402,12 +2504,17 @@ async function quickUpdateParcelStatus(parcelId, newStatus) {
     p.status = newStatus;
     if (newStatus === 'picked_up') p.pickup_otp_verified = true;
     if (newStatus === 'delivered') { p.delivery_otp_verified = true; p.pickup_otp_verified = true; }
+    if (newStatus === 'cancelled' || newStatus === 'rejected') {
+      p.delivery_otp_verified = false;
+      p.pickup_otp_verified = false;
+    }
     localStorage.setItem('rudraksha_parcels_history', JSON.stringify(allAdminParcels));
     localStorage.setItem('rudraksha_parcels', JSON.stringify(allAdminParcels));
   }
   showAdminToast(`Parcel ${parcelId} status updated to "${newStatus.toUpperCase()}"`);
   renderParcelsTable();
   updateParcelMetrics();
+  updateDashboardMetrics();
 }
 
 // Save & Load Parcel Tariff

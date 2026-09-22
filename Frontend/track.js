@@ -237,16 +237,25 @@ function renderTrackingDashboard(b) {
   updateTimelineMilestones(status);
 
   // Driver Profile Card
-  const driverName = b.assigned_driver_name || 'Mukesh Sharma (Assigned Driver)';
-  const driverPhone = b.assigned_driver_phone || '9876543210';
-  const driverVehicleNo = b.assigned_vehicle_no || 'RJ-14-GA-1024';
-  const driverVehicleType = b.assigned_vehicle_type || vehicle;
+  const driverName = b.assigned_driver_name || 'Fleet Driver Partner';
+  const driverPhone = b.assigned_driver_phone || '';
+  const driverVehicleNo = b.assigned_vehicle_no || 'Fleet Assigned';
+  const driverVehicleType = b.assigned_vehicle_type || vehicle || 'Express Cargo';
 
   document.getElementById('driverName').innerText = driverName;
   document.getElementById('driverVehicleNo').innerText = driverVehicleNo;
   document.getElementById('driverVehicleType').innerText = driverVehicleType;
-  document.getElementById('btnCallDriver').href = `tel:${driverPhone}`;
-  document.getElementById('btnWhatsappDriver').href = `https://wa.me/91${driverPhone}?text=Hello%20${encodeURIComponent(driverName)},%20regarding%20my%20Rudraksha%20booking%20${bId}`;
+  if (driverPhone) {
+    document.getElementById('btnCallDriver').href = `tel:${driverPhone}`;
+    document.getElementById('btnWhatsappDriver').href = `https://wa.me/91${driverPhone}?text=Hello%20${encodeURIComponent(driverName)},%20regarding%20my%20Rudraksha%20booking%20${bId}`;
+  }
+
+  const cleanDPhone = String(driverPhone || '').replace(/\D/g, '');
+  const driverAvatar = b.driver_avatar_url || b.avatar_url || (cleanDPhone ? localStorage.getItem(`rudraksha_rider_avatar_${cleanDPhone}`) : null);
+  const photoEl = document.getElementById('driverPhoto');
+  if (photoEl) {
+    photoEl.src = driverAvatar || 'logo.png';
+  }
 
   // Shipment Breakdown
   document.getElementById('summaryCustomerName').innerText = cName;
