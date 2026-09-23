@@ -559,6 +559,16 @@ async function loadBookingsFromBackend() {
     adminBookings = saved ? JSON.parse(saved) : [];
   }
 
+  // Deduplicate and filter out removed duplicate IDs
+  const seenIds = new Set();
+  adminBookings = adminBookings.filter(b => {
+    if (!b || !b.id) return false;
+    if (b.id === 'RB-95EFD96D' || b.id === 'RB-B7DFDD2C') return false;
+    if (seenIds.has(b.id)) return false;
+    seenIds.add(b.id);
+    return true;
+  });
+
   // Ensure every booking has distinct, unique 4-digit security PINs
   adminBookings.forEach(b => {
     if (!b.pickup_otp || b.pickup_otp === '3821') {
@@ -571,6 +581,7 @@ async function loadBookingsFromBackend() {
     }
   });
 
+  localStorage.setItem('rudraksha_bookings_history', JSON.stringify(adminBookings));
   renderBookingsTable();
   updateDashboardMetrics();
 }

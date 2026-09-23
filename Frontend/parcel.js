@@ -970,7 +970,14 @@ function calculateFreeParcelFare() {
 /* ==========================================================================
    6. SUBMIT PARCEL REQUEST & 100% FREE WHATSAPP CLICK-TO-CHAT LAUNCHER
    ========================================================================== */
+let isParcelSubmitting = false;
+
 async function handleRequestParcelDelivery() {
+  if (isParcelSubmitting) {
+    console.warn('[PARCEL] Submission already in progress. Ignoring duplicate click.');
+    return;
+  }
+
   const pickup = document.getElementById('pclPickupInput')?.value.trim();
   const drop = document.getElementById('pclDropInput')?.value.trim();
   const senderName = document.getElementById('pclSenderName')?.value.trim();
@@ -1080,6 +1087,14 @@ ${dispatchUrl}`;
     created_at: new Date().toISOString()
   };
 
+  const btn = document.getElementById('btnRequestParcel');
+  const originalBtnHtml = btn ? btn.innerHTML : '';
+  isParcelSubmitting = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Connecting to Driver...';
+  }
+
   // Persist on the backend before showing confirmation.
   try {
     const response = await fetch(`${PARCEL_API_ENDPOINT}/parcels`, {
@@ -1092,27 +1107,34 @@ ${dispatchUrl}`;
       throw new Error(result.error || 'Parcel booking could not be saved.');
     }
     Object.assign(bookingPayload, result.parcel);
+
+    // Save in shared storage across app (rudraksha_parcels & rudraksha_parcels_history)
+    try {
+      const list1 = JSON.parse(localStorage.getItem('rudraksha_parcels') || '[]');
+      const filtered1 = list1.filter(p => (p.parcel_id || p.id) !== (bookingPayload.parcel_id || bookingPayload.id));
+      filtered1.unshift(bookingPayload);
+      localStorage.setItem('rudraksha_parcels', JSON.stringify(filtered1.slice(0, 50)));
+
+      const list2 = JSON.parse(localStorage.getItem('rudraksha_parcels_history') || '[]');
+      const filtered2 = list2.filter(p => (p.parcel_id || p.id) !== (bookingPayload.parcel_id || bookingPayload.id));
+      filtered2.unshift(bookingPayload);
+      localStorage.setItem('rudraksha_parcels_history', JSON.stringify(filtered2.slice(0, 50)));
+    } catch {}
+
+    // Open WhatsApp in a new tab
+    window.open(whatsappUrl, '_blank');
+
+    // Display Confirmation & Tracking Modal on the Website
+    showParcelBookingPreparedModal(bookingPayload, whatsappUrl);
   } catch (err) {
     alert(`Booking failed: ${err.message}`);
-    return;
+  } finally {
+    isParcelSubmitting = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalBtnHtml;
+    }
   }
-
-  // Save in shared storage across app (rudraksha_parcels & rudraksha_parcels_history)
-  try {
-    const list1 = JSON.parse(localStorage.getItem('rudraksha_parcels') || '[]');
-    list1.unshift(bookingPayload);
-    localStorage.setItem('rudraksha_parcels', JSON.stringify(list1));
-
-    const list2 = JSON.parse(localStorage.getItem('rudraksha_parcels_history') || '[]');
-    list2.unshift(bookingPayload);
-    localStorage.setItem('rudraksha_parcels_history', JSON.stringify(list2));
-  } catch {}
-
-  // Open WhatsApp in a new tab
-  window.open(whatsappUrl, '_blank');
-
-  // Display Confirmation & Tracking Modal on the Website
-  showParcelBookingPreparedModal(bookingPayload, whatsappUrl);
 }
 
 function showParcelBookingPreparedModal(booking, whatsappUrl) {

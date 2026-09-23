@@ -875,6 +875,25 @@ app.post('/api/bookings', async (req, res, next) => {
       return res.status(400).json({ error: 'Phone verification is required before booking.' });
     }
 
+    // Idempotency / Duplicate Prevention Guard (60 seconds window)
+    try {
+      const existingBookings = await db.getBookings();
+      const now = Date.now();
+      const duplicate = (existingBookings || []).find(b => {
+        const bPhone = String(b.customer_phone || '').replace(/\D/g, '');
+        const bTime = new Date(b.created_at || 0).getTime();
+        const isRecent = (now - bTime) < 60000;
+        return isRecent && bPhone === phone && b.shifting_date === date && b.pickup_address === pickup && b.drop_address === drop;
+      });
+
+      if (duplicate) {
+        console.log(`[IDEMPOTENCY] Preventing duplicate booking. Returning existing booking ${duplicate.id}`);
+        return res.status(200).json({ booking: duplicate, duplicate_prevented: true });
+      }
+    } catch (e) {
+      console.warn('[IDEMPOTENCY] Check failed:', e.message);
+    }
+
     const bookingId = `RB-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
     // Normalize amount
@@ -1119,6 +1138,26 @@ app.post('/api/parcels', async (req, res, next) => {
 
     if (!senderName || senderPhone.length !== 10 || !receiverName || receiverPhone.length !== 10 || !pickupAddress || !dropAddress) {
       return res.status(400).json({ error: 'Please provide sender name & phone, receiver name & phone, and pickup & drop addresses.' });
+    }
+
+    // Idempotency / Duplicate Prevention Guard for Parcels (60 seconds window)
+    try {
+      const existingParcels = await db.getParcels();
+      const now = Date.now();
+      const duplicate = (existingParcels || []).find(p => {
+        const pSender = String(p.sender_phone || '').replace(/\D/g, '');
+        const pReceiver = String(p.receiver_phone || '').replace(/\D/g, '');
+        const pTime = new Date(p.created_at || 0).getTime();
+        const isRecent = (now - pTime) < 60000;
+        return isRecent && pSender === senderPhone && pReceiver === receiverPhone && p.pickup_address === pickupAddress && p.drop_address === dropAddress;
+      });
+
+      if (duplicate) {
+        console.log(`[IDEMPOTENCY] Preventing duplicate parcel. Returning existing parcel ${duplicate.parcel_id || duplicate.id}`);
+        return res.status(200).json({ parcel: duplicate, duplicate_prevented: true });
+      }
+    } catch (e) {
+      console.warn('[IDEMPOTENCY] Parcel check failed:', e.message);
     }
 
     const parcelId = `RP-PCL-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;

@@ -1599,7 +1599,14 @@ function handleBookRelocationSubmit() {
    4. BOOKING SUBMISSION & TELEGRAM DISPATCH
    ========================================================================== */
 
+let isRelocationSubmitting = false;
+
 async function processWhatsAppCheckout(openWhatsApp = true) {
+  if (isRelocationSubmitting) {
+    console.warn('[CHECKOUT] Booking submission already in progress. Ignoring duplicate click.');
+    return;
+  }
+
   const custName = document.getElementById('custName')?.value.trim();
   const custPhone = document.getElementById('custPhone')?.value.trim();
   const custEmail = document.getElementById('custEmail')?.value.trim() || null;
@@ -1678,6 +1685,14 @@ async function processWhatsAppCheckout(openWhatsApp = true) {
     phone_verified: true
   };
 
+  const btn = document.getElementById('btnFinalBookNow');
+  const originalBtnHtml = btn ? btn.innerHTML : '';
+  isRelocationSubmitting = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Securing Your Booking...';
+  }
+
   let createdBooking = null;
 
   try {
@@ -1690,55 +1705,61 @@ async function processWhatsAppCheckout(openWhatsApp = true) {
     const data = await apiRes.json().catch(() => ({}));
     if (!apiRes.ok || !data.booking) throw new Error(data.error || 'Booking could not be saved.');
     createdBooking = data.booking;
+
+    const finalBookingId = createdBooking.id;
+    const finalBookingData = createdBooking;
+    const trackUrl = (() => {
+      try {
+        const baseUrl = new URL('track.html', window.location.href);
+        baseUrl.searchParams.set('id', finalBookingId);
+        return baseUrl.toString();
+      } catch {
+        return `track.html?id=${encodeURIComponent(finalBookingId)}`;
+      }
+    })();
+
+    try {
+      const history = JSON.parse(localStorage.getItem('rudraksha_bookings_history') || '[]');
+      const filtered = history.filter(b => b.id !== finalBookingId);
+      filtered.unshift(finalBookingData);
+      localStorage.setItem('rudraksha_bookings_history', JSON.stringify(filtered.slice(0, 50)));
+    } catch {}
+
+    if (openWhatsApp) {
+      // Structured Professional WhatsApp Message
+      let msg = `🚚 *RUDRAKSHA PACKERS & MOVERS - NEW BOOKING*\n`;
+      msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `🆔 *Booking ID:* \`${finalBookingId}\`\n`;
+      msg += `👤 *Customer Name:* ${custName}\n`;
+      msg += `📱 *Phone:* +91 ${cleanPhone}\n`;
+      if (custEmail) msg += `📧 *Email:* ${custEmail}\n`;
+      msg += `📍 *Pickup:* ${pickup}\n`;
+      msg += `🏁 *Drop:* ${drop}\n`;
+      msg += `📏 *Distance:* ${dist} KM\n`;
+      msg += `📅 *Moving Date:* ${date}\n`;
+      msg += `🏠 *Move Size:* ${selectedHouseSize ? selectedHouseSize.toUpperCase() : 'STANDARD'}\n`;
+      msg += `🚛 *Vehicle:* ${veh.name}\n`;
+      msg += `💰 *Total Amount:* ₹${totalAmount.toLocaleString('en-IN')}\n`;
+      msg += `💳 *Payment Mode:* ${paymentMode === 'upi_advance' ? 'UPI Advance 10%' : 'Pay on Delivery (0 Advance)'}\n`;
+      msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `Please lock my slot and send driver contact details. Thank you!`;
+
+      // Open WhatsApp in new tab
+      const waUrl = `https://wa.me/917296831460?text=${encodeURIComponent(msg)}`;
+      window.open(waUrl, '_blank');
+    }
+
+    // Show Success Popup Modal with Live Tracking & Printable Invoice
+    showBookingSuccessModal(finalBookingId, finalBookingData);
   } catch (err) {
     alert(`Booking failed: ${err.message}`);
-    return;
-  }
-
-  const finalBookingId = createdBooking.id;
-  const finalBookingData = createdBooking;
-  const trackUrl = (() => {
-    try {
-      const baseUrl = new URL('track.html', window.location.href);
-      baseUrl.searchParams.set('id', finalBookingId);
-      return baseUrl.toString();
-    } catch {
-      return `track.html?id=${encodeURIComponent(finalBookingId)}`;
+  } finally {
+    isRelocationSubmitting = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalBtnHtml || '<i class="fa-solid fa-circle-check me-1"></i> Book Now & Confirm';
     }
-  })();
-
-  try {
-    const history = JSON.parse(localStorage.getItem('rudraksha_bookings_history') || '[]');
-    history.unshift(finalBookingData);
-    localStorage.setItem('rudraksha_bookings_history', JSON.stringify(history.slice(0, 50)));
-  } catch {}
-
-  if (openWhatsApp) {
-    // Structured Professional WhatsApp Message
-    let msg = `🚚 *RUDRAKSHA PACKERS & MOVERS - NEW BOOKING*\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `🆔 *Booking ID:* \`${finalBookingId}\`\n`;
-    msg += `👤 *Customer Name:* ${custName}\n`;
-    msg += `📱 *Phone:* +91 ${cleanPhone}\n`;
-    if (custEmail) msg += `📧 *Email:* ${custEmail}\n`;
-    msg += `📍 *Pickup:* ${pickup}\n`;
-    msg += `🏁 *Drop:* ${drop}\n`;
-    msg += `📏 *Distance:* ${dist} KM\n`;
-    msg += `📅 *Moving Date:* ${date}\n`;
-    msg += `🏠 *Move Size:* ${selectedHouseSize ? selectedHouseSize.toUpperCase() : 'STANDARD'}\n`;
-    msg += `🚛 *Vehicle:* ${veh.name}\n`;
-    msg += `💰 *Total Amount:* ₹${totalAmount.toLocaleString('en-IN')}\n`;
-    msg += `💳 *Payment Mode:* ${paymentMode === 'upi_advance' ? 'UPI Advance 10%' : 'Pay on Delivery (0 Advance)'}\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `Please lock my slot and send driver contact details. Thank you!`;
-
-    // Open WhatsApp in new tab
-    const waUrl = `https://wa.me/917296831460?text=${encodeURIComponent(msg)}`;
-    window.open(waUrl, '_blank');
   }
-
-  // Show Success Popup Modal with Live Tracking & Printable Invoice
-  showBookingSuccessModal(finalBookingId, finalBookingData);
 }
 
 function showBookingSuccessModal(bookingId, bookingData) {
