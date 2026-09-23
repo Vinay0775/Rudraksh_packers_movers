@@ -555,6 +555,20 @@ async function loadBookingsFromBackend() {
     adminBookings = saved ? JSON.parse(saved) : [];
   }
 
+  // Ensure every booking has distinct, unique 4-digit security PINs
+  adminBookings.forEach(b => {
+    if (!b.pickup_otp || b.pickup_otp === '3821') {
+      b.pickup_otp = String(Math.floor(1000 + Math.random() * 9000));
+    }
+    if (!b.delivery_otp || b.delivery_otp === '7192' || b.delivery_otp === b.pickup_otp) {
+      do {
+        b.delivery_otp = String(Math.floor(1000 + Math.random() * 9000));
+      } while (b.delivery_otp === b.pickup_otp);
+    }
+  });
+
+  localStorage.setItem('rudraksha_bookings_history', JSON.stringify(adminBookings));
+
   renderBookingsTable();
   updateDashboardMetrics();
 }
@@ -569,6 +583,15 @@ function renderBookingsTable(list = adminBookings) {
   }
 
   tbody.innerHTML = list.map((b) => {
+    // Ensure unique PINs per order
+    if (!b.pickup_otp || b.pickup_otp === '3821') {
+      b.pickup_otp = String(Math.floor(1000 + Math.random() * 9000));
+    }
+    if (!b.delivery_otp || b.delivery_otp === '7192' || b.delivery_otp === b.pickup_otp) {
+      do {
+        b.delivery_otp = String(Math.floor(1000 + Math.random() * 9000));
+      } while (b.delivery_otp === b.pickup_otp);
+    }
     const bId = b.id || 'RB-XXXX';
     const cName = b.customer_name || b.name || 'Customer';
     const cPhone = b.customer_phone || b.phone || '-';

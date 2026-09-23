@@ -121,6 +121,28 @@ const defaultConfig = {
   }
 };
 
+function generateRandom4DigitPin() {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+function getOrGenerateBookingPins(b) {
+  const notesPickup = b.notes && b.notes.match(/PICKUP_PIN:(\d{4})/)?.[1];
+  const notesDelivery = b.notes && b.notes.match(/DELIVERY_PIN:(\d{4})/)?.[1];
+
+  let p = b.pickup_otp || notesPickup;
+  let d = b.delivery_otp || notesDelivery;
+
+  if (!p || p === '3821') {
+    p = generateRandom4DigitPin();
+  }
+  if (!d || d === '7192' || d === p) {
+    do {
+      d = generateRandom4DigitPin();
+    } while (d === p);
+  }
+  return { pickup_otp: p, delivery_otp: d };
+}
+
 module.exports = {
   isSupabaseActive: () => Boolean(supabase),
 
@@ -130,13 +152,16 @@ module.exports = {
       try {
         const { data, error } = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
         if (!error && data) {
-          return data.map(b => ({
-            ...b,
-            pickup_otp: b.pickup_otp || (b.notes && b.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821',
-            delivery_otp: b.delivery_otp || (b.notes && b.notes.match(/DELIVERY_PIN:(\d{4})/)?.[1]) || '7192',
-            pickup_otp_verified: Boolean(b.pickup_otp_verified || ['in_transit', 'delivered', 'completed'].includes(String(b.status).toLowerCase())),
-            delivery_otp_verified: Boolean(b.delivery_otp_verified || ['delivered', 'completed'].includes(String(b.status).toLowerCase()))
-          }));
+          return data.map(b => {
+            const pins = getOrGenerateBookingPins(b);
+            return {
+              ...b,
+              pickup_otp: pins.pickup_otp,
+              delivery_otp: pins.delivery_otp,
+              pickup_otp_verified: Boolean(b.pickup_otp_verified || ['in_transit', 'delivered', 'completed'].includes(String(b.status).toLowerCase())),
+              delivery_otp_verified: Boolean(b.delivery_otp_verified || ['delivered', 'completed'].includes(String(b.status).toLowerCase()))
+            };
+          });
         }
         console.warn('Supabase bookings read fallback to local:', error?.message || 'empty response');
       } catch (err) {
@@ -144,13 +169,16 @@ module.exports = {
       }
     }
     const local = await readLocal(bookingsFile, []);
-    return local.map(b => ({
-      ...b,
-      pickup_otp: b.pickup_otp || (b.notes && b.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821',
-      delivery_otp: b.delivery_otp || (b.notes && b.notes.match(/DELIVERY_PIN:(\d{4})/)?.[1]) || '7192',
-      pickup_otp_verified: Boolean(b.pickup_otp_verified || ['in_transit', 'delivered', 'completed'].includes(String(b.status).toLowerCase())),
-      delivery_otp_verified: Boolean(b.delivery_otp_verified || ['delivered', 'completed'].includes(String(b.status).toLowerCase()))
-    }));
+    return local.map(b => {
+      const pins = getOrGenerateBookingPins(b);
+      return {
+        ...b,
+        pickup_otp: pins.pickup_otp,
+        delivery_otp: pins.delivery_otp,
+        pickup_otp_verified: Boolean(b.pickup_otp_verified || ['in_transit', 'delivered', 'completed'].includes(String(b.status).toLowerCase())),
+        delivery_otp_verified: Boolean(b.delivery_otp_verified || ['delivered', 'completed'].includes(String(b.status).toLowerCase()))
+      };
+    });
   },
 
   async getBookingByIdOrPhone(identifier) {
@@ -165,8 +193,9 @@ module.exports = {
           .limit(1);
         if (!error && data && data.length > 0) {
           const b = data[0];
-          b.pickup_otp = b.pickup_otp || (b.notes && b.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821';
-          b.delivery_otp = b.delivery_otp || (b.notes && b.notes.match(/DELIVERY_PIN:(\d{4})/)?.[1]) || '7192';
+          const pins = getOrGenerateBookingPins(b);
+          b.pickup_otp = pins.pickup_otp;
+          b.delivery_otp = pins.delivery_otp;
           b.pickup_otp_verified = Boolean(b.pickup_otp_verified || ['in_transit', 'delivered', 'completed'].includes(String(b.status).toLowerCase()));
           b.delivery_otp_verified = Boolean(b.delivery_otp_verified || ['delivered', 'completed'].includes(String(b.status).toLowerCase()));
           return b;
@@ -184,8 +213,9 @@ module.exports = {
       (phoneClean && b.customer_phone?.replace(/\D/g, '') === phoneClean)
     );
     if (found) {
-      found.pickup_otp = found.pickup_otp || (found.notes && found.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821';
-      found.delivery_otp = found.delivery_otp || (found.notes && found.notes.match(/DELIVERY_PIN:(\d{4})/)?.[1]) || '7192';
+      const pins = getOrGenerateBookingPins(found);
+      found.pickup_otp = pins.pickup_otp;
+      found.delivery_otp = pins.delivery_otp;
       found.pickup_otp_verified = Boolean(found.pickup_otp_verified || ['in_transit', 'delivered', 'completed'].includes(String(found.status).toLowerCase()));
       found.delivery_otp_verified = Boolean(found.delivery_otp_verified || ['delivered', 'completed'].includes(String(found.status).toLowerCase()));
     }
@@ -319,8 +349,10 @@ module.exports = {
       throw new Error('Please enter a valid 4-digit PIN.');
     }
 
+    const pins = getOrGenerateBookingPins(booking);
+
     if (otpType === 'pickup') {
-      const expected = String(booking.pickup_otp || (booking.notes && booking.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821').trim();
+      const expected = String(pins.pickup_otp || '').trim();
       if (expected && cleanEntered !== expected) {
         throw new Error('Invalid Pickup PIN. Please check with customer/sender.');
       }
@@ -343,7 +375,7 @@ module.exports = {
       }
       return { ...booking, ...updatePayload };
     } else if (otpType === 'delivery') {
-      const expected = String(booking.delivery_otp || (booking.notes && booking.notes.match(/DELIVERY_PIN:(\d{4})/)?.[1]) || '7192').trim();
+      const expected = String(pins.delivery_otp || '').trim();
       if (expected && cleanEntered !== expected) {
         throw new Error('Invalid Delivery PIN. Please check with customer/receiver.');
       }
