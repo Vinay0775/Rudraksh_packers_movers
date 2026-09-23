@@ -664,17 +664,14 @@ function renderBookingsTable(list = adminBookings) {
         </td>
         <td class="cell-actions">
           <div class="d-flex flex-wrap gap-1 align-items-center">
-            <button class="btn btn-sm btn-warning py-1 px-2 fw-bold text-dark" style="font-size: 0.72rem; background: #f97316; border: none; white-space: nowrap;" onclick="dispatchMoversOtpsToWhatsApp('${bId}')" title="⚡ 1-Click: Send Both Security PINs to Customer on WhatsApp">
-              <i class="fa-solid fa-bolt me-1"></i>Both PINs
-            </button>
             <button class="btn-cyber-outline py-1 px-2" title="Assign Driver" onclick="openAssignDriverModal('${bId}')">
-              <i class="fa-solid fa-user-plus"></i>
+              <i class="fa-solid fa-user-plus me-1"></i><span class="d-none d-lg-inline">Driver</span>
             </button>
-            <a href="https://wa.me/91${cPhone}?text=${encodeURIComponent(pickupPinMsg)}" target="_blank" class="btn btn-sm btn-outline-warning py-1 px-2 fw-bold" style="font-size: 0.72rem;" title="WhatsApp Pickup PIN to Customer (+91 ${cPhone})">
-              <i class="fa-solid fa-key me-1"></i>P-PIN
+            <a href="https://wa.me/91${cPhone}?text=${encodeURIComponent(pickupPinMsg)}" target="_blank" class="btn btn-sm btn-warning py-1 px-2 fw-bold text-dark" style="font-size: 0.72rem; background: #f59e0b; border: none; white-space: nowrap;" title="📲 WhatsApp Pickup PIN to Sender (+91 ${cPhone})">
+              <i class="fa-solid fa-key me-1"></i>Sender PIN
             </a>
-            <a href="https://wa.me/91${cPhone}?text=${encodeURIComponent(deliveryPinMsg)}" target="_blank" class="btn btn-sm btn-outline-info py-1 px-2 fw-bold" style="font-size: 0.72rem;" title="WhatsApp Delivery PIN to Customer (+91 ${cPhone})">
-              <i class="fa-solid fa-shield-halved me-1"></i>D-PIN
+            <a href="https://wa.me/91${cPhone}?text=${encodeURIComponent(deliveryPinMsg)}" target="_blank" class="btn btn-sm btn-info py-1 px-2 fw-bold text-dark" style="font-size: 0.72rem; background: #06b6d4; border: none; white-space: nowrap;" title="📲 WhatsApp Delivery PIN to Receiver (+91 ${cPhone})">
+              <i class="fa-solid fa-shield-halved me-1"></i>Receiver PIN
             </a>
             <a href="https://wa.me/91${cPhone}?text=Hello%20${encodeURIComponent(cName)},%20regarding%20your%20Rudraksha%20Packers%20booking%20${bId}" target="_blank" class="btn-cyber-outline py-1 px-2 text-success" title="WhatsApp Chat">
               <i class="fa-brands fa-whatsapp"></i>
@@ -2262,17 +2259,14 @@ Please confirm pickup on your driver portal.`;
               <option value="delivered" ${status==='delivered'?'selected':''}>🟢 Delivered</option>
               <option value="cancelled" ${status==='cancelled'?'selected':''}>🔴 Cancelled</option>
             </select>
-            <button class="btn btn-sm btn-warning py-0 px-2 fw-bold text-dark" style="font-size: 0.72rem; background: #f97316; border: none;" onclick="dispatchOtpsToBothWhatsApp('${pId}')" title="⚡ 1-Click: Send OTPs to Both Sender & Receiver on WhatsApp">
-              <i class="fa-solid fa-bolt me-1"></i>Both OTPs
-            </button>
             <button class="btn btn-sm btn-outline-warning py-0 px-2 fw-bold" style="font-size: 0.72rem;" onclick="openBroadcastModal('${pId}')" title="📢 Broadcast to Rider WhatsApp Group">
-              <i class="fa-solid fa-tower-broadcast text-warning"></i>
+              <i class="fa-solid fa-tower-broadcast text-warning me-1"></i>Broadcast
             </button>
-            <a href="https://wa.me/91${sPhone}?text=${encodeURIComponent(senderOtpWaMsg)}" target="_blank" class="btn btn-sm btn-outline-warning py-0 px-2 fw-bold" style="font-size: 0.72rem;" title="📲 WhatsApp Pickup PIN to Sender (+91 ${sPhone})">
-              <i class="fa-solid fa-key me-1"></i>PIN
+            <a href="https://wa.me/91${sPhone}?text=${encodeURIComponent(senderOtpWaMsg)}" target="_blank" class="btn btn-sm btn-warning py-0 px-2 fw-bold text-dark" style="font-size: 0.72rem; background: #f59e0b; border: none; white-space: nowrap;" title="📲 Send Pickup PIN exclusively to Sender (+91 ${sPhone})">
+              <i class="fa-solid fa-key me-1"></i>Sender PIN
             </a>
-            <a href="https://wa.me/91${rPhone}?text=${encodeURIComponent(receiverOtpWaMsg)}" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2 fw-bold" style="font-size: 0.72rem;" title="📲 WhatsApp Delivery PIN to Receiver (+91 ${rPhone})">
-              <i class="fa-solid fa-shield-halved me-1"></i>PIN
+            <a href="https://wa.me/91${rPhone}?text=${encodeURIComponent(receiverOtpWaMsg)}" target="_blank" class="btn btn-sm btn-info py-0 px-2 fw-bold text-dark" style="font-size: 0.72rem; background: #06b6d4; border: none; white-space: nowrap;" title="📲 Send Delivery PIN exclusively to Receiver (+91 ${rPhone})">
+              <i class="fa-solid fa-shield-halved me-1"></i>Receiver PIN
             </a>
             <a href="track.html?id=${pId}" target="_blank" class="btn btn-sm btn-outline-info py-0 px-2" title="Live Tracking">
               <i class="fa-solid fa-location-crosshairs"></i>

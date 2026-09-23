@@ -1471,28 +1471,22 @@
           </div>
 
           <div class="d-flex flex-column gap-2 mt-4">
-            <button type="button" class="btn btn-warning w-100 py-3 fw-bold text-dark d-flex align-items-center justify-content-center gap-2 mb-1" style="background: linear-gradient(135deg, #f97316, #fbbf24); border: none; border-radius: 12px; font-size: 0.95rem;" onclick="dispatchOtpsToBothWhatsApp(document.getElementById('otpModalParcelId').value)">
-              <i class="fa-solid fa-bolt"></i> <span>⚡ 1-Click Send OTPs to Both (Sender & Receiver)</span>
-            </button>
-
-            <button type="button" class="btn-cyber-neon w-100 py-2 fw-bold" onclick="saveAdminParcelOtps()">
-              <i class="fa-solid fa-floppy-disk me-1"></i> Save OTPs to System
-            </button>
-            
-            <div class="border-top border-secondary border-opacity-25 my-2"></div>
-            
             <div class="row g-2">
-              <div class="col-6">
-                <button type="button" class="btn btn-sm btn-outline-warning w-100 py-2 fw-bold text-truncate" onclick="dispatchPickupOtpToSenderWhatsApp()" title="Send only to Sender">
-                  <i class="fa-brands fa-whatsapp text-success me-1"></i>Sender Only
+              <div class="col-12 col-sm-6">
+                <button type="button" class="btn btn-warning w-100 py-2 fw-bold text-dark d-flex align-items-center justify-content-center gap-2" style="background: #f59e0b; border: none; border-radius: 10px; font-size: 0.85rem;" onclick="dispatchPickupOtpToSenderWhatsApp()" title="Send Pickup PIN strictly to Sender only">
+                  <i class="fa-brands fa-whatsapp text-dark"></i> <span>Send Sender PIN</span>
                 </button>
               </div>
-              <div class="col-6">
-                <button type="button" class="btn btn-sm btn-outline-success w-100 py-2 fw-bold text-truncate" onclick="dispatchDeliveryOtpToReceiverWhatsApp()" title="Send only to Receiver">
-                  <i class="fa-brands fa-whatsapp text-success me-1"></i>Receiver Only
+              <div class="col-12 col-sm-6">
+                <button type="button" class="btn btn-info w-100 py-2 fw-bold text-dark d-flex align-items-center justify-content-center gap-2" style="background: #06b6d4; border: none; border-radius: 10px; font-size: 0.85rem;" onclick="dispatchDeliveryOtpToReceiverWhatsApp()" title="Send Delivery PIN strictly to Receiver only">
+                  <i class="fa-brands fa-whatsapp text-dark"></i> <span>Send Receiver PIN</span>
                 </button>
               </div>
             </div>
+
+            <button type="button" class="btn-cyber-neon w-100 py-2 fw-bold mt-2" onclick="saveAdminParcelOtps()">
+              <i class="fa-solid fa-floppy-disk me-1"></i> Save PINs to System
+            </button>
           </div>
         </div>
       </div>
