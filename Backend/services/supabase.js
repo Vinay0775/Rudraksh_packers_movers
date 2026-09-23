@@ -832,5 +832,64 @@ module.exports = {
 
     await writeLocal(configFile, merged);
     return merged;
+  },
+
+  // ==========================================================================
+  // STORAGE: DRIVER AVATAR UPLOAD (Supabase 'driver-avatars' Public Bucket)
+  // ==========================================================================
+  async uploadDriverAvatar(phone, base64OrDataUrl) {
+    if (!phone || !base64OrDataUrl) return base64OrDataUrl;
+
+    // If already hosted URL, return as-is
+    if (typeof base64OrDataUrl === 'string' && (base64OrDataUrl.startsWith('http://') || base64OrDataUrl.startsWith('https://'))) {
+      return base64OrDataUrl;
+    }
+
+    if (!supabase) {
+      console.log('ℹ️ Supabase not initialized, skipping cloud storage upload.');
+      return base64OrDataUrl;
+    }
+
+    try {
+      let mimeType = 'image/jpeg';
+      let base64String = base64OrDataUrl;
+
+      const matches = String(base64OrDataUrl).match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+      if (matches) {
+        mimeType = matches[1];
+        base64String = matches[2];
+      }
+
+      const buffer = Buffer.from(base64String, 'base64');
+      const cleanPhone = String(phone).replace(/\D/g, '');
+      const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
+      const fileName = `rider_${cleanPhone}.${ext}`;
+
+      const { data, error } = await supabase.storage
+        .from('driver-avatars')
+        .upload(fileName, buffer, {
+          contentType: mimeType,
+          upsert: true
+        });
+
+      if (error) {
+        console.warn('⚠️ Supabase storage upload warning:', error.message);
+        return base64OrDataUrl;
+      }
+
+      const { data: publicData } = supabase.storage
+        .from('driver-avatars')
+        .getPublicUrl(fileName);
+
+      if (publicData && publicData.publicUrl) {
+        const publicUrl = `${publicData.publicUrl}?t=${Date.now()}`;
+        console.log(`✅ Driver avatar successfully uploaded to Supabase Storage: ${publicUrl}`);
+        return publicUrl;
+      }
+    } catch (err) {
+      console.warn('⚠️ uploadDriverAvatar exception:', err.message);
+    }
+
+    return base64OrDataUrl;
   }
 };

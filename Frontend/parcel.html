@@ -8,6 +8,68 @@
   <meta name="description"
     content="We Have Faster Delivery Than Others. Fast, reliable on-demand parcel and errand delivery service by Rudraksha Packers & Movers. Instant WhatsApp booking, live GPS tracking, and rider partner program.">
 
+  <!-- SECRET ACCESS & NAVIGATION GATEKEEPER (Prevents unauthorized URL discovery via search bar) -->
+  <script>
+    (function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const secretKey = urlParams.get('key') || urlParams.get('access') || urlParams.get('pass') || urlParams.get('via');
+      const VALID_KEYS = ['parcel', 'portal', 'home', 'nav', 'bannaji2026', 'express', 'parcel2026'];
+      const hasValidKey = secretKey && VALID_KEYS.includes(secretKey.toLowerCase());
+
+      const isInternalNav = sessionStorage.getItem('rudraksha_site_nav') === 'true';
+      const isGateOpen = sessionStorage.getItem('rudraksha_parcel_gate_unlocked') === 'true';
+      const hasActiveOrder = localStorage.getItem('rudraksha_active_parcel') || localStorage.getItem('rudraksha_parcels');
+      const isReferredFromSite = document.referrer && (document.referrer.includes(window.location.hostname) || document.referrer.includes('index.html'));
+
+      if (hasValidKey || isInternalNav || isReferredFromSite || hasActiveOrder) {
+        sessionStorage.setItem('rudraksha_parcel_gate_unlocked', 'true');
+        sessionStorage.setItem('rudraksha_site_nav', 'true');
+        try {
+          if (urlParams.has('via') || urlParams.has('access') || urlParams.has('key') || urlParams.has('pass')) {
+            urlParams.delete('via');
+            urlParams.delete('access');
+            urlParams.delete('key');
+            urlParams.delete('pass');
+            const cleanQuery = urlParams.toString();
+            const newUrl = window.location.pathname + (cleanQuery ? '?' + cleanQuery : '') + window.location.hash;
+            window.history.replaceState({}, document.title, newUrl);
+          }
+        } catch (e) {}
+      } else if (!isGateOpen) {
+        document.documentElement.innerHTML = `
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>404 Not Found</title>
+            <style>
+              body { margin: 0; background: #0b0c0e; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; text-align: center; padding: 20px; box-sizing: border-box; }
+              .card-404 { max-width: 440px; background: #13141a; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 45px 30px; box-shadow: 0 25px 60px rgba(0,0,0,0.85); }
+              .icon-ring { width: 68px; height: 68px; border-radius: 20px; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: #ef4444; font-size: 1.8rem; }
+              h1 { font-size: 2.4rem; margin: 0 0 10px; font-weight: 800; color: #ffffff; }
+              p { color: #94a3b8; font-size: 0.92rem; line-height: 1.6; margin-bottom: 25px; }
+              .btn-home { display: inline-block; background: linear-gradient(135deg, #f97316, #ea580c); color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 12px; font-weight: 700; font-size: 0.92rem; }
+            </style>
+          </head>
+          <body>
+            <div class="card-404">
+              <div class="icon-ring">⚠️</div>
+              <h1>404 Not Found</h1>
+              <p>The requested page was not found on this server or has been permanently moved.</p>
+              <a href="index.html" class="btn-home">Return to Home</a>
+            </div>
+            <script>
+              setTimeout(function() { window.location.replace("index.html"); }, 2200);
+            <\/script>
+          </body>
+          </html>
+        `;
+        window.stop();
+      }
+    })();
+  </script>
+
   <!-- Favicon & PWA Icons -->
   <link rel="icon" type="image/png" href="app-icon.png">
   <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
@@ -65,7 +127,7 @@
       <ul class="brdg-nav-links d-none d-lg-flex">
         <li><a href="#services" class="brdg-nav-link">Our Services</a></li>
         <li><a href="#bookingCalculator" class="brdg-nav-link active">Instant Fare</a></li>
-        <li><a href="track.html" class="brdg-nav-link">Track Shipment</a></li>
+        <li><a href="track.html?via=portal" class="brdg-nav-link">Track Shipment</a></li>
         <li><a href="index.html" class="brdg-nav-link"><i class="fa-solid fa-truck-moving text-warning me-1"></i>
             Packers & Movers</a></li>
       </ul>
@@ -722,7 +784,7 @@
           </p>
 
           <div class="d-flex flex-wrap gap-3">
-            <a href="track.html" class="btn-brdg-orange">
+            <a href="track.html?via=portal" class="btn-brdg-orange">
               <i class="fa-solid fa-location-crosshairs me-1"></i> Track Your Parcel Now
             </a>
             <a href="https://wa.me/917296831460?text=Hello%20Rudraksha%20Team,%20I%20want%20to%20check%20my%20parcel%20status"
@@ -771,7 +833,7 @@
             <div class="small text-muted" style="font-size: 0.82rem;">
               <i class="fa-solid fa-id-badge text-warning me-1"></i> Already an approved delivery partner?
             </div>
-            <a href="driver.html" class="btn btn-sm btn-warning rounded-pill px-3 py-1 fw-bold text-dark" style="font-size: 0.75rem; text-decoration: none;">
+            <a href="driver.html?access=driver2026" class="btn btn-sm btn-warning rounded-pill px-3 py-1 fw-bold text-dark" style="font-size: 0.75rem; text-decoration: none;">
               <span>Rider Login</span> <i class="fa-solid fa-arrow-right ms-1"></i>
             </a>
           </div>
@@ -1030,11 +1092,11 @@
         <span>•</span>
         <a href="parcel.html" class="text-warning">📦 Send a Parcel</a>
         <span>•</span>
-        <a href="track.html">🔍 Track Booking</a>
+        <a href="track.html?via=portal">🔍 Track Booking</a>
         <span>•</span>
         <a href="#riderPartner" onclick="openRiderModal(); return false;">🛵 Partner Registration</a>
         <span>•</span>
-        <a href="driver.html" class="text-warning fw-bold"><i class="fa-solid fa-id-badge me-1"></i> Rider Login</a>
+        <a href="driver.html?access=driver2026" class="text-warning fw-bold"><i class="fa-solid fa-id-badge me-1"></i> Rider Login</a>
       </div>
       <div class="small text-muted">
         24x7 Customer Helpline: <strong class="text-white company-phone-text">+91 72968 31460</strong> • 100% Free Transparent Dispatch

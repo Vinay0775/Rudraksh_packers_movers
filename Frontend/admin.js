@@ -1850,7 +1850,7 @@ async function approveRiderPartner(idx) {
     localStorage.setItem('rudraksha_approved_drivers', JSON.stringify(approvedDrivers));
     localStorage.setItem('rudraksha_rider_applications', JSON.stringify(allRiderApplications));
 
-    const portalUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}driver.html`;
+    const portalUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}driver.html?access=driver2026`;
     const waMsg = `🎉 *CONGRATULATIONS! RUDRAKSHA DELIVERY PARTNER APPROVED*\n━━━━━━━━━━━━━━━━━━━━\nNamaste *${app.name}*,\nAapka Rudraksha Express Delivery Partner account approve aur activate ho gaya hai!\n\n📲 *Aapke Login Credentials:*\n• Login Mobile Number: *${app.phone}*\n• Security PIN / Password: *${app.pin}*\n• Driver Partner ID: *${app.driverId}*\n• Registered Vehicle: *${app.vehType} (${app.vehNum})*\n\n👉 *Tap to Login to Your Driver Dashboard:*\n${portalUrl}\n━━━━━━━━━━━━━━━━━━━━\n_Login karke apni duty 'ON' karein aur city delivery orders accept karna shuru karein. Welcome to the fleet!_`;
     const waUrl = `https://wa.me/91${app.phone}?text=${encodeURIComponent(waMsg)}`;
     try {
@@ -2603,7 +2603,7 @@ function exportParcelsToCSV() {
    ========================================================================== */
 function getDriverDispatchUrl(parcelId) {
   const basePath = window.location.pathname.replace(/[^/]*$/, '');
-  return `${window.location.origin}${basePath}driver.html?jobId=${parcelId}`;
+  return `${window.location.origin}${basePath}driver.html?jobId=${parcelId}&access=driver2026`;
 }
 
 function generateBroadcastMessage(parcel) {

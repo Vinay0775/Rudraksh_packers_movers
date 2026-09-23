@@ -739,9 +739,10 @@ function handleRiderPhotoUpload(event) {
 
 async function syncPhotoToBackend(photoUrl) {
   const cleanPhone = String(currentDriver?.phone || '').replace(/\D/g, '');
+  const prefix = getAvatarStoragePrefix();
   let synced = false;
 
-  // 1. Send to dedicated /api/rider/avatar (updates DB + memory store immediately)
+  // 1. Send to dedicated /api/rider/avatar (uploads to Supabase Storage + updates DB)
   try {
     const res = await fetch(`${DRIVER_API_BASE}/rider/avatar`, {
       method: 'POST',
@@ -750,7 +751,24 @@ async function syncPhotoToBackend(photoUrl) {
     });
     if (res.ok) {
       synced = true;
-      showToast('✅ Face photo saved! Synced across all devices & Admin Panel.', 'success');
+      const resData = await res.json().catch(() => ({}));
+      const cloudUrl = resData.avatar_url || photoUrl;
+
+      if (cleanPhone) {
+        localStorage.setItem(prefix + cleanPhone, cloudUrl);
+      }
+      if (currentDriver) {
+        currentDriver.avatar_url = cloudUrl;
+        localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(currentDriver));
+      }
+
+      // Update UI img tags with cloud URL
+      const pAvatar = document.getElementById('profileAvatarImg');
+      const navAvatar = document.getElementById('navAvatarImg');
+      if (pAvatar) pAvatar.src = cloudUrl;
+      if (navAvatar) navAvatar.src = cloudUrl;
+
+      showToast('☁️ Photo uploaded to Supabase Storage & synced across all devices!', 'success');
       return;
     }
   } catch (err1) {}
@@ -764,14 +782,24 @@ async function syncPhotoToBackend(photoUrl) {
     });
     if (res2.ok) {
       synced = true;
-      showToast('✅ Profile photo updated!', 'success');
+      const resData2 = await res2.json().catch(() => ({}));
+      const cloudUrl = resData2.rider?.avatar_url || photoUrl;
+      if (cleanPhone) {
+        localStorage.setItem(prefix + cleanPhone, cloudUrl);
+      }
+      if (currentDriver) {
+        currentDriver.avatar_url = cloudUrl;
+        localStorage.setItem(RIDER_SESSION_KEY, JSON.stringify(currentDriver));
+      }
+      showToast('✅ Profile photo updated in cloud!', 'success');
+      return;
     }
   } catch (err2) {
     console.warn('Backend photo sync warning:', err2);
   }
 
   if (!synced) {
-    showToast('Photo saved on this phone. Will sync to other devices once online.', 'info');
+    showToast('Photo saved locally. Will sync to Supabase Storage once connected.', 'info');
   }
 }
 

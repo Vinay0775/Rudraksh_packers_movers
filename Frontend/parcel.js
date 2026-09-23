@@ -1005,7 +1005,7 @@ async function handleRequestParcelDelivery() {
   const vehicleName = VEHICLE_CONFIG[parcelBookingState.selectedVehicle]?.name || 'Bike';
 
   // Driver Dispatch URL (Relative & absolute link)
-  const dispatchUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}driver.html?jobId=${parcelId}`;
+  const dispatchUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}driver.html?jobId=${parcelId}&access=driver2026`;
   const trackUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}track.html?id=${parcelId}`;
 
   // Format WhatsApp Click-to-Chat Message (Customer sends order request to Admin - OTPs are assigned by Admin)

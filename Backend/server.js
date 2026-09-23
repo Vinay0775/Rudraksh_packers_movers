@@ -460,13 +460,18 @@ app.patch('/api/rider/profile', requireRider, async (req, res, next) => {
   try {
     const { avatar_url, driver_name, vehicle_number, vehicle_type, dl_number, city, shift } = req.body;
     const cleanPhone = String(req.rider.phone || '').replace(/\D/g, '');
-
-    if (avatar_url && cleanPhone) {
-      riderAvatarStore.set(cleanPhone, avatar_url);
+    let cloudAvatar = avatar_url;
+    if (avatar_url) {
+      try {
+        cloudAvatar = await db.uploadDriverAvatar(cleanPhone, avatar_url);
+      } catch (uploadErr) {
+        console.warn('Supabase storage upload error in profile update:', uploadErr);
+      }
+      riderAvatarStore.set(cleanPhone, cloudAvatar);
     }
 
     const updates = {};
-    if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+    if (avatar_url !== undefined) updates.avatar_url = cloudAvatar;
     if (driver_name) updates.driver_name = String(driver_name).trim();
     if (vehicle_number) updates.vehicle_number = String(vehicle_number).trim();
     if (vehicle_type) updates.vehicle_type = String(vehicle_type).trim();
@@ -478,12 +483,12 @@ app.patch('/api/rider/profile', requireRider, async (req, res, next) => {
     const updated = await db.updateDriver(req.rider.id, updates);
 
     // Also update rider_applications table so admin immediately sees photo in applications tab
-    if (avatar_url && cleanPhone) {
+    if (cloudAvatar && cleanPhone) {
       try {
         const apps = await db.getRiderApplications();
         const matchedApp = apps.find(a => String(a.phone || '').replace(/\D/g, '') === cleanPhone);
         if (matchedApp) {
-          await db.updateRiderApplication(matchedApp.id, { avatar_url });
+          await db.updateRiderApplication(matchedApp.id, { avatar_url: cloudAvatar });
         }
       } catch (appSyncErr) {
         console.warn('Sync rider application avatar warning:', appSyncErr);
@@ -491,9 +496,7 @@ app.patch('/api/rider/profile', requireRider, async (req, res, next) => {
     }
 
     const sanitized = { ...(updated || req.rider) };
-    if (!sanitized.avatar_url && cleanPhone && riderAvatarStore.has(cleanPhone)) {
-      sanitized.avatar_url = riderAvatarStore.get(cleanPhone);
-    }
+    if (cloudAvatar) sanitized.avatar_url = cloudAvatar;
     delete sanitized.pin;
     delete sanitized.password;
 
@@ -503,7 +506,7 @@ app.patch('/api/rider/profile', requireRider, async (req, res, next) => {
   }
 });
 
-// Dedicated Public/Rider Avatar Upload & Sync Endpoint
+// Dedicated Public/Rider Avatar Upload & Sync Endpoint (Supabase Storage Cloud Bucket)
 app.post('/api/rider/avatar', async (req, res, next) => {
   try {
     const { phone, avatar_url } = req.body;
@@ -512,14 +515,22 @@ app.post('/api/rider/avatar', async (req, res, next) => {
       return res.status(400).json({ error: 'Phone number and avatar_url are required.' });
     }
 
-    riderAvatarStore.set(cleanPhone, avatar_url);
+    // Upload to Supabase Storage 'driver-avatars' public bucket
+    let cloudAvatarUrl = avatar_url;
+    try {
+      cloudAvatarUrl = await db.uploadDriverAvatar(cleanPhone, avatar_url);
+    } catch (uploadErr) {
+      console.warn('Supabase storage upload error:', uploadErr);
+    }
+
+    riderAvatarStore.set(cleanPhone, cloudAvatarUrl);
 
     // Update in drivers table
     try {
       const drivers = await db.getDrivers();
       const d = drivers.find(x => String(x.phone || '').replace(/\D/g, '') === cleanPhone);
       if (d) {
-        await db.updateDriver(d.id, { avatar_url });
+        await db.updateDriver(d.id, { avatar_url: cloudAvatarUrl });
       }
     } catch (dErr) {}
 
@@ -528,11 +539,15 @@ app.post('/api/rider/avatar', async (req, res, next) => {
       const apps = await db.getRiderApplications();
       const a = apps.find(x => String(x.phone || '').replace(/\D/g, '') === cleanPhone);
       if (a) {
-        await db.updateRiderApplication(a.id, { avatar_url });
+        await db.updateRiderApplication(a.id, { avatar_url: cloudAvatarUrl });
       }
     } catch (aErr) {}
 
-    res.json({ success: true, message: 'Driver photo updated across all devices & admin panel.', avatar_url });
+    res.json({
+      success: true,
+      message: 'Driver photo uploaded to Supabase Storage and synced across devices & admin.',
+      avatar_url: cloudAvatarUrl
+    });
   } catch (err) {
     next(err);
   }
