@@ -549,6 +549,10 @@ async function loadBookingsFromBackend() {
     if (res.ok) {
       const data = await res.json();
       adminBookings = data.bookings || [];
+      localStorage.setItem('rudraksha_bookings_history', JSON.stringify(adminBookings));
+    } else {
+      const saved = localStorage.getItem('rudraksha_bookings_history');
+      adminBookings = saved ? JSON.parse(saved) : [];
     }
   } catch (err) {
     const saved = localStorage.getItem('rudraksha_bookings_history');
@@ -567,10 +571,32 @@ async function loadBookingsFromBackend() {
     }
   });
 
-  localStorage.setItem('rudraksha_bookings_history', JSON.stringify(adminBookings));
-
   renderBookingsTable();
   updateDashboardMetrics();
+}
+
+/**
+ * 🗑️ Clear All Bookings (Admin Fresh Start)
+ */
+async function clearAllAdminBookings() {
+  if (!confirm('⚠️ Are you sure you want to delete ALL bookings from the system? This will clear all orders completely and start fresh at 0.')) return;
+  try {
+    const res = await fetch(`${API_BASE}/bookings`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    adminBookings = [];
+    localStorage.setItem('rudraksha_bookings_history', '[]');
+    showAdminToast('All bookings cleared successfully! Fresh start at 0.', 'success');
+    renderBookingsTable();
+    updateDashboardMetrics();
+  } catch (err) {
+    adminBookings = [];
+    localStorage.setItem('rudraksha_bookings_history', '[]');
+    showAdminToast('Local bookings cleared.', 'info');
+    renderBookingsTable();
+    updateDashboardMetrics();
+  }
 }
 
 function renderBookingsTable(list = adminBookings) {

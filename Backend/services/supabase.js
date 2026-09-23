@@ -143,6 +143,12 @@ function getOrGenerateBookingPins(b) {
   return { pickup_otp: p, delivery_otp: d };
 }
 
+function sanitizeForSupabaseBooking(data) {
+  if (!data || typeof data !== 'object') return data;
+  const { pickup_otp, delivery_otp, pickup_otp_verified, delivery_otp_verified, ...safe } = data;
+  return safe;
+}
+
 module.exports = {
   isSupabaseActive: () => Boolean(supabase),
 
@@ -233,14 +239,16 @@ module.exports = {
 
     if (supabase) {
       try {
-        const { pickup_otp, delivery_otp, ...dbData } = bookingData;
+        const dbData = sanitizeForSupabaseBooking(bookingData);
         const { data, error } = await supabase.from('bookings').insert([dbData]).select().single();
         if (!error && data) {
           data.pickup_otp = pickupOtp;
           data.delivery_otp = deliveryOtp;
+          data.pickup_otp_verified = false;
+          data.delivery_otp_verified = false;
           return data;
         }
-        console.warn('Supabase booking insert fallback to local:', error?.message || 'empty response');
+        if (error) console.error('Supabase booking insert error:', error.message);
       } catch (err) {
         console.warn('Supabase booking insert fallback to local:', err.message);
       }
@@ -316,10 +324,10 @@ module.exports = {
     if (supabase) {
       try {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(driverInfo.driver_id || '');
-        const dbPayload = {
+        const dbPayload = sanitizeForSupabaseBooking({
           ...updatePayload,
           assigned_driver_id: isUuid ? driverInfo.driver_id : null
-        };
+        });
         const { data, error } = await supabase.from('bookings').update(dbPayload).eq('id', id).select().single();
         if (!error && data) return data;
       } catch (err) {}
@@ -341,20 +349,19 @@ module.exports = {
     const pOtp = String(pickupOtp || Math.floor(1000 + Math.random() * 9000));
     const dOtp = String(deliveryOtp || Math.floor(1000 + Math.random() * 9000));
     const payload = {
-      pickup_otp: pOtp,
-      delivery_otp: dOtp,
       notes: `PICKUP_PIN:${pOtp} | DELIVERY_PIN:${dOtp}`,
       updated_at: new Date().toISOString()
     };
     if (supabase) {
       try {
-        await supabase.from('bookings').update(payload).eq('id', id);
+        const dbPayload = sanitizeForSupabaseBooking(payload);
+        await supabase.from('bookings').update(dbPayload).eq('id', id);
       } catch (err) {}
     }
     const bookings = await readLocal(bookingsFile, []);
     const idx = bookings.findIndex(b => b.id === id);
     if (idx !== -1) {
-      bookings[idx] = { ...bookings[idx], ...payload };
+      bookings[idx] = { ...bookings[idx], pickup_otp: pOtp, delivery_otp: dOtp, notes: payload.notes };
       await writeLocal(bookingsFile, bookings);
       return bookings[idx];
     }
@@ -389,7 +396,8 @@ module.exports = {
       };
       if (supabase) {
         try {
-          await supabase.from('bookings').update(updatePayload).eq('id', booking.id);
+          const dbPayload = sanitizeForSupabaseBooking(updatePayload);
+          await supabase.from('bookings').update(dbPayload).eq('id', booking.id);
         } catch (e) {}
       }
       const bookings = await readLocal(bookingsFile, []);
@@ -414,7 +422,8 @@ module.exports = {
       };
       if (supabase) {
         try {
-          await supabase.from('bookings').update(updatePayload).eq('id', booking.id);
+          const dbPayload = sanitizeForSupabaseBooking(updatePayload);
+          await supabase.from('bookings').update(dbPayload).eq('id', booking.id);
         } catch (e) {}
       }
       const bookings = await readLocal(bookingsFile, []);

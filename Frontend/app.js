@@ -1611,14 +1611,9 @@ async function processWhatsAppCheckout(openWhatsApp = true) {
   }
 
   const cleanPhone = custPhone ? custPhone.replace(/\D/g, '') : '';
-  if (cleanPhone.length < 10) {
-    alert('⚠️ Please enter a valid 10-digit WhatsApp Mobile Number.');
+  if (cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+    alert('⚠️ Please enter a valid 10-digit Indian WhatsApp mobile number (starting with 6, 7, 8, or 9).');
     document.getElementById('custPhone')?.focus();
-    return;
-  }
-
-  if (!isPhoneVerified || verifiedPhoneNumber !== cleanPhone) {
-    alert('Please verify this mobile number with OTP before placing the booking.');
     return;
   }
 
