@@ -581,6 +581,18 @@ function renderBookingsTable(list = adminBookings) {
 
     const driverName = b.assigned_driver_name ? `👨‍✈️ ${b.assigned_driver_name} (${b.assigned_vehicle_no})` : `<span class="cyber-badge-pill" style="color: #8E8E93;">Unassigned</span>`;
 
+    const pickupPinMsg = `🚚 *RUDRAKSHA PACKERS & MOVERS - PICKUP PIN*\n` +
+      `Namaste *${cName}*,\n` +
+      `Aapki booking *${bId}* ke liye Pickup PIN: *${b.pickup_otp || '----'}*\n` +
+      `⚠️ Yeh PIN driver ko saman truck me safely load hone ke baad hi share karein.\n` +
+      `🔍 Live Tracking: https://rudraksha-packers.web.app/track.html?tracking=${bId}`;
+
+    const deliveryPinMsg = `🚚 *RUDRAKSHA PACKERS & MOVERS - DELIVERY PIN*\n` +
+      `Namaste *${cName}*,\n` +
+      `Aapki booking *${bId}* ke liye Delivery PIN: *${b.delivery_otp || '----'}*\n` +
+      `⚠️ Yeh PIN destination par saman unload aur check karne ke baad hi driver ke sath share karein.\n` +
+      `🔍 Live Tracking: https://rudraksha-packers.web.app/track.html?tracking=${bId}`;
+
     return `
       <tr class="cyber-booking-row">
         <td class="cell-ref">
@@ -588,7 +600,14 @@ function renderBookingsTable(list = adminBookings) {
             <strong style="color: #D0FD38; font-size: 0.95rem;">${bId}</strong>
             <span class="d-md-none fw-bold fs-6 text-white">${amount}</span>
           </div>
-          ${b.pickup_otp ? `<div class="badge bg-success bg-opacity-25 text-success font-monospace mt-1" style="font-size: 0.72rem; border: 1px dashed rgba(34,197,94,0.4);"><i class="fa-solid fa-key me-1"></i>PIN: ${b.pickup_otp}</div>` : ''}
+          <div class="d-flex flex-wrap gap-1 mt-1">
+            <span class="badge ${b.pickup_otp_verified ? 'bg-success text-white' : 'bg-warning text-dark'}" style="font-size: 0.68rem; font-family: monospace;" title="Pickup PIN (Verified: ${b.pickup_otp_verified ? 'Yes' : 'No'})">
+              <i class="fa-solid fa-key me-1"></i>P:${b.pickup_otp || '----'}
+            </span>
+            <span class="badge ${b.delivery_otp_verified ? 'bg-success text-white' : 'bg-info text-dark'}" style="font-size: 0.68rem; font-family: monospace;" title="Delivery PIN (Verified: ${b.delivery_otp_verified ? 'Yes' : 'No'})">
+              <i class="fa-solid fa-shield-halved me-1"></i>D:${b.delivery_otp || '----'}
+            </span>
+          </div>
         </td>
         <td class="cell-customer">
           <div>
@@ -621,18 +640,109 @@ function renderBookingsTable(list = adminBookings) {
           <div class="small">${driverName}</div>
         </td>
         <td class="cell-actions">
-          <div class="d-flex gap-2">
-            <button class="btn-cyber-outline py-1 px-3" title="Assign Driver" onclick="openAssignDriverModal('${bId}')">
-              <i class="fa-solid fa-user-plus me-1"></i> <span class="d-md-none">Assign</span>
+          <div class="d-flex flex-wrap gap-1 align-items-center">
+            <button class="btn btn-sm btn-warning py-1 px-2 fw-bold text-dark" style="font-size: 0.72rem; background: #f97316; border: none; white-space: nowrap;" onclick="dispatchMoversOtpsToWhatsApp('${bId}')" title="⚡ 1-Click: Send Both Security PINs to Customer on WhatsApp">
+              <i class="fa-solid fa-bolt me-1"></i>Both PINs
             </button>
-            <a href="https://wa.me/91${cPhone}?text=Hello%20${encodeURIComponent(cName)},%20regarding%20your%20Rudraksha%20Packers%20booking%20${bId}" target="_blank" class="btn-cyber-outline py-1 px-3 text-success" title="WhatsApp Chat">
-              <i class="fa-brands fa-whatsapp me-1"></i> <span class="d-md-none">Chat</span>
+            <button class="btn-cyber-outline py-1 px-2" title="Assign Driver" onclick="openAssignDriverModal('${bId}')">
+              <i class="fa-solid fa-user-plus"></i>
+            </button>
+            <a href="https://wa.me/91${cPhone}?text=${encodeURIComponent(pickupPinMsg)}" target="_blank" class="btn btn-sm btn-outline-warning py-1 px-2 fw-bold" style="font-size: 0.72rem;" title="WhatsApp Pickup PIN to Customer (+91 ${cPhone})">
+              <i class="fa-solid fa-key me-1"></i>P-PIN
+            </a>
+            <a href="https://wa.me/91${cPhone}?text=${encodeURIComponent(deliveryPinMsg)}" target="_blank" class="btn btn-sm btn-outline-info py-1 px-2 fw-bold" style="font-size: 0.72rem;" title="WhatsApp Delivery PIN to Customer (+91 ${cPhone})">
+              <i class="fa-solid fa-shield-halved me-1"></i>D-PIN
+            </a>
+            <a href="https://wa.me/91${cPhone}?text=Hello%20${encodeURIComponent(cName)},%20regarding%20your%20Rudraksha%20Packers%20booking%20${bId}" target="_blank" class="btn-cyber-outline py-1 px-2 text-success" title="WhatsApp Chat">
+              <i class="fa-brands fa-whatsapp"></i>
+            </a>
+            <a href="track.html?tracking=${bId}" target="_blank" class="btn btn-sm btn-outline-info py-1 px-2" title="Live Tracking">
+              <i class="fa-solid fa-location-crosshairs"></i>
             </a>
           </div>
         </td>
       </tr>
     `;
   }).join('');
+}
+
+/**
+ * ⚡ 1-Click WhatsApp Dispatch for Movers Bookings (Pickup & Delivery PINs)
+ */
+async function dispatchMoversOtpsToWhatsApp(bookingId) {
+  let b = adminBookings.find(x => x.id === bookingId);
+  if (!b) {
+    showAdminToast('Booking not found.', 'error');
+    return;
+  }
+
+  // Auto-generate 4-digit PINs if missing
+  if (!b.pickup_otp) {
+    b.pickup_otp = String(Math.floor(1000 + Math.random() * 9000));
+  }
+  if (!b.delivery_otp) {
+    b.delivery_otp = String(Math.floor(1000 + Math.random() * 9000));
+  }
+
+  // Sync to Supabase Backend
+  try {
+    await fetch(`${API_BASE}/bookings/${bookingId}/otps`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ pickup_otp: b.pickup_otp, delivery_otp: b.delivery_otp })
+    });
+  } catch (err) {
+    console.warn('Movers OTP sync warning:', err);
+  }
+
+  localStorage.setItem('rudraksha_bookings_history', JSON.stringify(adminBookings));
+
+  const cName = b.customer_name || b.name || 'Valued Customer';
+  const cPhone = b.customer_phone || b.phone || '';
+  const pickup = b.pickup_address || b.pickup || '-';
+  const drop = b.drop_address || b.drop || '-';
+  const date = b.shifting_date || b.date || '-';
+  const amount = b.total_amount ? `₹${Number(b.total_amount).toLocaleString('en-IN')}` : (b.total || '₹0');
+  const trackUrl = `https://rudraksha-packers.web.app/track.html?tracking=${bookingId}`;
+  const driverInfo = b.assigned_driver_name ? `${b.assigned_driver_name} (${b.assigned_vehicle_no || b.selected_vehicle || 'Vehicle Assigned'})` : 'Driver will be assigned upon dispatch';
+
+  const fullMsg = 
+`🚚 *RUDRAKSHA PACKERS & MOVERS - BOOKING & SECURITY PINS* 🚚
+━━━━━━━━━━━━━━━━━━━━
+Namaste *${cName}*,
+Aapki Packers & Movers booking ki security verification PINs generate kar di gayi hain:
+
+🆔 *Booking ID:* ${bookingId}
+📅 *Shifting Date:* ${date}
+🚚 *Vehicle:* ${b.selected_vehicle || 'Dedicated Transport'}
+📍 *Pickup:* ${pickup}
+📍 *Drop:* ${drop}
+💰 *Total Amount:* ${amount}
+
+🔐 *OFFICIAL 2-STEP SECURITY PINS:*
+🔑 *Pickup PIN (Saman load karte waqt):* *${b.pickup_otp}*
+🛡️ *Delivery PIN (Destination par unload karte waqt):* *${b.delivery_otp}*
+
+👨‍✈️ *Driver Details:* ${driverInfo}
+
+⚠️ *Zaroori Suraksha Suchna:*
+1. Pickup PIN keval tabhi driver ke sath share karein jab saman safely truck me load ho jaye.
+2. Delivery PIN destination par saman sahi-salamat utarne aur verify karne ke baad hi share karein.
+
+🔍 *Live GPS Tracking Status:*
+${trackUrl}
+━━━━━━━━━━━━━━━━━━━━
+_Rudraksha Packers & Movers • Safe, Reliable & Fast_`;
+
+  showAdminToast(`⚡ Dispatching Both PINs to ${cName} (+91 ${cPhone})...`, 'success');
+
+  if (cPhone) {
+    window.open(`https://wa.me/91${cPhone}?text=${encodeURIComponent(fullMsg)}`, '_blank');
+  } else {
+    alert('Customer phone number not available for this booking.');
+  }
+
+  renderBookingsTable();
 }
 
 async function handleStatusChange(bookingId, newStatus) {

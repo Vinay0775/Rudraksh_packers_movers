@@ -1288,6 +1288,69 @@ app.post('/api/parcels/:id/verify-delivery-otp', requireAdminOrRider, async (req
   }
 });
 
+// 9. Assign / Update OTPs for Movers Booking
+app.post('/api/bookings/:id/otps', requireAdmin, async (req, res, next) => {
+  try {
+    const { pickup_otp, delivery_otp } = req.body;
+    const updated = await db.assignBookingOtps(req.params.id, pickup_otp, delivery_otp);
+    if (!updated) return res.status(404).json({ error: 'Booking not found.' });
+    res.json({ success: true, booking: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 10. Verify Movers Pickup OTP (Driver reaches customer home to load items)
+app.post('/api/bookings/:id/verify-pickup-otp', requireAdminOrRider, async (req, res, next) => {
+  try {
+    const { otp } = req.body;
+    if (!otp) return res.status(400).json({ error: 'Pickup PIN is required' });
+    const updated = await db.verifyBookingOtp(req.params.id, 'pickup', otp);
+
+    // Send Telegram alert
+    const msg = `🚚 *RELOCATION SHIPMENT LOADED & PICKED UP* 📦\n` +
+                `━━━━━━━━━━━━━━━━━━━━\n` +
+                `🆔 *Booking ID:* \`${updated.id || req.params.id}\`\n` +
+                `👤 *Customer:* ${updated.customer_name || 'Customer'} (+91 ${updated.customer_phone || ''})\n` +
+                `👨‍✈️ *Driver:* ${updated.assigned_driver_name || 'Driver'}\n` +
+                `📍 *Pickup:* ${updated.pickup_address}\n` +
+                `🏁 *Destination:* ${updated.drop_address}\n` +
+                `✅ *Pickup PIN Verified:* YES\n` +
+                `━━━━━━━━━━━━━━━━━━━━`;
+    telegram.sendTelegramMessage(msg).catch(console.error);
+
+    res.json({ success: true, booking: updated, message: 'Pickup PIN verified! Booking marked as In Transit.' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// 11. Verify Movers Delivery OTP (Driver unloads at new destination)
+app.post('/api/bookings/:id/verify-delivery-otp', requireAdminOrRider, async (req, res, next) => {
+  try {
+    const { otp } = req.body;
+    if (!otp) return res.status(400).json({ error: 'Delivery PIN is required' });
+    const updated = await db.verifyBookingOtp(req.params.id, 'delivery', otp);
+
+    const fare = Number(updated.total_amount || 0);
+    const msg = `🎉 *RELOCATION DELIVERED SUCCESSFULLY* 🏁\n` +
+                `━━━━━━━━━━━━━━━━━━━━\n` +
+                `🆔 *Booking ID:* \`${updated.id || req.params.id}\`\n` +
+                `👤 *Customer:* ${updated.customer_name || 'Customer'}\n` +
+                `👨‍✈️ *Driver:* ${updated.assigned_driver_name || 'Driver'}\n` +
+                `📍 *Destination:* ${updated.drop_address}\n` +
+                `💰 *Total Amount:* ₹${fare}\n` +
+                `🛡️ *Delivery PIN Verified:* YES ✅\n` +
+                `🎉 *Status:* DELIVERED / COMPLETED\n` +
+                `━━━━━━━━━━━━━━━━━━━━`;
+    telegram.sendTelegramMessage(msg).catch(console.error);
+
+    res.json({ success: true, booking: updated, message: 'Delivery PIN verified! Relocation marked as Delivered.' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 /* ==========================================================================
    DRIVERS & FLEET ENDPOINTS
    ========================================================================== */

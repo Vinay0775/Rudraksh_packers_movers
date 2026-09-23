@@ -1063,6 +1063,40 @@
     </div>
   </div>
 
+  <!-- =================== PICKUP CONFIRMATION RECEIPT MODAL =================== -->
+  <div class="otp-overlay" id="pickupReceiptOverlay" style="z-index: 10000;">
+    <div class="otp-sheet" style="border-top: 3px solid #22c55e;">
+      <div class="otp-sheet-handle"></div>
+      <div class="otp-icon-ring" style="background: rgba(34,197,94,0.18); border-color: rgba(34,197,94,0.5); color: #22c55e;">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <div class="otp-title" style="color: #22c55e; margin-top: 8px;">Consignment Safely Loaded!</div>
+      <div class="otp-sub" id="pickupReceiptSub">Pickup PIN verified successfully. Customer ko WhatsApp par official loading receipt turant bhejein.</div>
+
+      <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 14px; margin: 16px 0; text-align: left; font-size: 0.82rem;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+          <span style="color: #94a3b8;">Order / Booking:</span>
+          <strong class="text-white" id="receiptOrderId">-</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+          <span style="color: #94a3b8;">Customer:</span>
+          <strong class="text-white" id="receiptCustomerName">-</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: #94a3b8;">Customer Phone:</span>
+          <strong style="color: #22c55e;" id="receiptCustomerPhone">-</strong>
+        </div>
+      </div>
+
+      <a id="btnSendCustomerReceipt" href="#" target="_blank" class="btn-verify-otp" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #22c55e, #16a34a); box-shadow: 0 4px 15px rgba(34,197,94,0.4); margin-bottom: 10px;">
+        <i class="fa-brands fa-whatsapp fa-lg"></i>
+        <span>Send WhatsApp Receipt to Customer</span>
+      </a>
+
+      <button type="button" class="btn-otp-cancel" onclick="closePickupReceiptModal()">Continue Trip</button>
+    </div>
+  </div>
+
   <!-- =================== RIDER PROFILE SETUP SHEET =================== -->
   <div class="setup-overlay" id="setupOverlay">
     <div class="setup-sheet">

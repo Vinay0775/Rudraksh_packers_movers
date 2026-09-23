@@ -1242,7 +1242,8 @@ function buildActiveTripCard(trip) {
 
   const customerPhone = isPickedUp ? (trip.receiver_phone || trip.sender_phone) : (trip.sender_phone || trip.receiver_phone);
   const targetAddress = isPickedUp ? dropAddr : pickupAddr;
-  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(targetAddress)}`;
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(targetAddress)}&travelmode=driving&dir_action=navigate`;
+  const navBtnLabel = isPickedUp ? '🏁 Route to Drop (Google Maps)' : '🧭 Route to Pickup (Google Maps)';
 
   return `
     <div class="active-trip-card">
@@ -1281,13 +1282,13 @@ function buildActiveTripCard(trip) {
         </div>
       </div>
 
-      <!-- Quick Action Buttons: Call & Google Maps Navigation -->
-      <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 8px; margin-bottom: 14px;">
+      <!-- Quick Action Buttons: Call & Turn-by-Turn Google Maps Navigation -->
+      <div style="display: grid; grid-template-columns: 1fr 1.35fr; gap: 8px; margin-bottom: 14px;">
         <a href="tel:${customerPhone}" class="btn-refresh" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; font-size: 0.82rem; font-weight: 700; color: #fff; text-decoration: none; border-color: rgba(255,255,255,0.2);">
           <i class="fa-solid fa-phone text-success"></i> Call Customer
         </a>
-        <a href="${mapsUrl}" target="_blank" class="btn-refresh" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; font-size: 0.82rem; font-weight: 700; color: #38bdf8; text-decoration: none; border-color: rgba(56,189,248,0.3); background: rgba(56,189,248,0.08);">
-          <i class="fa-solid fa-diamond-turn-right"></i> Google Maps
+        <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="btn-refresh" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; font-size: 0.82rem; font-weight: 700; color: #38bdf8; text-decoration: none; border-color: rgba(56,189,248,0.3); background: rgba(56,189,248,0.08);">
+          <i class="fa-solid ${isPickedUp ? 'fa-flag-checkered text-warning' : 'fa-diamond-turn-right text-info'}"></i> ${navBtnLabel}
         </a>
       </div>
 
@@ -1445,24 +1446,41 @@ async function submitOtpVerification() {
     let isSuccess = false;
     let serverMessage = '';
 
+    const isMovers = String(currentOtpParcelId).startsWith('RB-');
+    let primaryUrl = isMovers 
+      ? `${DRIVER_API_BASE}/bookings/${currentOtpParcelId}/${endpoint}`
+      : `${DRIVER_API_BASE}/parcels/${currentOtpParcelId}/${endpoint}`;
+
     try {
-      const res = await fetch(`${DRIVER_API_BASE}/parcels/${currentOtpParcelId}/${endpoint}`, {
+      let res = await fetch(primaryUrl, {
         method: 'POST',
         headers: getRiderHeaders(),
         body: JSON.stringify({ otp: enteredOtp })
       });
+
+      // If 404, fallback check on the other endpoint
+      if (res.status === 404 && !isMovers) {
+        res = await fetch(`${DRIVER_API_BASE}/bookings/${currentOtpParcelId}/${endpoint}`, {
+          method: 'POST',
+          headers: getRiderHeaders(),
+          body: JSON.stringify({ otp: enteredOtp })
+        });
+      }
+
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
         isSuccess = true;
         serverMessage = data.message || '';
-      } else if (res.status === 400 && data.error) {
+      } else if (data.error) {
         throw new Error(data.error);
       }
     } catch (fetchErr) {
-      if (fetchErr.message && fetchErr.message.includes('PIN')) throw fetchErr;
+      if (fetchErr.message && (fetchErr.message.includes('PIN') || fetchErr.message.includes('Invalid') || fetchErr.message.includes('Incorrect'))) {
+        throw fetchErr;
+      }
     }
 
-    // Local Storage synchronization & fallback check
+    // Local Storage synchronization & fallback check (Parcels)
     const p1 = JSON.parse(localStorage.getItem('rudraksha_parcels') || '[]');
     const p2 = JSON.parse(localStorage.getItem('rudraksha_parcels_history') || '[]');
     const all = [...p1, ...p2];
@@ -1491,10 +1509,39 @@ async function submitOtpVerification() {
       localStorage.setItem('rudraksha_parcels_history', JSON.stringify(p2));
     }
 
+    // Local Storage synchronization & fallback check (Movers Bookings)
+    try {
+      const bHistory = JSON.parse(localStorage.getItem('rudraksha_bookings_history') || '[]');
+      const targetB = bHistory.find(b => (b.id === currentOtpParcelId));
+      if (targetB) {
+        if (currentOtpMode === 'pickup') {
+          const expected = String(targetB.pickup_otp || '').replace(/\D/g, '');
+          if (expected && enteredOtp !== expected) {
+            throw new Error('Invalid Pickup PIN. Please ask customer for correct PIN.');
+          }
+          targetB.status = 'in_transit';
+          targetB.booking_status = 'in_transit';
+          targetB.pickup_otp_verified = true;
+        } else {
+          const expected = String(targetB.delivery_otp || '').replace(/\D/g, '');
+          if (expected && enteredOtp !== expected) {
+            throw new Error('Invalid Delivery PIN. Please ask customer for correct PIN.');
+          }
+          targetB.status = 'delivered';
+          targetB.booking_status = 'delivered';
+          targetB.delivery_otp_verified = true;
+          targetB.pickup_otp_verified = true;
+        }
+        localStorage.setItem('rudraksha_bookings_history', JSON.stringify(bHistory));
+      }
+    } catch (_) {}
+
     closeOtpSheet();
 
     if (currentOtpMode === 'pickup') {
-      showToast('✅ Pickup PIN verified! Parcel marked as Picked Up.', 'success');
+      showToast('✅ Pickup PIN verified! Samaan successfully loaded.', 'success');
+      // Trigger Instant Official WhatsApp Confirmation Receipt to Customer
+      triggerPickupReceiptToCustomer(currentActiveTrip, currentOtpParcelId);
     } else {
       const fare = currentActiveTrip?.total_amount ? `₹${currentActiveTrip.total_amount}` : '';
       showToast(`🎉 Delivery Complete! ${fare} added to your wallet!`, 'success');
@@ -1520,6 +1567,68 @@ async function submitOtpVerification() {
       btn.innerHTML = `<i class="fa-solid fa-circle-check me-2"></i> <span id="btnVerifyLabel">${currentOtpMode === 'pickup' ? 'Verify Pickup PIN' : 'Verify & Complete Delivery'}</span>`;
     }
   }
+}
+
+/**
+ * 📲 1-Click WhatsApp Pickup Confirmation Receipt to Customer
+ */
+function triggerPickupReceiptToCustomer(trip, tripId) {
+  const t = trip || currentActiveTrip || {};
+  const cName = t.sender_name || t.customer_name || 'Customer';
+  const cPhone = t.sender_phone || t.customer_phone || '';
+  const dropAddr = t.drop_address || t.drop || 'Destination Point';
+  const dName = currentDriver?.name || currentDriver?.driver_name || 'Official Rudraksha Driver';
+  const dPhone = currentDriver?.phone || '';
+  const veh = currentDriver?.vehicle_number || currentDriver?.vehicle_no || currentDriver?.vehicle_type || 'Assigned Logistics Vehicle';
+  const deliveryOtp = t.delivery_otp || '';
+  const trackId = tripId || t.parcel_id || t.id || 'ORDER';
+
+  const receiptMsg = 
+`🚚 *RUDRAKSHA PACKERS & MOVERS - PICKUP CONFIRMATION RECEIPT* 🚚
+━━━━━━━━━━━━━━━━━━━━
+Namaste *${cName}*,
+Aapka consignment hamare official driver dwara successfully verify karke safely truck/vehicle me load kar liya gaya hai!
+
+📦 *Booking / Order ID:* ${trackId}
+👨‍✈️ *Verified Driver:* ${dName}
+📞 *Driver Contact:* ${dPhone ? '+91 ' + dPhone : '-'}
+🚗 *Vehicle:* ${veh}
+📍 *Destination Drop:* ${dropAddr}
+${deliveryOtp ? `🔐 *Delivery PIN:* *${deliveryOtp}*\n*(Yeh Delivery PIN destination par saman unload aur check karne ke baad hi driver ke sath share karein)*\n` : ''}
+🔍 *Live GPS Tracking Status:*
+https://rudraksha-packers.web.app/track.html?tracking=${trackId}
+━━━━━━━━━━━━━━━━━━━━
+_Aapka samaan hamari zimmedari hai. Safe & Secure Transit!_
+_Rudraksha Packers & Movers • Helpline: +91 7999818816_`;
+
+  const waUrl = cPhone ? `https://wa.me/91${cPhone}?text=${encodeURIComponent(receiptMsg)}` : '#';
+
+  // Populate receipt modal
+  const orderEl = document.getElementById('receiptOrderId');
+  const nameEl = document.getElementById('receiptCustomerName');
+  const phoneEl = document.getElementById('receiptCustomerPhone');
+  const btnEl = document.getElementById('btnSendCustomerReceipt');
+
+  if (orderEl) orderEl.innerText = trackId;
+  if (nameEl) nameEl.innerText = cName;
+  if (phoneEl) phoneEl.innerText = cPhone ? `+91 ${cPhone}` : 'Not provided';
+  if (btnEl) btnEl.href = waUrl;
+
+  // Open modal
+  const overlay = document.getElementById('pickupReceiptOverlay');
+  if (overlay) overlay.classList.add('active');
+
+  // Attempt automatic WhatsApp open in new window
+  if (cPhone) {
+    try {
+      window.open(waUrl, '_blank');
+    } catch (_) {}
+  }
+}
+
+function closePickupReceiptModal() {
+  const overlay = document.getElementById('pickupReceiptOverlay');
+  if (overlay) overlay.classList.remove('active');
 }
 
 /* ==========================================================================

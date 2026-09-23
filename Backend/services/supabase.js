@@ -132,7 +132,10 @@ module.exports = {
         if (!error && data) {
           return data.map(b => ({
             ...b,
-            pickup_otp: b.pickup_otp || (b.notes && b.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821'
+            pickup_otp: b.pickup_otp || (b.notes && b.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821',
+            delivery_otp: b.delivery_otp || (b.notes && b.notes.match(/DELIVERY_PIN:(\d{4})/)?.[1]) || '7192',
+            pickup_otp_verified: Boolean(b.pickup_otp_verified || ['in_transit', 'delivered', 'completed'].includes(String(b.status).toLowerCase())),
+            delivery_otp_verified: Boolean(b.delivery_otp_verified || ['delivered', 'completed'].includes(String(b.status).toLowerCase()))
           }));
         }
         console.warn('Supabase bookings read fallback to local:', error?.message || 'empty response');
@@ -143,7 +146,10 @@ module.exports = {
     const local = await readLocal(bookingsFile, []);
     return local.map(b => ({
       ...b,
-      pickup_otp: b.pickup_otp || (b.notes && b.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821'
+      pickup_otp: b.pickup_otp || (b.notes && b.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821',
+      delivery_otp: b.delivery_otp || (b.notes && b.notes.match(/DELIVERY_PIN:(\d{4})/)?.[1]) || '7192',
+      pickup_otp_verified: Boolean(b.pickup_otp_verified || ['in_transit', 'delivered', 'completed'].includes(String(b.status).toLowerCase())),
+      delivery_otp_verified: Boolean(b.delivery_otp_verified || ['delivered', 'completed'].includes(String(b.status).toLowerCase()))
     }));
   },
 
@@ -160,6 +166,9 @@ module.exports = {
         if (!error && data && data.length > 0) {
           const b = data[0];
           b.pickup_otp = b.pickup_otp || (b.notes && b.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821';
+          b.delivery_otp = b.delivery_otp || (b.notes && b.notes.match(/DELIVERY_PIN:(\d{4})/)?.[1]) || '7192';
+          b.pickup_otp_verified = Boolean(b.pickup_otp_verified || ['in_transit', 'delivered', 'completed'].includes(String(b.status).toLowerCase()));
+          b.delivery_otp_verified = Boolean(b.delivery_otp_verified || ['delivered', 'completed'].includes(String(b.status).toLowerCase()));
           return b;
         }
         if (error) console.warn('Supabase booking lookup fallback to local:', error.message);
@@ -176,23 +185,29 @@ module.exports = {
     );
     if (found) {
       found.pickup_otp = found.pickup_otp || (found.notes && found.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821';
+      found.delivery_otp = found.delivery_otp || (found.notes && found.notes.match(/DELIVERY_PIN:(\d{4})/)?.[1]) || '7192';
+      found.pickup_otp_verified = Boolean(found.pickup_otp_verified || ['in_transit', 'delivered', 'completed'].includes(String(found.status).toLowerCase()));
+      found.delivery_otp_verified = Boolean(found.delivery_otp_verified || ['delivered', 'completed'].includes(String(found.status).toLowerCase()));
     }
     return found || null;
   },
 
   async createBooking(bookingData) {
     const pickupOtp = bookingData.pickup_otp || String(Math.floor(1000 + Math.random() * 9000));
+    const deliveryOtp = bookingData.delivery_otp || String(Math.floor(1000 + Math.random() * 9000));
     bookingData.pickup_otp = pickupOtp;
-    if (!bookingData.notes || !bookingData.notes.includes('PICKUP_PIN:')) {
-      bookingData.notes = bookingData.notes ? `${bookingData.notes} | PICKUP_PIN:${pickupOtp}` : `PICKUP_PIN:${pickupOtp}`;
-    }
+    bookingData.delivery_otp = deliveryOtp;
+    bookingData.pickup_otp_verified = false;
+    bookingData.delivery_otp_verified = false;
+    bookingData.notes = bookingData.notes ? `${bookingData.notes} | PICKUP_PIN:${pickupOtp} | DELIVERY_PIN:${deliveryOtp}` : `PICKUP_PIN:${pickupOtp} | DELIVERY_PIN:${deliveryOtp}`;
 
     if (supabase) {
       try {
-        const { pickup_otp, ...dbData } = bookingData;
+        const { pickup_otp, delivery_otp, ...dbData } = bookingData;
         const { data, error } = await supabase.from('bookings').insert([dbData]).select().single();
         if (!error && data) {
           data.pickup_otp = pickupOtp;
+          data.delivery_otp = deliveryOtp;
           return data;
         }
         console.warn('Supabase booking insert fallback to local:', error?.message || 'empty response');
@@ -227,19 +242,31 @@ module.exports = {
   },
 
   async assignDriverToBooking(id, driverInfo) {
+    const existing = await this.getBookingByIdOrPhone(id);
+    const pickupOtp = driverInfo.pickup_otp || existing?.pickup_otp || String(Math.floor(1000 + Math.random() * 9000));
+    const deliveryOtp = driverInfo.delivery_otp || existing?.delivery_otp || String(Math.floor(1000 + Math.random() * 9000));
+
+    const updatePayload = {
+      assigned_driver_name: driverInfo.driver_name,
+      assigned_driver_phone: driverInfo.driver_phone,
+      assigned_vehicle_no: driverInfo.vehicle_number,
+      pickup_otp: pickupOtp,
+      delivery_otp: deliveryOtp,
+      notes: `PICKUP_PIN:${pickupOtp} | DELIVERY_PIN:${deliveryOtp}`,
+      status: 'driver_assigned',
+      updated_at: new Date().toISOString()
+    };
+
     if (supabase) {
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(driverInfo.driver_id || '');
-      const updatePayload = {
-        assigned_driver_id: isUuid ? driverInfo.driver_id : null,
-        assigned_driver_name: driverInfo.driver_name,
-        assigned_driver_phone: driverInfo.driver_phone,
-        assigned_vehicle_no: driverInfo.vehicle_number,
-        status: 'driver_assigned',
-        updated_at: new Date().toISOString()
-      };
-      const { data, error } = await supabase.from('bookings').update(updatePayload).eq('id', id).select().single();
-      if (error) throw error;
-      return data;
+      try {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(driverInfo.driver_id || '');
+        const dbPayload = {
+          ...updatePayload,
+          assigned_driver_id: isUuid ? driverInfo.driver_id : null
+        };
+        const { data, error } = await supabase.from('bookings').update(dbPayload).eq('id', id).select().single();
+        if (!error && data) return data;
+      } catch (err) {}
     }
 
     const bookings = await readLocal(bookingsFile, []);
@@ -247,15 +274,101 @@ module.exports = {
     if (index === -1) return null;
     bookings[index] = {
       ...bookings[index],
-      assigned_driver_id: driverInfo.driver_id || null,
-      assigned_driver_name: driverInfo.driver_name,
-      assigned_driver_phone: driverInfo.driver_phone,
-      assigned_vehicle_no: driverInfo.vehicle_number,
-      status: 'driver_assigned',
-      updated_at: new Date().toISOString()
+      ...updatePayload,
+      assigned_driver_id: driverInfo.driver_id || null
     };
     await writeLocal(bookingsFile, bookings);
     return bookings[index];
+  },
+
+  async assignBookingOtps(id, pickupOtp, deliveryOtp) {
+    const pOtp = String(pickupOtp || Math.floor(1000 + Math.random() * 9000));
+    const dOtp = String(deliveryOtp || Math.floor(1000 + Math.random() * 9000));
+    const payload = {
+      pickup_otp: pOtp,
+      delivery_otp: dOtp,
+      notes: `PICKUP_PIN:${pOtp} | DELIVERY_PIN:${dOtp}`,
+      updated_at: new Date().toISOString()
+    };
+    if (supabase) {
+      try {
+        await supabase.from('bookings').update(payload).eq('id', id);
+      } catch (err) {}
+    }
+    const bookings = await readLocal(bookingsFile, []);
+    const idx = bookings.findIndex(b => b.id === id);
+    if (idx !== -1) {
+      bookings[idx] = { ...bookings[idx], ...payload };
+      await writeLocal(bookingsFile, bookings);
+      return bookings[idx];
+    }
+    return null;
+  },
+
+  async verifyBookingOtp(id, otpType, enteredOtp) {
+    const cleanId = String(id || '').trim();
+    let booking = await this.getBookingByIdOrPhone(cleanId);
+    if (!booking) {
+      const all = await this.getBookings();
+      booking = all.find(b => b.id?.toLowerCase() === cleanId.toLowerCase());
+    }
+    if (!booking) throw new Error(`Booking not found with ID: ${id}`);
+
+    const cleanEntered = String(enteredOtp || '').replace(/\D/g, '').trim();
+    if (!cleanEntered || cleanEntered.length < 4) {
+      throw new Error('Please enter a valid 4-digit PIN.');
+    }
+
+    if (otpType === 'pickup') {
+      const expected = String(booking.pickup_otp || (booking.notes && booking.notes.match(/PICKUP_PIN:(\d{4})/)?.[1]) || '3821').trim();
+      if (expected && cleanEntered !== expected) {
+        throw new Error('Invalid Pickup PIN. Please check with customer/sender.');
+      }
+      const updatePayload = {
+        status: 'in_transit',
+        pickup_otp_verified: true,
+        updated_at: new Date().toISOString()
+      };
+      if (supabase) {
+        try {
+          await supabase.from('bookings').update(updatePayload).eq('id', booking.id);
+        } catch (e) {}
+      }
+      const bookings = await readLocal(bookingsFile, []);
+      const idx = bookings.findIndex(b => b.id === booking.id);
+      if (idx !== -1) {
+        bookings[idx] = { ...bookings[idx], ...updatePayload };
+        await writeLocal(bookingsFile, bookings);
+        return bookings[idx];
+      }
+      return { ...booking, ...updatePayload };
+    } else if (otpType === 'delivery') {
+      const expected = String(booking.delivery_otp || (booking.notes && booking.notes.match(/DELIVERY_PIN:(\d{4})/)?.[1]) || '7192').trim();
+      if (expected && cleanEntered !== expected) {
+        throw new Error('Invalid Delivery PIN. Please check with customer/receiver.');
+      }
+      const updatePayload = {
+        status: 'delivered',
+        pickup_otp_verified: true,
+        delivery_otp_verified: true,
+        payment_status: 'completed',
+        updated_at: new Date().toISOString()
+      };
+      if (supabase) {
+        try {
+          await supabase.from('bookings').update(updatePayload).eq('id', booking.id);
+        } catch (e) {}
+      }
+      const bookings = await readLocal(bookingsFile, []);
+      const idx = bookings.findIndex(b => b.id === booking.id);
+      if (idx !== -1) {
+        bookings[idx] = { ...bookings[idx], ...updatePayload };
+        await writeLocal(bookingsFile, bookings);
+        return bookings[idx];
+      }
+      return { ...booking, ...updatePayload };
+    }
+    throw new Error('Invalid OTP type');
   },
 
   // DRIVERS
