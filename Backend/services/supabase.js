@@ -252,6 +252,32 @@ module.exports = {
     return bookingData;
   },
 
+  async deleteBooking(id) {
+    if (supabase) {
+      try {
+        await supabase.from('bookings').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Supabase delete booking error:', err.message);
+      }
+    }
+    const bookings = await readLocal(bookingsFile, []);
+    const filtered = bookings.filter(b => b.id !== id);
+    await writeLocal(bookingsFile, filtered);
+    return true;
+  },
+
+  async clearAllBookings() {
+    if (supabase) {
+      try {
+        await supabase.from('bookings').delete().neq('id', 'NONE');
+      } catch (err) {
+        console.warn('Supabase clear bookings error:', err.message);
+      }
+    }
+    await writeLocal(bookingsFile, []);
+    return true;
+  },
+
   async updateBookingStatus(id, status, notes = '') {
     if (supabase) {
       const updatePayload = { status, updated_at: new Date().toISOString() };

@@ -967,6 +967,26 @@ app.patch('/api/bookings/:id/status', requireAdmin, async (req, res, next) => {
   }
 });
 
+// Delete specific booking (Admin)
+app.delete('/api/bookings/:id', requireAdmin, async (req, res, next) => {
+  try {
+    await db.deleteBooking(req.params.id);
+    res.json({ success: true, message: `Booking ${req.params.id} deleted successfully.` });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Clear all bookings (Admin fresh start)
+app.delete('/api/bookings', requireAdmin, async (req, res, next) => {
+  try {
+    await db.clearAllBookings();
+    res.json({ success: true, message: 'All bookings cleared successfully.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // 5. Assign Driver & Vehicle
 app.post('/api/bookings/:id/assign', requireAdmin, async (req, res, next) => {
   try {
