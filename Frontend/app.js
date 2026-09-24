@@ -407,8 +407,26 @@ function initLocationAutocomplete(inputId, dropdownId, type) {
   // Initialize Google Places if script or API key is available
   initGooglePlacesIfAvailable();
 
+  // Close dropdown on click outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.location-input-wrap')) {
+      dropdown.classList.remove('show');
+    }
+  });
+
+  // Support Enter key to select top suggestion
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const firstItem = dropdown.querySelector('.autocomplete-item');
+      if (firstItem && dropdown.classList.contains('show')) {
+        e.preventDefault();
+        firstItem.click();
+      }
+    }
+  });
+
   input.addEventListener('input', () => {
-    const query = input.value.trim();
+    const rawQuery = input.value.trim();
     clearTimeout(autocompleteDebounceTimer);
 
     // Reset coordinate cache immediately on user input so stale address isn't used
@@ -421,78 +439,120 @@ function initLocationAutocomplete(inputId, dropdownId, type) {
       lastGeocodedDrop = '';
     }
 
-    if (query.length < 2) {
+    if (rawQuery.length < 2) {
       dropdown.innerHTML = '';
       dropdown.classList.remove('show');
       return;
     }
 
+    const cleanQ = rawQuery.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // 1. INSTANT LOCAL SUGGESTIONS (0ms delay for common areas)
+    const localMatches = [];
+    for (const [locName, coords] of Object.entries(POPULAR_LOCATIONS)) {
+      const cleanLoc = locName.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (cleanLoc.startsWith(cleanQ) || cleanLoc.includes(cleanQ)) {
+        const formatted = locName.split(',').map(s => s.trim().replace(/\b\w/g, c => c.toUpperCase())).join(', ');
+        if (!localMatches.some(m => m.name.toLowerCase() === formatted.toLowerCase())) {
+          localMatches.push({
+            name: formatted,
+            sub: locName.includes('jaipur') ? 'Jaipur, Rajasthan' : 'India',
+            coords: coords
+          });
+        }
+      }
+      if (localMatches.length >= 5) break;
+    }
+
+    // Render local matches instantly
+    if (localMatches.length > 0) {
+      renderAutocompleteItems(localMatches, dropdown, input, type);
+    }
+
+    // 2. REMOTE PHOTON SEARCH (with Jaipur / India location bias)
     autocompleteDebounceTimer = setTimeout(async () => {
       try {
-        // High quality Indian address search using Photon
-        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6&lang=en`);
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(rawQuery)}&lat=26.9124&lon=75.7873&limit=6&lang=en`);
         const data = await res.json();
 
+        const combined = [...localMatches];
+
         if (data && data.features && data.features.length > 0) {
-          dropdown.innerHTML = '';
           data.features.forEach(f => {
             const props = f.properties;
             const [lng, lat] = f.geometry.coordinates;
 
             const name = props.name || '';
-            const city = props.city || props.county || props.state || '';
+            const city = props.city || props.district || props.county || props.state || '';
             const state = props.state || props.country || '';
             const sub = [city, state].filter(Boolean).join(', ');
+            const fullName = [name, sub].filter(Boolean).join(', ');
 
-            const item = document.createElement('div');
-            item.className = 'autocomplete-item';
-            item.innerHTML = `
-              <i class="fa-solid ${type === 'pickup' ? 'fa-location-dot' : 'fa-flag-checkered'}"></i>
-              <div>
-                <span class="autocomplete-main-text">${name}</span>
-                <span class="autocomplete-sub-text">${sub}</span>
-              </div>
-            `;
-
-            item.addEventListener('click', () => {
-              const fullAddress = [name, sub].filter(Boolean).join(', ');
-              input.value = fullAddress;
-              dropdown.classList.remove('show');
-
-              if (type === 'pickup') {
-                pickupCoords = [lat, lng];
-                lastGeocodedPickup = fullAddress;
-                if (leafletMap) {
-                  if (pickupMarker) pickupMarker.setLatLng([lat, lng]);
-                  else pickupMarker = L.marker([lat, lng], { draggable: true }).addTo(leafletMap);
-                  pickupMarker.bindPopup(`<b>📍 ${fullAddress}</b>`).openPopup();
-                  leafletMap.setView([lat, lng], 14);
-                }
-              } else {
-                dropCoords = [lat, lng];
-                lastGeocodedDrop = fullAddress;
-                if (leafletMap) {
-                  if (dropMarker) dropMarker.setLatLng([lat, lng]);
-                  else dropMarker = L.marker([lat, lng]).addTo(leafletMap);
-                  dropMarker.bindPopup(`<b>🏁 ${fullAddress}</b>`);
-                }
-              }
-
-              updateSummaryTexts();
-              calculateOSRMRoute(false);
-            });
-
-            dropdown.appendChild(item);
+            if (name && !combined.some(m => m.name.toLowerCase() === fullName.toLowerCase() || m.name.toLowerCase().startsWith(name.toLowerCase()))) {
+              combined.push({
+                name: fullName,
+                sub: sub,
+                coords: [lat, lng]
+              });
+            }
           });
-          dropdown.classList.add('show');
-        } else {
+        }
+
+        if (combined.length > 0) {
+          renderAutocompleteItems(combined.slice(0, 7), dropdown, input, type);
+        } else if (localMatches.length === 0) {
           dropdown.classList.remove('show');
         }
       } catch (err) {
         console.warn('Autocomplete fetch error:', err);
       }
-    }, 250);
+    }, 200);
   });
+}
+
+function renderAutocompleteItems(items, dropdown, input, type) {
+  dropdown.innerHTML = '';
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'autocomplete-item';
+    el.innerHTML = `
+      <i class="fa-solid ${type === 'pickup' ? 'fa-location-dot' : 'fa-flag-checkered'}"></i>
+      <div>
+        <span class="autocomplete-main-text">${item.name}</span>
+        <span class="autocomplete-sub-text">${item.sub}</span>
+      </div>
+    `;
+
+    el.addEventListener('click', () => {
+      input.value = item.name;
+      dropdown.classList.remove('show');
+
+      if (type === 'pickup') {
+        pickupCoords = item.coords;
+        lastGeocodedPickup = item.name;
+        if (leafletMap) {
+          if (pickupMarker) pickupMarker.setLatLng(item.coords);
+          else pickupMarker = L.marker(item.coords, { draggable: true }).addTo(leafletMap);
+          pickupMarker.bindPopup(`<b>📍 ${item.name}</b>`).openPopup();
+          leafletMap.setView(item.coords, 14);
+        }
+      } else {
+        dropCoords = item.coords;
+        lastGeocodedDrop = item.name;
+        if (leafletMap) {
+          if (dropMarker) dropMarker.setLatLng(item.coords);
+          else dropMarker = L.marker(item.coords).addTo(leafletMap);
+          dropMarker.bindPopup(`<b>🏁 ${item.name}</b>`);
+        }
+      }
+
+      updateSummaryTexts();
+      calculateOSRMRoute(false);
+    });
+
+    dropdown.appendChild(el);
+  });
+  dropdown.classList.add('show');
 }
 
 /**
@@ -941,6 +1001,8 @@ const POPULAR_LOCATIONS = {
   'sirsi road': [26.9239, 75.7186],
   'vaishali nagar, jaipur': [26.9075, 75.7397],
   'vaishali nagar': [26.9075, 75.7397],
+  'chitrakoot, jaipur': [26.8992, 75.7328],
+  'chitrakoot': [26.8992, 75.7328],
   'mansarovar, jaipur': [26.8611, 75.7644],
   'mansarovar': [26.8611, 75.7644],
   'malviya nagar, jaipur': [26.8529, 75.8237],
@@ -949,6 +1011,39 @@ const POPULAR_LOCATIONS = {
   'ajmer road': [26.8920, 75.7480],
   'jagatpura, jaipur': [26.8242, 75.8569],
   'jagatpura': [26.8242, 75.8569],
+  'sodala, jaipur': [26.9015, 75.7725],
+  'sodala': [26.9015, 75.7725],
+  'raja park, jaipur': [26.8978, 75.8273],
+  'raja park': [26.8978, 75.8273],
+  'c-scheme, jaipur': [26.9090, 75.7997],
+  'c-scheme': [26.9090, 75.7997],
+  'sitapura, jaipur': [26.7794, 75.8361],
+  'sitapura': [26.7794, 75.8361],
+  'sanganer, jaipur': [26.8167, 75.7833],
+  'sanganer': [26.8167, 75.7833],
+  'vidhyadhar nagar, jaipur': [26.9637, 75.7745],
+  'vidhyadhar nagar': [26.9637, 75.7745],
+  'jhotwara, jaipur': [26.9535, 75.7478],
+  'jhotwara': [26.9535, 75.7478],
+  'bani park, jaipur': [26.9312, 75.7904],
+  'bani park': [26.9312, 75.7904],
+  'tonk road, jaipur': [26.8567, 75.8038],
+  'tonk road': [26.8567, 75.8038],
+  'gopalpura bypass, jaipur': [26.8643, 75.7915],
+  'gopalpura bypass': [26.8643, 75.7915],
+  'pratap nagar, jaipur': [26.8041, 75.8239],
+  'pratap nagar': [26.8041, 75.8239],
+  'shyam nagar, jaipur': [26.8967, 75.7621],
+  'shyam nagar': [26.8967, 75.7621],
+  'durgapura, jaipur': [26.8517, 75.7919],
+  'durgapura': [26.8517, 75.7919],
+  'kalwar road, jaipur': [26.9458, 75.7061],
+  'kalwar road': [26.9458, 75.7061],
+  'gandhi path, jaipur': [26.9038, 75.7291],
+  'gandhi path': [26.9038, 75.7291],
+  'civil lines, jaipur': [26.9048, 75.7871],
+  'civil lines': [26.9048, 75.7871],
+  'jaipur': [26.9124, 75.7873],
   'gurugram, delhi ncr': [28.4595, 77.0266],
   'gurugram': [28.4595, 77.0266],
   'gurgaon': [28.4595, 77.0266],
@@ -959,7 +1054,6 @@ const POPULAR_LOCATIONS = {
   'delhi': [28.6139, 77.2090],
   'delhi ncr': [28.6139, 77.2090],
   'new delhi': [28.6139, 77.2090],
-  'jaipur': [26.9124, 75.7873],
   'ajmer': [26.4499, 74.6399],
   'jodhpur': [26.2389, 73.0243],
   'kota': [25.2138, 75.8648],
