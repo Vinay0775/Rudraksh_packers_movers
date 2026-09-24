@@ -1987,6 +1987,20 @@ body {
   opacity: 0.95;
 }
 
+.custom-blue-footer .contact-info-line a,
+.custom-blue-footer .company-phone-text {
+  color: #ffc107 !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+.custom-blue-footer .contact-info-line a:hover,
+.custom-blue-footer .company-phone-text:hover {
+  color: #ffffff !important;
+  text-decoration: underline !important;
+}
+
 /* Column 2 Important Links */
 .custom-blue-footer .footer-nav-links {
   display: flex;
