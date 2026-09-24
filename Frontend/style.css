@@ -1097,66 +1097,73 @@ body {
   background: linear-gradient(90deg, #0077c8, #0ea5e9);
 }
 
-/* 4-Step Process Cards */
+/* 4-Step Process Cards (Pixel-perfect Desktop Symmetry) */
 .process-steps-row {
-  margin-top: 25px;
+  margin-top: 30px;
+}
+
+@media (min-width: 992px) {
+  .process-steps-row::before {
+    content: '';
+    position: absolute;
+    top: 96px;
+    left: 14%;
+    right: 14%;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, #0077c8 0, #0077c8 8px, transparent 8px, transparent 16px);
+    z-index: 0;
+    opacity: 0.4;
+  }
 }
 
 .step-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  padding: 28px 24px;
+  border-radius: 18px;
+  padding: 28px 18px 22px;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
   position: relative;
+  z-index: 1;
 }
 
 .step-card:hover {
-  transform: translateY(-6px);
+  transform: translateY(-8px);
   border-color: #0077c8;
-  box-shadow: 0 16px 36px rgba(0, 119, 200, 0.12);
+  box-shadow: 0 16px 36px rgba(0, 119, 200, 0.14);
 }
 
-.step-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.step-number-badge {
-  font-size: 1.1rem;
-  font-weight: 900;
+.step-badge-top {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 1px;
   color: #0077c8;
   background: rgba(0, 119, 200, 0.08);
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  letter-spacing: 0.5px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
+  width: fit-content;
+  margin: 0 auto;
 }
 
-.step-icon-wrapper {
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
+.step-icon-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
   background: linear-gradient(135deg, #0077c8 0%, #0284c7 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.4rem;
-  box-shadow: 0 6px 16px rgba(0, 119, 200, 0.25);
-  transition: transform 0.3s ease;
+  font-size: 1.5rem;
+  box-shadow: 0 8px 20px rgba(0, 119, 200, 0.28);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.step-card:hover .step-icon-wrapper {
-  transform: scale(1.08) rotate(3deg);
+.step-card:hover .step-icon-circle {
+  transform: scale(1.1) rotate(4deg);
 }
 
 .step-card-body {
@@ -1166,31 +1173,43 @@ body {
 }
 
 .step-title {
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 1.05rem;
+  font-weight: 800;
   color: #0f172a;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1.35;
 }
 
 .step-description {
   color: #64748b;
-  font-size: 0.92rem;
-  line-height: 1.6;
-  margin-bottom: 18px;
-  flex-grow: 1;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  margin-bottom: 16px;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.step-tag {
-  font-size: 0.78rem;
+.step-footer-pill {
+  font-size: 0.75rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  padding: 6px 12px;
-  border-radius: 8px;
+  letter-spacing: 0.4px;
+  padding: 6px 14px;
+  border-radius: 20px;
   background: #f1f5f9;
-  color: #334155;
+  color: #1e293b;
   width: fit-content;
+  transition: background-color 0.2s ease;
+}
+
+.step-card:hover .step-footer-pill {
+  background: rgba(0, 119, 200, 0.1);
+  color: #0077c8;
 }
 
 /* --- Floating WhatsApp "Chat Now" Badge --- */
