@@ -635,6 +635,21 @@ async function selectQuickArea(type, fullAddress) {
   const input = document.getElementById(isPickup ? 'pickupCity' : 'dropCity');
   if (input) input.value = fullAddress;
 
+  // Clear previous route polyline immediately so old address path is erased
+  if (routePolyline && leafletMap) {
+    leafletMap.removeLayer(routePolyline);
+    routePolyline = null;
+  }
+
+  // Highlight active chip
+  const parentCol = input ? input.closest('.col-md-6') : null;
+  if (parentCol) {
+    parentCol.querySelectorAll('.chip-btn').forEach(btn => {
+      const chipText = btn.textContent.replace('📍', '').replace('🏁', '').trim().toLowerCase();
+      btn.classList.toggle('active', fullAddress.toLowerCase().includes(chipText));
+    });
+  }
+
   if (isPickup) {
     pickupCoords = null;
     lastGeocodedPickup = fullAddress;
@@ -650,8 +665,9 @@ async function selectQuickArea(type, fullAddress) {
     if (isPickup) {
       pickupCoords = coords;
       if (leafletMap) {
-        if (pickupMarker) pickupMarker.setLatLng(coords);
-        else {
+        if (pickupMarker) {
+          pickupMarker.setLatLng(coords);
+        } else {
           pickupMarker = L.marker(coords, { draggable: true }).addTo(leafletMap);
           pickupMarker.on('dragend', async (e) => {
             const p = e.target.getLatLng();
@@ -659,13 +675,14 @@ async function selectQuickArea(type, fullAddress) {
           });
         }
         pickupMarker.bindPopup(`<b>📍 ${fullAddress}</b>`).openPopup();
-        leafletMap.panTo(coords);
+        leafletMap.setView(coords, 14);
       }
     } else {
       dropCoords = coords;
       if (leafletMap) {
-        if (dropMarker) dropMarker.setLatLng(coords);
-        else {
+        if (dropMarker) {
+          dropMarker.setLatLng(coords);
+        } else {
           dropMarker = L.marker(coords, { draggable: true }).addTo(leafletMap);
           dropMarker.on('dragend', async (e) => {
             const p = e.target.getLatLng();
@@ -673,7 +690,7 @@ async function selectQuickArea(type, fullAddress) {
           });
         }
         dropMarker.bindPopup(`<b>🏁 ${fullAddress}</b>`).openPopup();
-        leafletMap.panTo(coords);
+        leafletMap.setView(coords, 14);
       }
     }
   }

@@ -459,6 +459,11 @@ function selectParcelQuickArea(type, areaName) {
     }
   }
 
+  if (parcelRoutePolyline && parcelLeafletMap) {
+    parcelLeafletMap.removeLayer(parcelRoutePolyline);
+    parcelRoutePolyline = null;
+  }
+
   if (coords) {
     if (isPickup) {
       parcelBookingState.pickupCoords = coords;
