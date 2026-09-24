@@ -1067,17 +1067,22 @@ body {
   margin-top: 15px;
 }
 
-/* --- How It Works Diagram Section --- */
+/* --- How It Works Modern 4-Step Process Section --- */
 .how-it-works-section {
-  padding: 60px 0;
-  background: #ffffff;
+  padding: 80px 0;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  position: relative;
+  overflow: hidden;
 }
 
 .section-header-underline {
   position: relative;
   display: inline-block;
   font-weight: 800;
-  margin-bottom: 40px;
+  font-size: 2.2rem;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+  margin-bottom: 12px;
 }
 
 .section-header-underline::after {
@@ -1087,80 +1092,105 @@ body {
   left: 50%;
   transform: translateX(-50%);
   width: 70px;
-  height: 3px;
-  background: #0077c8;
+  height: 4px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #0077c8, #0ea5e9);
 }
 
-/* 4-Step Diagram Flowchart */
-.flowchart-container {
-  position: relative;
-  padding: 20px;
-  max-width: 450px;
-  margin: 0 auto;
+/* 4-Step Process Cards */
+.process-steps-row {
+  margin-top: 25px;
 }
 
-.flow-node {
-  width: 90px;
-  height: 90px;
+.step-card {
   background: #ffffff;
-  border: 2px dashed #0077c8;
-  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 28px 24px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
   position: relative;
-  box-shadow: 0 4px 12px rgba(0, 119, 200, 0.1);
 }
 
-.flow-node .diamond-badge {
-  position: absolute;
-  top: -12px;
-  left: -12px;
-  width: 28px;
-  height: 28px;
-  background: #0077c8;
-  color: #ffffff;
-  transform: rotate(45deg);
+.step-card:hover {
+  transform: translateY(-6px);
+  border-color: #0077c8;
+  box-shadow: 0 16px 36px rgba(0, 119, 200, 0.12);
+}
+
+.step-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.step-number-badge {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #0077c8;
+  background: rgba(0, 119, 200, 0.08);
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
-  font-size: 0.85rem;
+  letter-spacing: 0.5px;
 }
 
-.flow-node .diamond-badge span {
-  transform: rotate(-45deg);
+.step-icon-wrapper {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #0077c8 0%, #0284c7 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  box-shadow: 0 6px 16px rgba(0, 119, 200, 0.25);
+  transition: transform 0.3s ease;
 }
 
-.flow-node i {
-  font-size: 1.8rem;
-  color: #0077c8;
+.step-card:hover .step-icon-wrapper {
+  transform: scale(1.08) rotate(3deg);
 }
 
-.flow-connector-v {
-  width: 2px;
-  height: 40px;
-  border-left: 2px dashed #0077c8;
-  margin: 0 auto;
+.step-card-body {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
 }
 
-/* Numbered Steps Right Text */
-.step-text-item {
-  margin-bottom: 24px;
-}
-
-.step-text-item h5 {
+.step-title {
+  font-size: 1.15rem;
   font-weight: 700;
   color: #0f172a;
-  margin-bottom: 4px;
-  font-size: 1.1rem;
+  margin-bottom: 10px;
+  line-height: 1.35;
 }
 
-.step-text-item p {
-  color: var(--text-muted);
-  font-size: 0.93rem;
-  margin: 0;
+.step-description {
+  color: #64748b;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  margin-bottom: 18px;
+  flex-grow: 1;
+}
+
+.step-tag {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #334155;
+  width: fit-content;
 }
 
 /* --- Floating WhatsApp "Chat Now" Badge --- */
