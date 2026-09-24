@@ -404,12 +404,22 @@ function initLocationAutocomplete(inputId, dropdownId, type) {
   const dropdown = document.getElementById(dropdownId);
   if (!input || !dropdown) return;
 
+  // Initialize Google Places if script or API key is available
+  initGooglePlacesIfAvailable();
+
   input.addEventListener('input', () => {
     const query = input.value.trim();
     clearTimeout(autocompleteDebounceTimer);
 
-    if (type === 'pickup') pickupCoords = null;
-    if (type === 'drop') dropCoords = null;
+    // Reset coordinate cache immediately on user input so stale address isn't used
+    if (type === 'pickup') {
+      pickupCoords = null;
+      lastGeocodedPickup = '';
+    }
+    if (type === 'drop') {
+      dropCoords = null;
+      lastGeocodedDrop = '';
+    }
 
     if (query.length < 2) {
       dropdown.innerHTML = '';
@@ -419,7 +429,7 @@ function initLocationAutocomplete(inputId, dropdownId, type) {
 
     autocompleteDebounceTimer = setTimeout(async () => {
       try {
-        // Photon OpenStreetMap Search API
+        // High quality Indian address search using Photon
         const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6&lang=en`);
         const data = await res.json();
 
@@ -451,6 +461,7 @@ function initLocationAutocomplete(inputId, dropdownId, type) {
 
               if (type === 'pickup') {
                 pickupCoords = [lat, lng];
+                lastGeocodedPickup = fullAddress;
                 if (leafletMap) {
                   if (pickupMarker) pickupMarker.setLatLng([lat, lng]);
                   else pickupMarker = L.marker([lat, lng], { draggable: true }).addTo(leafletMap);
@@ -459,6 +470,7 @@ function initLocationAutocomplete(inputId, dropdownId, type) {
                 }
               } else {
                 dropCoords = [lat, lng];
+                lastGeocodedDrop = fullAddress;
                 if (leafletMap) {
                   if (dropMarker) dropMarker.setLatLng([lat, lng]);
                   else dropMarker = L.marker([lat, lng]).addTo(leafletMap);
@@ -481,6 +493,78 @@ function initLocationAutocomplete(inputId, dropdownId, type) {
       }
     }, 250);
   });
+}
+
+/**
+ * Google Maps / Places API Autocomplete Engine (Seamlessly activates with API Key)
+ */
+function initGooglePlacesIfAvailable() {
+  const apiKey = window.GOOGLE_MAPS_API_KEY || localStorage.getItem('rudraksha_google_maps_key');
+  if (window.google && window.google.maps && window.google.maps.places) {
+    setupGooglePlacesInputs();
+    return;
+  }
+  if (apiKey && !document.getElementById('googleMapsPlacesScript')) {
+    const script = document.createElement('script');
+    script.id = 'googleMapsPlacesScript';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.async = true;
+    script.onload = () => setupGooglePlacesInputs();
+    document.head.appendChild(script);
+  }
+}
+
+function setupGooglePlacesInputs() {
+  if (!window.google || !window.google.maps || !window.google.maps.places) return;
+  const pInput = document.getElementById('pickupCity');
+  const dInput = document.getElementById('dropCity');
+
+  if (pInput && !pInput.dataset.googleBound) {
+    pInput.dataset.googleBound = 'true';
+    const pAuto = new google.maps.places.Autocomplete(pInput, {
+      componentRestrictions: { country: 'in' },
+      fields: ['geometry', 'formatted_address', 'name']
+    });
+    pAuto.addListener('place_changed', () => {
+      const place = pAuto.getPlace();
+      if (!place || !place.geometry || !place.geometry.location) return;
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      pickupCoords = [lat, lng];
+      lastGeocodedPickup = pInput.value;
+      if (leafletMap) {
+        if (pickupMarker) pickupMarker.setLatLng([lat, lng]);
+        else pickupMarker = L.marker([lat, lng], { draggable: true }).addTo(leafletMap);
+        pickupMarker.bindPopup(`<b>📍 ${pInput.value}</b>`).openPopup();
+        leafletMap.setView([lat, lng], 15);
+      }
+      updateSummaryTexts();
+      calculateOSRMRoute(false);
+    });
+  }
+
+  if (dInput && !dInput.dataset.googleBound) {
+    dInput.dataset.googleBound = 'true';
+    const dAuto = new google.maps.places.Autocomplete(dInput, {
+      componentRestrictions: { country: 'in' },
+      fields: ['geometry', 'formatted_address', 'name']
+    });
+    dAuto.addListener('place_changed', () => {
+      const place = dAuto.getPlace();
+      if (!place || !place.geometry || !place.geometry.location) return;
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      dropCoords = [lat, lng];
+      lastGeocodedDrop = dInput.value;
+      if (leafletMap) {
+        if (dropMarker) dropMarker.setLatLng([lat, lng]);
+        else dropMarker = L.marker([lat, lng]).addTo(leafletMap);
+        dropMarker.bindPopup(`<b>🏁 ${dInput.value}</b>`);
+      }
+      updateSummaryTexts();
+      calculateOSRMRoute(false);
+    });
+  }
 }
 
 /**
@@ -892,21 +976,37 @@ const POPULAR_LOCATIONS = {
 
 async function geocodeAddress(query) {
   if (!query || !query.trim()) return null;
-  const cleanQuery = query.trim().toLowerCase();
+  const cleanQuery = query.trim().toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ').replace(/\s+/g, ' ').trim();
 
-  // 1. Instant match in local database
-  if (POPULAR_LOCATIONS[cleanQuery]) {
-    return POPULAR_LOCATIONS[cleanQuery];
-  }
-
-  // Check partial key matches
+  // 1. Instant match in local database (exact or cleanly delimited prefix)
   for (const [key, coords] of Object.entries(POPULAR_LOCATIONS)) {
-    if (cleanQuery.includes(key) || key.includes(cleanQuery)) {
+    const cleanKey = key.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (cleanQuery === cleanKey || cleanQuery.startsWith(cleanKey + ' ') || cleanKey.startsWith(cleanQuery + ' ')) {
       return coords;
     }
   }
 
-  // 2. Photon Komoot API
+  // 2. Google Geocoder fallback if Google Maps API is loaded
+  if (window.google && window.google.maps && window.google.maps.Geocoder) {
+    try {
+      const geocoder = new google.maps.Geocoder();
+      const googleRes = await new Promise((resolve) => {
+        geocoder.geocode({ address: query.trim(), componentRestrictions: { country: 'in' } }, (results, status) => {
+          if (status === 'OK' && results && results.length > 0) {
+            const loc = results[0].geometry.location;
+            resolve([loc.lat(), loc.lng()]);
+          } else {
+            resolve(null);
+          }
+        });
+      });
+      if (googleRes) return googleRes;
+    } catch (gErr) {
+      console.warn('Google geocoder error:', gErr);
+    }
+  }
+
+  // 3. Photon Komoot API with India priority
   try {
     const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query.trim())}&limit=1`);
     const data = await res.json();
@@ -918,7 +1018,7 @@ async function geocodeAddress(query) {
     console.warn('Photon geocode fallback:', e);
   }
 
-  // 3. Nominatim with clean query in India
+  // 4. Nominatim with clean query in India
   try {
     const encoded = encodeURIComponent(query.trim() + ', India');
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&countrycodes=in&limit=1`);
@@ -930,7 +1030,7 @@ async function geocodeAddress(query) {
     console.warn('Nominatim geocode primary failed:', e);
   }
 
-  // 4. Try searching without adding ', India'
+  // 5. Try searching without adding ', India'
   try {
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query.trim())}&limit=1`);
     const results = await res.json();

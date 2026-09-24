@@ -448,15 +448,14 @@ function selectParcelQuickArea(type, areaName) {
   const inputEl = document.getElementById(isPickup ? 'pclPickupInput' : 'pclDropInput');
   if (inputEl) inputEl.value = areaName;
 
-  const cleanKey = areaName.toLowerCase().trim();
-  let coords = POPULAR_LOCATIONS[cleanKey];
+  const cleanKey = areaName.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ').replace(/\s+/g, ' ').trim();
+  let coords = null;
 
-  if (!coords) {
-    for (const [k, c] of Object.entries(POPULAR_LOCATIONS)) {
-      if (cleanKey.includes(k) || k.includes(cleanKey)) {
-        coords = c;
-        break;
-      }
+  for (const [k, c] of Object.entries(POPULAR_LOCATIONS)) {
+    const cleanK = k.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (cleanKey === cleanK || cleanKey.startsWith(cleanK + ' ') || cleanKey.startsWith(cleanK + ',')) {
+      coords = c;
+      break;
     }
   }
 
@@ -466,13 +465,25 @@ function selectParcelQuickArea(type, areaName) {
       parcelBookingState.pickupLat = coords[0];
       parcelBookingState.pickupLng = coords[1];
       parcelBookingState.pickupAddress = areaName;
+      lastGeocodedParcelPickup = areaName;
       if (parcelPickupMarker) parcelPickupMarker.setLatLng(coords);
+      if (parcelLeafletMap) parcelLeafletMap.panTo(coords);
     } else {
       parcelBookingState.dropCoords = coords;
       parcelBookingState.dropLat = coords[0];
       parcelBookingState.dropLng = coords[1];
       parcelBookingState.dropAddress = areaName;
+      lastGeocodedParcelDrop = areaName;
       if (parcelDropMarker) parcelDropMarker.setLatLng(coords);
+      if (parcelLeafletMap) parcelLeafletMap.panTo(coords);
+    }
+  } else {
+    if (isPickup) {
+      parcelBookingState.pickupCoords = null;
+      lastGeocodedParcelPickup = '';
+    } else {
+      parcelBookingState.dropCoords = null;
+      lastGeocodedParcelDrop = '';
     }
   }
 
@@ -484,16 +495,37 @@ function selectParcelQuickArea(type, areaName) {
  */
 async function geocodeParcelAddress(query) {
   if (!query || !query.trim()) return null;
-  const clean = query.toLowerCase().trim();
+  const clean = query.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ').replace(/\s+/g, ' ').trim();
 
-  // 1. Direct match in local dictionary
-  if (POPULAR_LOCATIONS[clean]) return POPULAR_LOCATIONS[clean];
-
+  // 1. Exact or prefix match in local dictionary
   for (const [k, c] of Object.entries(POPULAR_LOCATIONS)) {
-    if (clean.includes(k) || k.includes(clean)) return c;
+    const cleanK = k.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (clean === cleanK || clean.startsWith(cleanK + ' ') || clean.startsWith(cleanKey => cleanK)) {
+      return c;
+    }
   }
 
-  // 2. Photon Komoot API
+  // 2. Google Geocoder fallback if Google Maps API is loaded
+  if (window.google && window.google.maps && window.google.maps.Geocoder) {
+    try {
+      const geocoder = new google.maps.Geocoder();
+      const googleRes = await new Promise((resolve) => {
+        geocoder.geocode({ address: query.trim(), componentRestrictions: { country: 'in' } }, (results, status) => {
+          if (status === 'OK' && results && results.length > 0) {
+            const loc = results[0].geometry.location;
+            resolve([loc.lat(), loc.lng()]);
+          } else {
+            resolve(null);
+          }
+        });
+      });
+      if (googleRes) return googleRes;
+    } catch (gErr) {
+      console.warn('Google geocoder error in parcel:', gErr);
+    }
+  }
+
+  // 3. Photon Komoot API
   try {
     const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query.trim())}&limit=1`);
     const data = await res.json();
@@ -505,7 +537,7 @@ async function geocodeParcelAddress(query) {
     console.warn('Photon geocode fallback:', e);
   }
 
-  // 3. Nominatim with India filter
+  // 4. Nominatim with India filter
   try {
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query.trim() + ', India')}&countrycodes=in&limit=1`);
     const data = await res.json();
@@ -554,9 +586,11 @@ async function calculateParcelOSRMRoute(force = false) {
     statusEl.innerHTML = '<i class="fa-solid fa-satellite-dish fa-spin text-warning me-1"></i> Calculating fastest commercial road route...';
   }
 
-  // Resolve pickup coordinates
-  let pCoord = parcelBookingState.pickupCoords;
-  if (!pCoord || pickupInput !== lastGeocodedParcelPickup) {
+  // Resolve pickup coordinates (never retain stale address if input changed)
+  let pCoord = null;
+  if (pickupInput === lastGeocodedParcelPickup && parcelBookingState.pickupCoords) {
+    pCoord = parcelBookingState.pickupCoords;
+  } else {
     pCoord = await geocodeParcelAddress(pickupInput);
     if (pCoord) {
       parcelBookingState.pickupCoords = pCoord;
@@ -564,12 +598,16 @@ async function calculateParcelOSRMRoute(force = false) {
       parcelBookingState.pickupLng = pCoord[1];
       lastGeocodedParcelPickup = pickupInput;
       if (parcelPickupMarker) parcelPickupMarker.setLatLng(pCoord);
+    } else {
+      parcelBookingState.pickupCoords = null;
     }
   }
 
-  // Resolve drop coordinates
-  let dCoord = parcelBookingState.dropCoords;
-  if (!dCoord || dropInput !== lastGeocodedParcelDrop) {
+  // Resolve drop coordinates (never retain stale address if input changed)
+  let dCoord = null;
+  if (dropInput === lastGeocodedParcelDrop && parcelBookingState.dropCoords) {
+    dCoord = parcelBookingState.dropCoords;
+  } else {
     dCoord = await geocodeParcelAddress(dropInput);
     if (dCoord) {
       parcelBookingState.dropCoords = dCoord;
@@ -577,11 +615,13 @@ async function calculateParcelOSRMRoute(force = false) {
       parcelBookingState.dropLng = dCoord[1];
       lastGeocodedParcelDrop = dropInput;
       if (parcelDropMarker) parcelDropMarker.setLatLng(dCoord);
+    } else {
+      parcelBookingState.dropCoords = null;
     }
   }
 
   if (!pCoord || !dCoord) {
-    if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> Could not locate address. Please select a popular area chip or click the map.';
+    if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> Location not pinpointed. Please select from suggestions or drag the pin on map.';
     return;
   }
 
@@ -664,11 +704,70 @@ function initParcelAutocomplete() {
   const pickupBox = document.getElementById('pclPickupSuggestions');
   const dropBox = document.getElementById('pclDropSuggestions');
 
+  // Google Places Autocomplete if available
+  if (window.google && window.google.maps && window.google.maps.places) {
+    if (pickupInput && !pickupInput.dataset.googleBound) {
+      pickupInput.dataset.googleBound = 'true';
+      const pAuto = new google.maps.places.Autocomplete(pickupInput, {
+        componentRestrictions: { country: 'in' },
+        fields: ['geometry', 'formatted_address', 'name']
+      });
+      pAuto.addListener('place_changed', () => {
+        const pl = pAuto.getPlace();
+        if (pl && pl.geometry && pl.geometry.location) {
+          const lat = pl.geometry.location.lat();
+          const lng = pl.geometry.location.lng();
+          parcelBookingState.pickupAddress = pickupInput.value;
+          parcelBookingState.pickupCoords = [lat, lng];
+          parcelBookingState.pickupLat = lat;
+          parcelBookingState.pickupLng = lng;
+          lastGeocodedParcelPickup = pickupInput.value;
+          if (parcelPickupMarker) parcelPickupMarker.setLatLng([lat, lng]);
+          if (parcelLeafletMap) parcelLeafletMap.panTo([lat, lng]);
+          calculateParcelOSRMRoute(false);
+        }
+      });
+    }
+
+    if (dropInput && !dropInput.dataset.googleBound) {
+      dropInput.dataset.googleBound = 'true';
+      const dAuto = new google.maps.places.Autocomplete(dropInput, {
+        componentRestrictions: { country: 'in' },
+        fields: ['geometry', 'formatted_address', 'name']
+      });
+      dAuto.addListener('place_changed', () => {
+        const pl = dAuto.getPlace();
+        if (pl && pl.geometry && pl.geometry.location) {
+          const lat = pl.geometry.location.lat();
+          const lng = pl.geometry.location.lng();
+          parcelBookingState.dropAddress = dropInput.value;
+          parcelBookingState.dropCoords = [lat, lng];
+          parcelBookingState.dropLat = lat;
+          parcelBookingState.dropLng = lng;
+          lastGeocodedParcelDrop = dropInput.value;
+          if (parcelDropMarker) parcelDropMarker.setLatLng([lat, lng]);
+          if (parcelLeafletMap) parcelLeafletMap.panTo([lat, lng]);
+          calculateParcelOSRMRoute(false);
+        }
+      });
+    }
+  }
+
   let debounceTimer = null;
 
   function handleInputSearch(input, box, type) {
     clearTimeout(debounceTimer);
     const query = input.value.trim().toLowerCase();
+
+    // Immediately invalidate stale coordinate cache upon keystroke
+    if (type === 'pickup') {
+      parcelBookingState.pickupCoords = null;
+      lastGeocodedParcelPickup = '';
+    } else {
+      parcelBookingState.dropCoords = null;
+      lastGeocodedParcelDrop = '';
+    }
+
     if (query.length < 2) {
       box.classList.remove('show');
       box.innerHTML = '';
@@ -678,9 +777,9 @@ function initParcelAutocomplete() {
     debounceTimer = setTimeout(async () => {
       const matches = [];
 
-      // 1. Search local dictionary
+      // 1. Search local dictionary (exact or prefix match only)
       for (const [name, coords] of Object.entries(POPULAR_LOCATIONS)) {
-        if (name.includes(query)) {
+        if (name.startsWith(query) || name.includes(query)) {
           matches.push({ name: capitalizeWords(name), coords });
         }
         if (matches.length >= 6) break;
