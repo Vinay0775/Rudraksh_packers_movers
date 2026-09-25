@@ -7,6 +7,7 @@ import '../services/alert_manager.dart';
 import '../services/api_service.dart';
 import '../widgets/order_alert_dialog.dart';
 import '../widgets/otp_dialog.dart';
+import '../services/permission_service.dart';
 import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -35,6 +36,9 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadInitialData();
     _startBackgroundPolling();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PermissionService.checkAndRequestAllPermissions(context);
+    });
   }
 
   @override
