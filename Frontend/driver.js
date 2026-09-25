@@ -39,6 +39,7 @@ let alertCountdownInterval = null;
 let currentAlertingOrder = null;
 let seenOrderIds = new Set();
 let isFeedInitialSyncDone = false;
+let lastSeenActiveTripId = null;
 
 /* ==========================================================================
    1. INITIALIZATION & AUTHENTICATION
@@ -47,6 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initPwaInstallIcon();
   initOtpDigitInputs();
   initRiderAlertSystem();
+  checkAndPromptNotificationPermission();
 
   const isAuth = await checkDriverAuth();
   if (isAuth) {
@@ -180,6 +182,7 @@ function onRiderAuthSuccess() {
   renderDriverProfileView();
   loadDriverEarnings();
   loadDriverFeed(true);
+  checkAndPromptNotificationPermission();
 }
 
 async function submitDriverLogin() {
@@ -1205,19 +1208,41 @@ async function loadDriverFeed(showRefreshAnim = false) {
   // Render Available Jobs Feed
   if (feedCountEl) feedCountEl.innerText = availableList.length > 0 ? availableList.length : '';
 
-  // Automatic Real-Time New Order Detection & Alert Trigger
+  // Automatic Real-Time Order Arrival Detection & Trigger (Direct Assignment & Open Pool)
   if (!isFeedInitialSyncDone) {
     availableList.forEach(p => seenOrderIds.add(String(p.parcel_id || p.id)));
-    isFeedInitialSyncDone = true;
-  } else if (currentDriver && currentDriver.onDuty !== false && !currentActiveTrip) {
-    const brandNewJobs = availableList.filter(p => !seenOrderIds.has(String(p.parcel_id || p.id)));
-    if (brandNewJobs.length > 0) {
-      const latestJob = brandNewJobs[0];
-      brandNewJobs.forEach(p => seenOrderIds.add(String(p.parcel_id || p.id)));
-      openNewOrderAlertModal(latestJob);
+    if (currentActiveTrip) {
+      lastSeenActiveTripId = String(currentActiveTrip.parcel_id || currentActiveTrip.id);
     }
+    isFeedInitialSyncDone = true;
   } else {
-    availableList.forEach(p => seenOrderIds.add(String(p.parcel_id || p.id)));
+    // 1. Direct Admin Assignment Detection & Urgent Alert
+    if (currentActiveTrip) {
+      const activeTripId = String(currentActiveTrip.parcel_id || currentActiveTrip.id);
+      const tripStatus = currentActiveTrip.booking_status || currentActiveTrip.status || '';
+      const isDirectAdminAssigned = tripStatus === 'driver_assigned' || tripStatus === 'received';
+
+      if (isDirectAdminAssigned && (lastSeenActiveTripId !== activeTripId)) {
+        lastSeenActiveTripId = activeTripId;
+        currentActiveTrip.isDirectAssignment = true;
+        openNewOrderAlertModal(currentActiveTrip);
+      }
+    } else {
+      lastSeenActiveTripId = null;
+    }
+
+    // 2. Open Available Pool Jobs Detection & Alert
+    if (currentDriver && currentDriver.onDuty !== false && !currentActiveTrip) {
+      const brandNewJobs = availableList.filter(p => !seenOrderIds.has(String(p.parcel_id || p.id)));
+      if (brandNewJobs.length > 0) {
+        const latestJob = brandNewJobs[0];
+        brandNewJobs.forEach(p => seenOrderIds.add(String(p.parcel_id || p.id)));
+        latestJob.isDirectAssignment = false;
+        openNewOrderAlertModal(latestJob);
+      }
+    } else {
+      availableList.forEach(p => seenOrderIds.add(String(p.parcel_id || p.id)));
+    }
   }
 
   if (currentActiveTrip) {
@@ -1719,13 +1744,27 @@ function initRiderAlertSystem() {
     try {
       const ctx = getAudioContext();
       if (ctx && ctx.state === 'suspended') {
-        ctx.resume();
+        ctx.resume().catch(() => {});
       }
     } catch (e) {}
   };
   ['click', 'touchstart', 'keydown'].forEach(evt => {
     document.addEventListener(evt, unlockAudio, { once: true, passive: true });
   });
+}
+
+/**
+ * Check notification permission and show setup card if default
+ */
+function checkAndPromptNotificationPermission() {
+  if (!('Notification' in window)) return;
+  const setupCard = document.getElementById('notifSetupCard');
+  if (Notification.permission === 'default') {
+    if (setupCard) setupCard.style.display = 'block';
+  } else {
+    if (setupCard) setupCard.style.display = 'none';
+  }
+  updateRiderNotifButtonUI();
 }
 
 /**
@@ -1745,9 +1784,9 @@ function getAudioContext() {
 }
 
 /**
- * Play a synthesized acoustic beep
+ * Play a synthesized acoustic beep with high volume
  */
-function playSynthBeep(freq, type = 'sine', duration = 0.14, startTimeOffset = 0, volume = 0.28) {
+function playSynthBeep(freq, type = 'sine', duration = 0.16, startTimeOffset = 0, volume = 0.75) {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -1759,7 +1798,7 @@ function playSynthBeep(freq, type = 'sine', duration = 0.14, startTimeOffset = 0
     osc.frequency.setValueAtTime(freq, now);
 
     gain.gain.setValueAtTime(volume, now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
@@ -1772,14 +1811,14 @@ function playSynthBeep(freq, type = 'sine', duration = 0.14, startTimeOffset = 0
 }
 
 /**
- * Dual-Tone Urgent Siren Chime (Modern Logistics Driver Style)
+ * Dual-Tone Urgent Siren Chime (High-pitch attention alert)
  */
 function playDualBeepChime() {
   if (!isSoundEnabled) return;
-  // Sequence: 880Hz -> 1320Hz -> 880Hz
-  playSynthBeep(880, 'sine', 0.12, 0, 0.35);
-  playSynthBeep(1320, 'sine', 0.18, 0.14, 0.4);
-  playSynthBeep(880, 'sine', 0.14, 0.34, 0.35);
+  // Two-tone piercing chime sequence: 950Hz -> 1450Hz -> 950Hz
+  playSynthBeep(950, 'triangle', 0.15, 0, 0.85);
+  playSynthBeep(1450, 'sine', 0.22, 0.16, 0.9);
+  playSynthBeep(950, 'triangle', 0.16, 0.38, 0.85);
 }
 
 /**
@@ -1791,7 +1830,7 @@ function startOrderAlertSirenLoop() {
   playDualBeepChime();
   sirenInterval = setInterval(() => {
     playDualBeepChime();
-  }, 1300);
+  }, 1200);
 }
 
 /**
@@ -1860,30 +1899,32 @@ async function requestRiderNotifPermission() {
     return;
   }
 
-  if (Notification.permission === 'granted') {
-    showToast('✅ Push alerts are already enabled!', 'success');
-    showRiderBrowserNotification({
-      parcel_id: 'RDR-TEST',
-      total_amount: 150,
-      pickup_address: 'Test Pickup Point',
-      drop_address: 'Test Drop Point'
-    });
-    return;
+  // Unlock audio context on user gesture
+  const unlockCtx = getAudioContext();
+  if (unlockCtx && unlockCtx.state === 'suspended') {
+    unlockCtx.resume().catch(() => {});
   }
 
   try {
     const perm = await Notification.requestPermission();
+    const setupCard = document.getElementById('notifSetupCard');
+    if (setupCard) setupCard.style.display = (perm === 'default') ? 'block' : 'none';
     updateRiderNotifButtonUI();
+
     if (perm === 'granted') {
-      showToast('🎉 Push notifications enabled for new orders!', 'success');
-      showRiderBrowserNotification({
-        parcel_id: 'RDR-WELCOME',
-        total_amount: 199,
-        pickup_address: 'Civil Lines, Jaipur',
-        drop_address: 'Vaishali Nagar, Jaipur'
+      playDualBeepChime();
+      showToast('🎉 Siren & Push Alerts successfully activated!', 'success');
+
+      // Immediate test notification via Service Worker
+      await showRiderBrowserNotification({
+        parcel_id: 'TEST-OK',
+        total_amount: 250,
+        pickup_address: 'Vaishali Nagar, Jaipur',
+        drop_address: 'Mansarovar, Jaipur',
+        isDirectAssignment: true
       });
     } else {
-      showToast('Notifications were denied. You will still receive in-app popups & sound.', 'info');
+      showToast('Notifications permission not allowed. In-app popup will still work.', 'info');
     }
   } catch (err) {
     console.warn('Notification permission error:', err);
@@ -1919,26 +1960,52 @@ function updateRiderNotifButtonUI() {
 }
 
 /**
- * Trigger System / Browser Notification (Works even if tab is minimized)
+ * Trigger System / Android Lock Screen Notification via Service Worker
  */
-function showRiderBrowserNotification(order) {
+async function showRiderBrowserNotification(order) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
   try {
     const pId = order.parcel_id || order.id || 'ORDER';
     const fare = Number(order.total_amount || 0);
-    const pickup = (order.pickup_address || 'Pickup Point').slice(0, 35);
-    const drop = (order.drop_address || 'Drop Point').slice(0, 35);
+    const pickup = (order.pickup_address || 'Pickup Point').slice(0, 40);
+    const drop = (order.drop_address || 'Drop Point').slice(0, 40);
+    const isAssigned = order.isDirectAssignment === true;
 
-    const notif = new Notification(`🚨 Naya Order Aaya! Kamai: ₹${fare}`, {
-      body: `Pickup: ${pickup} ➔ Drop: ${drop}\nTap karein aur turant accept karein!`,
+    const title = isAssigned 
+      ? `🚨 NAYA ORDER ASSIGN HUA! (Kamai ₹${fare})` 
+      : `⚡ NAYA PARCEL ORDER! (Kamai ₹${fare})`;
+
+    const options = {
+      body: `📍 Pickup: ${pickup}\n🏁 Drop: ${drop}\nTap karke turant app me check karein!`,
       icon: 'driver-icon-192.png',
       badge: 'driver-icon-192.png',
       tag: `rudraksha-order-${pId}`,
+      renotify: true,
       requireInteraction: true,
-      silent: false
-    });
+      silent: false,
+      vibrate: [600, 200, 600, 200, 800],
+      data: {
+        url: './driver.html',
+        orderId: pId
+      }
+    };
 
+    // 1. Mandatory for Android Chrome & Mobile PWA
+    if ('serviceWorker' in navigator) {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        if (reg && reg.showNotification) {
+          await reg.showNotification(title, options);
+          return;
+        }
+      } catch (swErr) {
+        console.warn('SW notification fallback to window notification:', swErr);
+      }
+    }
+
+    // 2. Fallback to standard window Notification for desktop
+    const notif = new Notification(title, options);
     notif.onclick = () => {
       window.focus();
       notif.close();
@@ -1950,7 +2017,7 @@ function showRiderBrowserNotification(order) {
 }
 
 /**
- * Open High-Priority New Order Alert Modal with Countdown & Sound
+ * Open High-Priority New Order Alert Modal with Countdown & Siren Sound
  */
 function openNewOrderAlertModal(order) {
   if (!order) return;
@@ -1964,15 +2031,31 @@ function openNewOrderAlertModal(order) {
   const dropEl = document.getElementById('alertModalDrop');
   const secEl = document.getElementById('alertCountdownSeconds');
   const barEl = document.getElementById('alertTimerProgress');
+  const badgeText = document.getElementById('alertModalBadgeText');
+  const btnLabel = document.getElementById('alertBtnLabel');
+  const btnIcon = document.getElementById('alertBtnIcon');
 
   const pId = order.parcel_id || order.id || 'RDR-JOB';
   const fare = Number(order.total_amount || 0);
+  const isDirect = order.isDirectAssignment === true;
 
   if (fareEl) fareEl.innerText = `₹${fare}`;
   if (btnFareEl) btnFareEl.innerText = `${fare}`;
   if (idEl) idEl.innerText = `Booking #${pId} • ${(order.parcel_type || 'Package').toUpperCase()}`;
   if (pickupEl) pickupEl.innerText = order.pickup_address || 'Pickup Location, Jaipur';
   if (dropEl) dropEl.innerText = order.drop_address || 'Delivery Location, Jaipur';
+
+  if (badgeText) {
+    badgeText.innerText = isDirect ? '🚨 NAYA ORDER ASSIGN HUA HAI! (ADMIN DISPATCH)' : '⚡ NAYA PARCEL DELIVERY JOB AVAILABLE!';
+  }
+  if (btnLabel) {
+    btnLabel.innerHTML = isDirect 
+      ? `START ROUTE (Google Maps) • Kamai ₹<span>${fare}</span>` 
+      : `ACCEPT ORDER (Kamai ₹<span>${fare}</span>)`;
+  }
+  if (btnIcon) {
+    btnIcon.className = isDirect ? 'fa-solid fa-diamond-turn-right me-1' : 'fa-solid fa-circle-check me-1';
+  }
 
   // Start 45s countdown timer
   if (alertCountdownInterval) clearInterval(alertCountdownInterval);
@@ -1990,19 +2073,19 @@ function openNewOrderAlertModal(order) {
 
     if (remainingSeconds <= 0) {
       dismissNewOrderAlert(false);
-      showToast('Order alert auto-dismissed. Still available in feed.', 'info');
+      showToast('Order alert auto-dismissed. Still available in active trip.', 'info');
     }
   }, 1000);
 
-  // Play audio alarm siren
+  // Play audio alarm siren loop
   startOrderAlertSirenLoop();
 
-  // Vibrate phone if mobile browser supports Vibration API
+  // Vibrate phone loudly
   if ('vibrate' in navigator) {
-    try { navigator.vibrate([300, 150, 300, 150, 500]); } catch (e) {}
+    try { navigator.vibrate([600, 200, 600, 200, 800]); } catch (e) {}
   }
 
-  // Fire background browser push notification
+  // Fire Android lock screen push notification via Service Worker
   showRiderBrowserNotification(order);
 
   // Show modal
@@ -2027,37 +2110,51 @@ function dismissNewOrderAlert(isManual = true) {
   }
 
   if (isManual) {
-    showToast('Siren silenced. Job is waiting in your feed.', 'info');
+    showToast('Siren silenced. Trip is waiting in your dashboard.', 'info');
   }
 }
 
 /**
- * Rider clicks "ACCEPT ORDER" on Alert Modal
+ * Rider clicks "ACCEPT ORDER / START ROUTE" on Alert Modal
  */
 async function acceptIncomingAlertOrder() {
   if (!currentAlertingOrder) return;
   const orderToAccept = currentAlertingOrder;
   const orderId = orderToAccept.parcel_id || orderToAccept.id;
+  const isDirect = orderToAccept.isDirectAssignment === true;
 
   dismissNewOrderAlert(false);
 
-  // Auto-switch to On Duty if not already
-  if (currentDriver && !currentDriver.onDuty) {
-    await toggleDriverDuty();
+  if (isDirect) {
+    // Already assigned by admin! Scroll to active trip card with highlight
+    switchDriverView('feed');
+    const activeEl = document.getElementById('activeTripContainer');
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: 'smooth' });
+    }
+    showToast('🚀 Order assigned! Customer pickup par navigate karein.', 'success');
+  } else {
+    // Open Pool Job: call accept API
+    if (currentDriver && !currentDriver.onDuty) {
+      await toggleDriverDuty();
+    }
+    await acceptDriverJob(orderId);
   }
-
-  await acceptDriverJob(orderId);
 }
 
 /**
- * Test Order Alert Button (Interactive Simulation for User & Driver)
+ * Test Order Alert Button (Simulates Admin Assignment with Siren & Lock Screen Push)
  */
 function triggerTestNewOrderAlert() {
+  const ctx = getAudioContext();
+  if (ctx && ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+
   const sampleLocalities = [
-    { pickup: 'Vaishali Nagar (Near Amrapali Circle), Jaipur', drop: 'Mansarovar Metro Station (Pillar 64), Jaipur', fare: 180 },
-    { pickup: 'Malviya Nagar (World Trade Park), Jaipur', drop: 'C-Scheme (Ahinsa Circle), Jaipur', fare: 220 },
-    { pickup: 'Raja Park (LBS College Marg), Jaipur', drop: 'Jagatpura (Near Railway Flyover), Jaipur', fare: 260 },
-    { pickup: 'Tonk Road (Gandhi Nagar Station), Jaipur', drop: 'Sitapura Industrial Area, Jaipur', fare: 310 }
+    { pickup: 'Vaishali Nagar (Near Amrapali Circle), Jaipur', drop: 'Mansarovar Metro Station (Pillar 64), Jaipur', fare: 240 },
+    { pickup: 'Malviya Nagar (World Trade Park), Jaipur', drop: 'C-Scheme (Ahinsa Circle), Jaipur', fare: 280 },
+    { pickup: 'Raja Park (LBS College Marg), Jaipur', drop: 'Jagatpura (Railway Flyover), Jaipur', fare: 320 }
   ];
   const randLoc = sampleLocalities[Math.floor(Math.random() * sampleLocalities.length)];
   const testJobId = 'RDR-' + Math.floor(10000 + Math.random() * 90000);
@@ -2073,9 +2170,12 @@ function triggerTestNewOrderAlert() {
     sender_phone: '9829012345',
     receiver_name: 'Customer Delivery Point',
     receiver_phone: '9829067890',
+    isDirectAssignment: true,
+    booking_status: 'driver_assigned',
     created_at: new Date().toISOString()
   };
 
-  showToast('🔔 Testing New Order Alert Siren & Modal...', 'info');
+  showToast('🔔 Siren, Vibration & Lock Screen Push testing...', 'info');
   openNewOrderAlertModal(testOrder);
 }
+

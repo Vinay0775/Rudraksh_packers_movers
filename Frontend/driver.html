@@ -979,6 +979,27 @@
 
     <!-- VIEW 1: JOBS FEED & ACTIVE TRIP -->
     <div id="driverFeedSection">
+      <!-- Prominent Notification & Siren Permission Setup Banner -->
+      <div id="notifSetupCard" style="display: none; background: linear-gradient(135deg, rgba(249,115,22,0.22) 0%, rgba(20,20,26,0.95) 100%); border: 2px solid #f97316; border-radius: 16px; padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 8px 24px rgba(249,115,22,0.25);">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+          <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(249,115,22,0.25); border: 1.5px solid #f97316; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: #f97316; flex-shrink: 0; box-shadow: 0 0 15px rgba(249,115,22,0.4);">
+            <i class="fa-solid fa-bell-ring fa-shake"></i>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-weight: 800; font-size: 0.92rem; color: #fff; line-height: 1.2;">Naye Order Alert & Siren Setup</div>
+            <div style="font-size: 0.76rem; color: #cbd5e1; margin-top: 3px; line-height: 1.4;">
+              Customer ya Admin se order assign hone par mobile par <strong>Siren Bell bajne</strong> aur <strong>Screen Notification</strong> ke liye permission allow karein.
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+              <button type="button" onclick="requestRiderNotifPermission()" style="background: linear-gradient(135deg, #22c55e, #16a34a); border: none; color: #fff; padding: 9px 18px; border-radius: 10px; font-weight: 800; font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 14px rgba(34,197,94,0.45);">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>Allow Siren & Push Alerts</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Prominent 1-Click Install Banner in Jobs Feed -->
       <div id="feedInstallBanner" style="background: linear-gradient(135deg, rgba(249,115,22,0.18) 0%, rgba(20,20,26,0.95) 100%); border: 1.5px solid rgba(249,115,22,0.4); border-radius: 16px; padding: 12px 16px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.35);">
         <div style="display: flex; align-items: center; gap: 12px;">
@@ -1356,13 +1377,13 @@
       </div>
 
       <!-- Urgent Alert Badge -->
-      <div class="new-order-live-badge">
-        <span class="pulse-dot-red"></span> NAYA ORDER AAYA HAI! (NEW JOB)
+      <div class="new-order-live-badge" id="alertModalBadge">
+        <span class="pulse-dot-red"></span> <span id="alertModalBadgeText">NAYA ORDER AAYA HAI! (NEW JOB)</span>
       </div>
 
       <!-- Earnings Highlight Box -->
       <div class="new-order-fare-box">
-        <div class="new-order-fare-title">Aapki Kamai (100% Direct Cash/UPI)</div>
+        <div class="new-order-fare-title" id="alertModalFareTitle">Aapki Kamai (100% Direct Cash/UPI)</div>
         <div class="new-order-fare-val" id="alertModalFare">₹0</div>
         <div class="new-order-fare-sub" id="alertModalOrderId">Booking #---</div>
       </div>
@@ -1400,8 +1421,8 @@
       <!-- Interactive Actions: Accept or Dismiss -->
       <div class="new-order-actions">
         <button type="button" class="btn-alert-accept" id="btnAcceptAlertOrder" onclick="acceptIncomingAlertOrder()">
-          <i class="fa-solid fa-circle-check"></i>
-          <span>ACCEPT ORDER (Kamai ₹<span id="alertBtnFare">0</span>)</span>
+          <i class="fa-solid fa-circle-check" id="alertBtnIcon"></i>
+          <span id="alertBtnLabel">ACCEPT ORDER (Kamai ₹<span id="alertBtnFare">0</span>)</span>
         </button>
         <button type="button" class="btn-alert-decline" onclick="dismissNewOrderAlert(true)">
           <i class="fa-solid fa-bell-slash"></i>
