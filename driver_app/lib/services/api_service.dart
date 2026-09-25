@@ -21,6 +21,13 @@ class ApiService {
       try {
         final Map<String, dynamic> json = jsonDecode(rawSession);
         currentDriver = DriverModel.fromJson(json, token: _cachedToken);
+        final cleanPhone =
+            currentDriver?.phone.replaceAll(RegExp(r'\D'), '') ?? '';
+        final savedAvatar =
+            prefs.getString('rudraksha_rider_avatar_$cleanPhone');
+        if (savedAvatar != null && savedAvatar.isNotEmpty) {
+          currentDriver?.avatarUrl = savedAvatar;
+        }
       } catch (e) {
         debugPrint('Failed to parse cached session: $e');
       }
@@ -36,7 +43,8 @@ class ApiService {
   }
 
   // 1. Rider Login
-  static Future<Map<String, dynamic>> login(String phone, String password) async {
+  static Future<Map<String, dynamic>> login(
+      String phone, String password) async {
     try {
       final url = Uri.parse('${ApiConfig.currentBaseUrl}/rider/login');
       final cleanPhone = phone.trim().replaceAll(RegExp(r'\D'), '');
@@ -63,11 +71,26 @@ class ApiService {
         if (_cachedToken != null) {
           await prefs.setString(_tokenKey, _cachedToken!);
         }
+
+        // Restore avatar if already saved locally
+        final savedAvatar =
+            prefs.getString('rudraksha_rider_avatar_$cleanPhone');
+        if (savedAvatar != null && savedAvatar.isNotEmpty) {
+          currentDriver?.avatarUrl = savedAvatar;
+        } else if (currentDriver?.avatarUrl != null &&
+            currentDriver!.avatarUrl!.isNotEmpty) {
+          await prefs.setString(
+              'rudraksha_rider_avatar_$cleanPhone', currentDriver!.avatarUrl!);
+        }
+
         await prefs.setString(_sessionKey, jsonEncode(currentDriver!.toJson()));
 
         return {'success': true, 'rider': currentDriver};
       } else {
-        return {'success': false, 'error': data['error'] ?? 'Login failed. Please check credentials.'};
+        return {
+          'success': false,
+          'error': data['error'] ?? 'Login failed. Please check credentials.'
+        };
       }
     } catch (e) {
       return {'success': false, 'error': 'Network connection error: $e'};
@@ -79,17 +102,34 @@ class ApiService {
     if (_cachedToken == null || _cachedToken!.isEmpty) return false;
     try {
       final url = Uri.parse('${ApiConfig.currentBaseUrl}/rider/me');
-      final res = await http.get(url, headers: _getHeaders()).timeout(const Duration(seconds: 6));
+      final res = await http
+          .get(url, headers: _getHeaders())
+          .timeout(const Duration(seconds: 6));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         if (data['success'] == true && data['rider'] != null) {
-          currentDriver = DriverModel.fromJson(data['rider'], token: _cachedToken);
+          final serverDriver =
+              DriverModel.fromJson(data['rider'], token: _cachedToken);
           final prefs = await SharedPreferences.getInstance();
+          final cleanPhone =
+              serverDriver.phone.replaceAll(RegExp(r'\D'), '');
+          final savedAvatar =
+              prefs.getString('rudraksha_rider_avatar_$cleanPhone');
+
+          if (savedAvatar != null && savedAvatar.isNotEmpty) {
+            serverDriver.avatarUrl = savedAvatar;
+          } else if (serverDriver.avatarUrl != null &&
+              serverDriver.avatarUrl!.isNotEmpty) {
+            await prefs.setString(
+                'rudraksha_rider_avatar_$cleanPhone', serverDriver.avatarUrl!);
+          }
+
+          currentDriver = serverDriver;
           await prefs.setString(_sessionKey, jsonEncode(currentDriver!.toJson()));
           return true;
         }
       }
-      return false;
+      return currentDriver != null;
     } catch (e) {
       // Offline fallback: if cached session exists, let user in
       return currentDriver != null;
@@ -121,7 +161,9 @@ class ApiService {
   static Future<Map<String, dynamic>> fetchFeed() async {
     try {
       final url = Uri.parse('${ApiConfig.currentBaseUrl}/rider/jobs');
-      final res = await http.get(url, headers: _getHeaders()).timeout(const Duration(seconds: 6));
+      final res = await http
+          .get(url, headers: _getHeaders())
+          .timeout(const Duration(seconds: 6));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -153,23 +195,31 @@ class ApiService {
   // 5. Accept Job
   static Future<Map<String, dynamic>> acceptJob(String parcelId) async {
     try {
-      final url = Uri.parse('${ApiConfig.currentBaseUrl}/rider/jobs/$parcelId/accept');
-      final res = await http.post(url, headers: _getHeaders()).timeout(const Duration(seconds: 8));
+      final url =
+          Uri.parse('${ApiConfig.currentBaseUrl}/rider/jobs/$parcelId/accept');
+      final res = await http
+          .post(url, headers: _getHeaders())
+          .timeout(const Duration(seconds: 8));
 
       final data = jsonDecode(res.body);
       if (res.statusCode == 200 && data['success'] == true) {
         return {'success': true, 'parcel': data['parcel']};
       }
-      return {'success': false, 'error': data['error'] ?? 'Could not accept order.'};
+      return {
+        'success': false,
+        'error': data['error'] ?? 'Could not accept order.'
+      };
     } catch (e) {
       return {'success': false, 'error': 'Connection failed: $e'};
     }
   }
 
   // 6. Verify Pickup OTP
-  static Future<Map<String, dynamic>> verifyPickupOtp(String parcelId, String otp) async {
+  static Future<Map<String, dynamic>> verifyPickupOtp(
+      String parcelId, String otp) async {
     try {
-      final url = Uri.parse('${ApiConfig.currentBaseUrl}/parcels/$parcelId/verify-pickup-otp');
+      final url = Uri.parse(
+          '${ApiConfig.currentBaseUrl}/parcels/$parcelId/verify-pickup-otp');
       final res = await http.post(
         url,
         headers: _getHeaders(),
@@ -178,7 +228,10 @@ class ApiService {
 
       final data = jsonDecode(res.body);
       if (res.statusCode == 200 && data['success'] == true) {
-        return {'success': true, 'message': data['message'] ?? 'Pickup verified!'};
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Pickup verified!'
+        };
       }
       return {'success': false, 'error': data['error'] ?? 'Invalid Pickup PIN'};
     } catch (e) {
@@ -187,9 +240,11 @@ class ApiService {
   }
 
   // 7. Verify Delivery OTP & Complete Trip
-  static Future<Map<String, dynamic>> verifyDeliveryOtp(String parcelId, String otp) async {
+  static Future<Map<String, dynamic>> verifyDeliveryOtp(
+      String parcelId, String otp) async {
     try {
-      final url = Uri.parse('${ApiConfig.currentBaseUrl}/parcels/$parcelId/verify-delivery-otp');
+      final url = Uri.parse(
+          '${ApiConfig.currentBaseUrl}/parcels/$parcelId/verify-delivery-otp');
       final res = await http.post(
         url,
         headers: _getHeaders(),
@@ -198,7 +253,10 @@ class ApiService {
 
       final data = jsonDecode(res.body);
       if (res.statusCode == 200 && data['success'] == true) {
-        return {'success': true, 'message': data['message'] ?? 'Trip completed successfully!'};
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Trip completed successfully!'
+        };
       }
       return {'success': false, 'error': data['error'] ?? 'Invalid Delivery PIN'};
     } catch (e) {
@@ -210,7 +268,9 @@ class ApiService {
   static Future<Map<String, dynamic>> fetchEarnings() async {
     try {
       final url = Uri.parse('${ApiConfig.currentBaseUrl}/rider/earnings');
-      final res = await http.get(url, headers: _getHeaders()).timeout(const Duration(seconds: 6));
+      final res = await http
+          .get(url, headers: _getHeaders())
+          .timeout(const Duration(seconds: 6));
 
       if (res.statusCode == 200) {
         return jsonDecode(res.body);
@@ -218,6 +278,80 @@ class ApiService {
       return {'totalEarnings': 0, 'completedTrips': 0, 'trips': []};
     } catch (_) {
       return {'totalEarnings': 0, 'completedTrips': 0, 'trips': []};
+    }
+  }
+
+  // 9. Upload Profile Photo / Avatar (Saved to DB + SharedPreferences + Admin Panel)
+  static Future<Map<String, dynamic>> uploadAvatar(String base64Image) async {
+    try {
+      final cleanPhone =
+          currentDriver?.phone.replaceAll(RegExp(r'\D'), '') ?? '';
+      if (cleanPhone.isEmpty) {
+        return {'success': false, 'error': 'Driver phone not found'};
+      }
+
+      // Save locally first immediately
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('rudraksha_rider_avatar_$cleanPhone', base64Image);
+      if (currentDriver != null) {
+        currentDriver!.avatarUrl = base64Image;
+        await prefs.setString(_sessionKey, jsonEncode(currentDriver!.toJson()));
+      }
+
+      final url = Uri.parse('${ApiConfig.currentBaseUrl}/rider/avatar');
+      final res = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'phone': cleanPhone,
+          'avatar_url': base64Image,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      final data = jsonDecode(res.body);
+      if (res.statusCode == 200 && data['success'] == true) {
+        final cloudUrl = data['avatar_url'] ?? base64Image;
+        if (currentDriver != null) {
+          currentDriver!.avatarUrl = cloudUrl;
+          await prefs.setString('rudraksha_rider_avatar_$cleanPhone', cloudUrl);
+          await prefs.setString(
+              _sessionKey, jsonEncode(currentDriver!.toJson()));
+        }
+        return {'success': true, 'avatar_url': cloudUrl};
+      }
+      return {'success': true, 'avatar_url': base64Image};
+    } catch (e) {
+      return {'success': true, 'avatar_url': base64Image, 'offline': true};
+    }
+  }
+
+  // 10. Remove Profile Photo
+  static Future<bool> removeAvatar() async {
+    try {
+      final cleanPhone =
+          currentDriver?.phone.replaceAll(RegExp(r'\D'), '') ?? '';
+      final prefs = await SharedPreferences.getInstance();
+      if (cleanPhone.isNotEmpty) {
+        await prefs.remove('rudraksha_rider_avatar_$cleanPhone');
+      }
+      if (currentDriver != null) {
+        currentDriver!.avatarUrl = null;
+        await prefs.setString(_sessionKey, jsonEncode(currentDriver!.toJson()));
+      }
+
+      final url = Uri.parse('${ApiConfig.currentBaseUrl}/rider/avatar');
+      await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'phone': cleanPhone,
+          'avatar_url': 'REMOVE',
+        }),
+      ).timeout(const Duration(seconds: 8));
+
+      return true;
+    } catch (_) {
+      return true;
     }
   }
 

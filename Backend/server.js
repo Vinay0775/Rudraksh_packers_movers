@@ -525,19 +525,24 @@ app.post('/api/rider/avatar', async (req, res, next) => {
   try {
     const { phone, avatar_url } = req.body;
     const cleanPhone = String(phone || '').replace(/\D/g, '');
-    if (!cleanPhone || !avatar_url) {
-      return res.status(400).json({ error: 'Phone number and avatar_url are required.' });
+    if (!cleanPhone) {
+      return res.status(400).json({ error: 'Phone number is required.' });
     }
 
-    // Upload to Supabase Storage 'driver-avatars' public bucket
-    let cloudAvatarUrl = avatar_url;
-    try {
-      cloudAvatarUrl = await db.uploadDriverAvatar(cleanPhone, avatar_url);
-    } catch (uploadErr) {
-      console.warn('Supabase storage upload error:', uploadErr);
-    }
+    const isRemoving = !avatar_url || avatar_url === 'REMOVE' || avatar_url === 'null';
+    let cloudAvatarUrl = null;
 
-    riderAvatarStore.set(cleanPhone, cloudAvatarUrl);
+    if (!isRemoving) {
+      cloudAvatarUrl = avatar_url;
+      try {
+        cloudAvatarUrl = await db.uploadDriverAvatar(cleanPhone, avatar_url);
+      } catch (uploadErr) {
+        console.warn('Supabase storage upload error:', uploadErr);
+      }
+      riderAvatarStore.set(cleanPhone, cloudAvatarUrl);
+    } else {
+      riderAvatarStore.delete(cleanPhone);
+    }
 
     // Update in drivers table
     try {
@@ -559,7 +564,7 @@ app.post('/api/rider/avatar', async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'Driver photo uploaded to Supabase Storage and synced across devices & admin.',
+      message: isRemoving ? 'Driver photo removed successfully.' : 'Driver photo uploaded to Supabase Storage and synced across devices & admin.',
       avatar_url: cloudAvatarUrl
     });
   } catch (err) {
