@@ -1,8 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiConfig {
-  static const String _defaultLocalIp = '192.168.1.4:3000';
-  static const String _defaultUrl = 'http://$_defaultLocalIp/api';
+  static const String _defaultUrl = 'https://rudraksha-packers-movers.onrender.com/api';
   static const String _prefKey = 'rudraksha_api_base_url';
 
   static String currentBaseUrl = _defaultUrl;

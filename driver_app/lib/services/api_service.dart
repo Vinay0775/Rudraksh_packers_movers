@@ -39,20 +39,24 @@ class ApiService {
   static Future<Map<String, dynamic>> login(String phone, String password) async {
     try {
       final url = Uri.parse('${ApiConfig.currentBaseUrl}/rider/login');
+      final cleanPhone = phone.trim().replaceAll(RegExp(r'\D'), '');
+      final cleanPin = password.trim();
+
       final res = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'phone': phone.trim(),
-          'password': password.trim(),
+          'phone': cleanPhone,
+          'pin': cleanPin,
+          'password': cleanPin,
         }),
-      ).timeout(const Duration(seconds: 8));
+      ).timeout(const Duration(seconds: 15));
 
       final data = jsonDecode(res.body);
 
       if (res.statusCode == 200 && data['success'] == true) {
         _cachedToken = data['token'];
-        final riderData = data['rider'] ?? {};
+        final riderData = data['driver'] ?? data['rider'] ?? {};
         currentDriver = DriverModel.fromJson(riderData, token: _cachedToken);
 
         final prefs = await SharedPreferences.getInstance();

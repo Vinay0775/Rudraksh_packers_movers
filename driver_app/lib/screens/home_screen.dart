@@ -235,13 +235,14 @@ class _HomeScreenState extends State<HomeScreen> {
               height: 38,
               decoration: BoxDecoration(
                 color: const Color(0xFF1E293B),
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: isOnDuty ? const Color(0xFF22C55E) : Colors.red,
                   width: 2,
                 ),
               ),
-              child: const Icon(Icons.person, color: Colors.white, size: 20),
+              clipBehavior: Clip.antiAlias,
+              child: Image.asset('assets/logo.png', fit: BoxFit.cover),
             ),
             const SizedBox(width: 10),
             Expanded(

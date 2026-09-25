@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../config/api_config.dart';
 import '../services/api_service.dart';
 import 'home_screen.dart';
@@ -11,8 +12,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _phoneController = TextEditingController(text: '9829012345');
-  final _passController = TextEditingController(text: 'driver123');
+  final _phoneController = TextEditingController();
+  final _passController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -120,24 +121,23 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo
+                  // Official Consistent App Logo
                   Container(
-                    width: 80,
-                    height: 80,
+                    width: 88,
+                    height: 88,
                     decoration: BoxDecoration(
                       color: const Color(0xFF1E293B),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF22C55E), width: 2),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: const Color(0xFF22C55E), width: 2.5),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF22C55E).withValues(alpha: 0.3),
-                          blurRadius: 20,
+                          color: const Color(0xFF22C55E).withValues(alpha: 0.35),
+                          blurRadius: 22,
                         ),
                       ],
                     ),
-                    child: const Center(
-                      child: Icon(Icons.motorcycle_rounded, color: Color(0xFF22C55E), size: 44),
-                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.asset('assets/logo.png', fit: BoxFit.cover),
                   ),
 
                   const SizedBox(height: 16),
@@ -156,16 +156,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(color: Colors.white54, fontSize: 13),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 28),
 
                   // Phone Input
                   TextField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.phone_rounded, color: Colors.white54),
+                      prefixIcon: const Icon(Icons.phone_android_rounded, color: Color(0xFF22C55E)),
                       labelText: 'Registered Mobile Number',
+                      hintText: 'Enter 10-digit mobile number',
+                      hintStyle: const TextStyle(color: Colors.white24, fontSize: 13),
                       labelStyle: const TextStyle(color: Colors.white60),
                       filled: true,
                       fillColor: const Color(0xFF131D2E),
@@ -182,14 +184,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Password Input
+                  // Security PIN Input
                   TextField(
                     controller: _passController,
                     obscureText: true,
-                    style: const TextStyle(color: Colors.white),
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 4),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.lock_rounded, color: Colors.white54),
-                      labelText: 'Password',
+                      counterText: '',
+                      prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFFF97316)),
+                      labelText: '4-Digit Security PIN / Password',
+                      hintText: '••••',
+                      hintStyle: const TextStyle(color: Colors.white24),
                       labelStyle: const TextStyle(color: Colors.white60),
                       filled: true,
                       fillColor: const Color(0xFF131D2E),
@@ -200,6 +207,25 @@ class _LoginScreenState extends State<LoginScreen> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
                         borderSide: const BorderSide(color: Color(0xFF22C55E), width: 2),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Forgot PIN link to WhatsApp Admin
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        final uri = Uri.parse(
+                            'https://wa.me/917296831460?text=Hello%20Admin,%20I%20forgot%20my%20Rudraksha%20Rider%20PIN.');
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      },
+                      icon: const Icon(Icons.chat_bubble_outline, size: 14, color: Color(0xFF22C55E)),
+                      label: const Text(
+                        'Forgot PIN? Admin WhatsApp',
+                        style: TextStyle(color: Color(0xFF22C55E), fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
