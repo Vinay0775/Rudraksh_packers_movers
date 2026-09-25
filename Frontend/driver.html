@@ -50,6 +50,12 @@
       }
     });
 
+    window.startDriverApkDownload = function(e, el) {
+      if (typeof window.showToast === 'function') {
+        window.showToast('📲 Official Rudraksha Driver APK (52 MB) download shuru ho raha hai...', 'info');
+      }
+    };
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').then(function(reg) {
         console.log('[Rider SW] Active scope:', reg.scope);
@@ -922,11 +928,11 @@
         </button>
       </form>
 
-      <!-- Direct Android APK Download Button on Login Screen -->
-      <div style="margin-top: 14px;" id="loginInstallContainer">
-        <a href="./downloads/RudrakshaDriver.apk" download="RudrakshaDriver.apk" style="width: 100%; background: linear-gradient(135deg, #22c55e, #16a34a); color: #000; border-radius: 14px; padding: 12px; font-size: 0.86rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; box-shadow: 0 4px 16px rgba(34,197,94,0.35);">
-          <i class="fa-brands fa-android" style="font-size: 1.15rem;"></i>
-          <span>📲 Download Official Android App (.APK)</span>
+      <!-- Direct Android APK Download Button on Login Screen (Single, Compact) -->
+      <div style="margin-top: 14px; text-align: center;" id="loginInstallContainer">
+        <a href="https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/raw/main/Frontend/downloads/RudrakshaDriver.apk" download="RudrakshaDriver.apk" onclick="startDriverApkDownload(event, this)" id="btnLoginDownloadApk" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: rgba(34,197,94,0.14); border: 1px solid rgba(34,197,94,0.45); color: #22c55e; border-radius: 20px; padding: 7px 16px; font-size: 0.8rem; font-weight: 700; text-decoration: none; box-shadow: 0 2px 10px rgba(0,0,0,0.3); transition: all 0.2s ease;">
+          <i class="fa-brands fa-android" style="font-size: 0.95rem; color: #22c55e;"></i>
+          <span>Download Driver APK (52 MB)</span>
         </a>
       </div>
 
@@ -955,12 +961,6 @@
       </div>
     </div>
     <div style="display:flex; gap:8px; align-items:center;">
-      <!-- PWA Action Download Icon -->
-      <button type="button" id="btnInstallRiderApp" class="btn-install-icon" title="Download & Install Rider App" onclick="triggerPwaInstall()">
-        <i class="fa-solid fa-download"></i>
-        <span>Install App</span>
-      </button>
-
       <!-- Duty Badge Toggle -->
       <div class="duty-badge" id="navDutyBadge" onclick="toggleDriverDuty()" style="cursor: pointer;" title="Tap to Toggle On-Duty / Off-Duty">
         <span class="pulse" id="navDutyPulse"></span>
@@ -1000,7 +1000,7 @@
         </div>
       </div>
 
-      <!-- Prominent 1-Click Install & APK Download Banner in Jobs Feed -->
+      <!-- Prominent 1-Click APK Download Banner in Jobs Feed (Single Dashboard Button) -->
       <div id="feedInstallBanner" style="background: linear-gradient(135deg, rgba(34,197,94,0.18) 0%, rgba(20,20,26,0.95) 100%); border: 1.5px solid rgba(34,197,94,0.4); border-radius: 16px; padding: 12px 16px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.35);">
         <div style="display: flex; align-items: center; gap: 12px;">
           <img src="driver-icon-192.png" alt="Driver App" style="width: 40px; height: 40px; border-radius: 12px; border: 1.5px solid #22c55e; object-fit: cover;">
@@ -1009,9 +1009,9 @@
             <div style="font-size: 0.72rem; color: #94a3b8;">High-pitch siren & background lock-screen alerts</div>
           </div>
         </div>
-        <a href="./downloads/RudrakshaDriver.apk" download="RudrakshaDriver.apk" style="background: linear-gradient(135deg, #22c55e, #16a34a); color: #000; border-radius: 12px; padding: 8px 15px; font-size: 0.82rem; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 14px rgba(34,197,94,0.45); flex-shrink: 0;">
+        <a href="https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/raw/main/Frontend/downloads/RudrakshaDriver.apk" download="RudrakshaDriver.apk" onclick="startDriverApkDownload(event, this)" id="btnFeedDownloadApk" style="background: linear-gradient(135deg, #22c55e, #16a34a); color: #000; border-radius: 12px; padding: 8px 15px; font-size: 0.82rem; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 14px rgba(34,197,94,0.45); flex-shrink: 0;">
           <i class="fa-brands fa-android"></i>
-          <span>Download APK</span>
+          <span>Download APK (52 MB)</span>
         </a>
       </div>
 
@@ -1141,20 +1141,7 @@
         </div>
       </div>
 
-      <!-- Prominent Rider App Install Card in Profile -->
-      <div id="cardInstallRiderApp" style="background: linear-gradient(135deg, rgba(249,115,22,0.18) 0%, rgba(20,20,26,0.98) 100%); border: 1.5px solid rgba(249,115,22,0.4); border-radius: 18px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <img src="driver-icon-192.png" alt="Driver App Icon" style="width: 46px; height: 46px; border-radius: 14px; border: 1.5px solid #f97316; object-fit: cover; box-shadow: 0 4px 14px rgba(249,115,22,0.35);">
-          <div>
-            <div style="font-size: 0.88rem; font-weight: 800; color: #fff;">Download Rudraksha Driver App</div>
-            <div style="font-size: 0.72rem; color: #94a3b8;">Install directly on mobile home screen</div>
-          </div>
-        </div>
-        <button type="button" onclick="triggerPwaInstall()" style="background: linear-gradient(135deg, #f97316, #ea580c); border: none; color: #fff; border-radius: 12px; padding: 9px 15px; font-size: 0.82rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(249,115,22,0.4);">
-          <i class="fa-solid fa-download"></i>
-          <span>Download App</span>
-        </button>
-      </div>
+
 
       <!-- 100% DIRECT CUSTOMER PAYMENT & DYNAMIC TIME-FILTERED FINANCIAL CARD -->
       <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 18px; margin-bottom: 16px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.35);">
