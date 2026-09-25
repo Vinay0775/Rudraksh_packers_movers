@@ -6,63 +6,10 @@
   <title>Rider Partner App | Rudraksha Logistics</title>
   <meta name="description" content="Rudraksha Rider Partner App – Live parcel jobs, GPS navigation, OTP verification & instant daily earnings.">
 
-  <!-- SECRET ACCESS KEY GATEKEEPER (Prevents unauthorized URL discovery via search bar) -->
+  <!-- Rider App Session & URL Access Handler -->
   <script>
     (function() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const secretKey = urlParams.get('key') || urlParams.get('access') || urlParams.get('pass');
-      const hasJobId = urlParams.has('jobId') || urlParams.has('orderId');
-      const VALID_KEYS = ['driver2026', 'rider2026', 'bannaji2026', 'driver', 'rider'];
-      const hasValidKey = secretKey && VALID_KEYS.includes(secretKey.toLowerCase());
-
-      const hasSession = localStorage.getItem('rudraksha_driver_session') || localStorage.getItem('rudraksha_driver_auth_token');
-      const isGateOpen = sessionStorage.getItem('rudraksha_driver_gate_unlocked') === 'true';
-      const isStandalonePwa = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
-
-      if (hasValidKey || hasJobId) {
-        sessionStorage.setItem('rudraksha_driver_gate_unlocked', 'true');
-        try {
-          if (!hasJobId && secretKey) {
-            urlParams.delete('key');
-            urlParams.delete('access');
-            urlParams.delete('pass');
-            const cleanQuery = urlParams.toString();
-            const newUrl = window.location.pathname + (cleanQuery ? '?' + cleanQuery : '') + window.location.hash;
-            window.history.replaceState({}, document.title, newUrl);
-          }
-        } catch (e) {}
-      } else if (!hasSession && !isGateOpen && !isStandalonePwa) {
-        document.documentElement.innerHTML = `
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>404 Not Found</title>
-            <style>
-              body { margin: 0; background: #0b0c0e; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; text-align: center; padding: 20px; box-sizing: border-box; }
-              .card-404 { max-width: 440px; background: #13141a; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 45px 30px; box-shadow: 0 25px 60px rgba(0,0,0,0.85); }
-              .icon-ring { width: 68px; height: 68px; border-radius: 20px; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: #ef4444; font-size: 1.8rem; }
-              h1 { font-size: 2.4rem; margin: 0 0 10px; font-weight: 800; color: #ffffff; }
-              p { color: #94a3b8; font-size: 0.92rem; line-height: 1.6; margin-bottom: 25px; }
-              .btn-home { display: inline-block; background: linear-gradient(135deg, #f97316, #ea580c); color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 12px; font-weight: 700; font-size: 0.92rem; }
-            </style>
-          </head>
-          <body>
-            <div class="card-404">
-              <div class="icon-ring">⚠️</div>
-              <h1>404 Not Found</h1>
-              <p>The requested page was not found on this server or has been permanently moved.</p>
-              <a href="index.html" class="btn-home">Return to Home</a>
-            </div>
-            <script>
-              setTimeout(function() { window.location.replace("index.html"); }, 2200);
-            <\/script>
-          </body>
-          </html>
-        `;
-        window.stop();
-      }
+      sessionStorage.setItem('rudraksha_driver_gate_unlocked', 'true');
     })();
   </script>
 
@@ -711,9 +658,226 @@
       border-radius: 18px;
       background: linear-gradient(135deg, #f97316, #ea580c);
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.6rem; color: #fff;
-      margin: 0 auto 16px;
-      box-shadow: 0 10px 25px rgba(249,115,22,0.4);
+    /* ===================== NEW ORDER INCOMING ALERT MODAL ===================== */
+    .new-order-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      z-index: 10050;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .new-order-overlay.active {
+      display: flex;
+    }
+    .new-order-card {
+      background: #13141c;
+      border: 2px solid #f97316;
+      box-shadow: 0 0 50px rgba(249, 115, 22, 0.45), 0 20px 60px rgba(0,0,0,0.9);
+      border-radius: 26px;
+      padding: 24px 20px;
+      width: 100%;
+      max-width: 440px;
+      animation: popAlertIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+      text-align: center;
+    }
+    @keyframes popAlertIn {
+      from { opacity: 0; transform: scale(0.85) translateY(20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .new-order-siren-ring {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: rgba(249, 115, 22, 0.16);
+      border: 2px solid #f97316;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+      font-size: 1.8rem;
+      color: #f97316;
+      animation: sirenPulse 1.2s infinite ease-in-out;
+      box-shadow: 0 0 30px rgba(249, 115, 22, 0.4);
+    }
+    @keyframes sirenPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(249, 115, 22, 0.3); }
+      50% { transform: scale(1.1); box-shadow: 0 0 40px rgba(249, 115, 22, 0.7); }
+    }
+    .new-order-live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(239, 68, 68, 0.18);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 4px 14px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 12px;
+    }
+    .pulse-dot-red {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+      display: inline-block;
+      animation: blinkRed 0.8s infinite;
+    }
+    @keyframes blinkRed {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    .new-order-fare-box {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(20, 20, 26, 0.8) 100%);
+      border: 1.5px solid rgba(34, 197, 94, 0.35);
+      border-radius: 18px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+    .new-order-fare-title {
+      font-size: 0.74rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+    }
+    .new-order-fare-val {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #22c55e;
+      line-height: 1.1;
+      margin: 4px 0 2px;
+    }
+    .new-order-fare-sub {
+      font-size: 0.72rem;
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+    .new-order-route-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 16px;
+      text-align: left;
+    }
+    .new-order-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .new-order-step-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .new-order-step-icon.pickup { background: rgba(249, 115, 22, 0.2); color: #f97316; }
+    .new-order-step-icon.drop { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+    .new-order-step-tag {
+      font-size: 0.64rem;
+      font-weight: 800;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .new-order-step-addr {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 1px;
+      line-height: 1.35;
+    }
+    .new-order-step-line {
+      width: 2px;
+      height: 14px;
+      background: rgba(255, 255, 255, 0.15);
+      margin: 3px 0 3px 13px;
+    }
+    .new-order-timer-wrap {
+      margin-bottom: 18px;
+    }
+    .new-order-timer-text {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.74rem;
+      color: #94a3b8;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .new-order-timer-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .new-order-timer-progress {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e, #f97316);
+      transition: width 1s linear;
+    }
+    .new-order-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .btn-alert-accept {
+      width: 100%;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      border: none;
+      color: #fff;
+      border-radius: 14px;
+      padding: 15px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45);
+      transition: all 0.2s;
+    }
+    .btn-alert-accept:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(34, 197, 94, 0.6);
+    }
+    .btn-alert-decline {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1;
+      border-radius: 14px;
+      padding: 12px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-alert-decline:hover {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #f87171;
     }
   </style>
 </head>
@@ -848,6 +1012,34 @@
 
       <!-- Active Trip Container -->
       <div id="activeTripContainer"></div>
+
+      <!-- Rider Live Order Alert Control Toolbar -->
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 16px; padding: 10px 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 10px #22c55e; animation: blinkRed 1.2s infinite;" id="alertPulseIndicator"></span>
+          <div>
+            <div style="font-size: 0.8rem; font-weight: 800; color: #fff; line-height: 1.1;">Order Alert System</div>
+            <div style="font-size: 0.68rem; color: #94a3b8;">Automatic Siren & Push Notification</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <!-- Sound Toggle Button -->
+          <button type="button" id="btnRiderSoundToggle" onclick="toggleRiderAlertSound()" class="btn-refresh" style="font-size: 0.74rem; display: inline-flex; align-items: center; gap: 5px; color: #22c55e; border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.08); font-weight: 700;" title="Toggle Order Sound Siren">
+            <i class="fa-solid fa-volume-high" id="soundToggleIcon"></i>
+            <span id="soundToggleText">Sound ON</span>
+          </button>
+          <!-- Web Push Alerts Permission -->
+          <button type="button" id="btnRiderNotifPerm" onclick="requestRiderNotifPermission()" class="btn-refresh" style="font-size: 0.74rem; display: inline-flex; align-items: center; gap: 5px; color: #38bdf8; border-color: rgba(56,189,248,0.3); background: rgba(56,189,248,0.08); font-weight: 700;" title="Allow Background Push Notifications">
+            <i class="fa-solid fa-bell"></i>
+            <span id="notifPermText">Push Alerts</span>
+          </button>
+          <!-- Test Alert Trigger Button -->
+          <button type="button" id="btnTriggerTestAlert" onclick="triggerTestNewOrderAlert()" class="btn-refresh" style="font-size: 0.74rem; display: inline-flex; align-items: center; gap: 5px; color: #f97316; border-color: rgba(249,115,22,0.45); background: rgba(249,115,22,0.12); font-weight: 800;" title="Test Siren Chime, Notification & Incoming Order Modal">
+            <i class="fa-solid fa-play"></i>
+            <span>Test Alert</span>
+          </button>
+        </div>
+      </div>
 
       <!-- Available Jobs Feed -->
       <div class="section-hdr">
@@ -1150,6 +1342,70 @@
         <button type="button" id="btnCopyDriverLink" onclick="copyDriverAppLink()" class="btn-refresh" style="flex: 1.3; padding: 12px; font-size: 0.85rem; font-weight: 700; color: #f97316; border-color: rgba(249,115,22,0.35); background: rgba(249,115,22,0.08); display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 12px;">
           <i class="fa-solid fa-copy"></i>
           <span>Copy App Link</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== INCOMING NEW ORDER ALERT MODAL =================== -->
+  <div class="new-order-overlay" id="newOrderAlertOverlay">
+    <div class="new-order-card">
+      <!-- Animated Siren Icon -->
+      <div class="new-order-siren-ring">
+        <i class="fa-solid fa-bell fa-shake"></i>
+      </div>
+
+      <!-- Urgent Alert Badge -->
+      <div class="new-order-live-badge">
+        <span class="pulse-dot-red"></span> NAYA ORDER AAYA HAI! (NEW JOB)
+      </div>
+
+      <!-- Earnings Highlight Box -->
+      <div class="new-order-fare-box">
+        <div class="new-order-fare-title">Aapki Kamai (100% Direct Cash/UPI)</div>
+        <div class="new-order-fare-val" id="alertModalFare">₹0</div>
+        <div class="new-order-fare-sub" id="alertModalOrderId">Booking #---</div>
+      </div>
+
+      <!-- Route Details -->
+      <div class="new-order-route-card">
+        <div class="new-order-step">
+          <div class="new-order-step-icon pickup"><i class="fa-solid fa-arrow-up"></i></div>
+          <div style="flex: 1;">
+            <div class="new-order-step-tag">Pickup Location</div>
+            <div class="new-order-step-addr" id="alertModalPickup">Pickup Point</div>
+          </div>
+        </div>
+        <div class="new-order-step-line"></div>
+        <div class="new-order-step">
+          <div class="new-order-step-icon drop"><i class="fa-solid fa-location-dot"></i></div>
+          <div style="flex: 1;">
+            <div class="new-order-step-tag">Delivery Location</div>
+            <div class="new-order-step-addr" id="alertModalDrop">Drop Point</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 45-Second Countdown Timer Bar -->
+      <div class="new-order-timer-wrap">
+        <div class="new-order-timer-text">
+          <span>Auto-dismiss in <strong id="alertCountdownSeconds" style="color: #f97316;">45</strong>s</span>
+          <span id="alertSoundStatusText" style="color: #22c55e;"><i class="fa-solid fa-volume-high me-1"></i> Siren Active</span>
+        </div>
+        <div class="new-order-timer-bar">
+          <div class="new-order-timer-progress" id="alertTimerProgress"></div>
+        </div>
+      </div>
+
+      <!-- Interactive Actions: Accept or Dismiss -->
+      <div class="new-order-actions">
+        <button type="button" class="btn-alert-accept" id="btnAcceptAlertOrder" onclick="acceptIncomingAlertOrder()">
+          <i class="fa-solid fa-circle-check"></i>
+          <span>ACCEPT ORDER (Kamai ₹<span id="alertBtnFare">0</span>)</span>
+        </button>
+        <button type="button" class="btn-alert-decline" onclick="dismissNewOrderAlert(true)">
+          <i class="fa-solid fa-bell-slash"></i>
+          <span>Dismiss / Mute Siren</span>
         </button>
       </div>
     </div>

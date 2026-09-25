@@ -31,12 +31,22 @@ let currentOtpParcelId = null;
 let feedAutoRefreshTimer = null;
 let deferredInstallPrompt = null;
 
+// Dedicated Rider Notification & Order Alert Engine State
+let isSoundEnabled = localStorage.getItem('rudraksha_rider_sound_enabled') !== 'false';
+let audioCtx = null;
+let sirenInterval = null;
+let alertCountdownInterval = null;
+let currentAlertingOrder = null;
+let seenOrderIds = new Set();
+let isFeedInitialSyncDone = false;
+
 /* ==========================================================================
    1. INITIALIZATION & AUTHENTICATION
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', async () => {
   initPwaInstallIcon();
   initOtpDigitInputs();
+  initRiderAlertSystem();
 
   const isAuth = await checkDriverAuth();
   if (isAuth) {
@@ -355,15 +365,9 @@ function initPwaInstallIcon() {
 
 /**
  * Universal Infallible Driver PWA Installer
- * Works on Android Chrome, Samsung Internet, iOS Safari, and WhatsApp In-App Webviews
+ * Works on Android Chrome, Samsung Internet, Xiaomi MIUI, iOS Safari, and In-App Webviews
  */
 async function triggerPwaInstall() {
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  if (isStandalone) {
-    showToast('✅ App pehle se hi aapke phone me installed hai!', 'success');
-    return;
-  }
-
   // 1. Check if native prompt is immediately available
   const nativePrompt = window._driverInstallPrompt || deferredInstallPrompt;
   if (nativePrompt) {
@@ -382,11 +386,11 @@ async function triggerPwaInstall() {
     }
   }
 
-  // 2. Wait briefly (up to 350ms) in case beforeinstallprompt was pending
+  // 2. Wait briefly (up to 300ms) in case beforeinstallprompt was pending
   window._waitingForDriverInstall = true;
   const promptArrived = await new Promise((resolve) => {
     if (window._driverInstallPrompt || deferredInstallPrompt) return resolve(true);
-    const timer = setTimeout(() => resolve(false), 350);
+    const timer = setTimeout(() => resolve(false), 300);
     const onPrompt = () => {
       clearTimeout(timer);
       window.removeEventListener('beforeinstallprompt', onPrompt);
@@ -424,19 +428,20 @@ function openDriverInstallModal() {
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   const isWebview = /FBAN|FBAV|Instagram|WhatsApp|Line|Twitter|Telegram/i.test(navigator.userAgent);
+  const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
   const nativePrompt = window._driverInstallPrompt || deferredInstallPrompt;
 
   let html = '';
 
-  if (isWebview) {
-    // A. WhatsApp / In-App Browser (Blocked from direct PWA download)
+  if (isWebview || isStandalone) {
+    // A. WhatsApp / In-App Browser OR Opened from Customer App Standalone
     html = `
-      <div style="background: rgba(239,68,68,0.12); border: 1.5px solid rgba(239,68,68,0.3); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px;">
-        <div style="font-weight: 800; font-size: 0.88rem; color: #f87171; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-          <i class="fa-brands fa-whatsapp text-danger"></i> WhatsApp Browser Detected
+      <div style="background: rgba(249,115,22,0.14); border: 1.5px solid rgba(249,115,22,0.35); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px;">
+        <div style="font-weight: 800; font-size: 0.88rem; color: #fb923c; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+          <i class="fa-solid fa-motorcycle text-warning"></i> Dedicated Driver App Install
         </div>
         <p style="font-size: 0.78rem; color: #cbd5e1; margin: 0; line-height: 1.45;">
-          WhatsApp ke andar direct app install nahi ho sakti. Neeche diye button par click karke <strong>Google Chrome me kholein</strong> aur 1 tap me install karein!
+          Phone me <strong>Rudraksha Driver App</strong> ko alag se home screen par install karne ke liye neeche diye button se <strong>Google Chrome me kholein</strong> aur 1 tap me install karein!
         </p>
       </div>
 
@@ -468,7 +473,7 @@ function openDriverInstallModal() {
       </div>
     `;
   } else {
-    // C. Android Chrome / Desktop / Any browser
+    // C. Android Chrome / Redmi A4 5G / Desktop
     html = `
       ${nativePrompt ? `
         <button type="button" onclick="executeNativeInstallPrompt()" style="width: 100%; background: linear-gradient(135deg, #22c55e, #16a34a); border: none; color: #fff; border-radius: 14px; padding: 14px; font-weight: 800; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 18px rgba(34,197,94,0.45); margin-bottom: 14px;">
@@ -508,9 +513,10 @@ function closeDriverInstallModal() {
 }
 
 function openInAndroidChrome() {
-  const currentUrl = window.location.href;
+  const currentUrl = window.location.href.split('#')[0];
   const noProto = currentUrl.replace(/^https?:\/\//, '');
-  const chromeIntent = `intent://${noProto}#Intent;scheme=https;package=com.android.chrome;end`;
+  const scheme = window.location.protocol.replace(':', '') || 'https';
+  const chromeIntent = `intent://${noProto}#Intent;scheme=${scheme};package=com.android.chrome;end`;
   window.location.href = chromeIntent;
   setTimeout(() => {
     copyDriverAppLink();
@@ -1199,6 +1205,21 @@ async function loadDriverFeed(showRefreshAnim = false) {
   // Render Available Jobs Feed
   if (feedCountEl) feedCountEl.innerText = availableList.length > 0 ? availableList.length : '';
 
+  // Automatic Real-Time New Order Detection & Alert Trigger
+  if (!isFeedInitialSyncDone) {
+    availableList.forEach(p => seenOrderIds.add(String(p.parcel_id || p.id)));
+    isFeedInitialSyncDone = true;
+  } else if (currentDriver && currentDriver.onDuty !== false && !currentActiveTrip) {
+    const brandNewJobs = availableList.filter(p => !seenOrderIds.has(String(p.parcel_id || p.id)));
+    if (brandNewJobs.length > 0) {
+      const latestJob = brandNewJobs[0];
+      brandNewJobs.forEach(p => seenOrderIds.add(String(p.parcel_id || p.id)));
+      openNewOrderAlertModal(latestJob);
+    }
+  } else {
+    availableList.forEach(p => seenOrderIds.add(String(p.parcel_id || p.id)));
+  }
+
   if (currentActiveTrip) {
     feedList.innerHTML = `
       <div class="empty-state" style="padding: 24px 16px;">
@@ -1679,4 +1700,382 @@ function showToast(msg, type = 'info') {
     toast.style.transform = 'translateY(-10px)';
     setTimeout(() => toast.remove(), 300);
   }, 3500);
+}
+
+/* ==========================================================================
+   10. RIDER NOTIFICATION & ORDER ALERT ENGINE (Problem 10 Implementation)
+   Audible Web Audio Synthesizer • Push Notifications • Urgent Alert Modal
+   ========================================================================== */
+
+/**
+ * Initialize Alert System, unlock audio context & update UI buttons
+ */
+function initRiderAlertSystem() {
+  updateRiderSoundButtonUI();
+  updateRiderNotifButtonUI();
+
+  // Autoplay compliance: unlock AudioContext on first user interaction
+  const unlockAudio = () => {
+    try {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume();
+      }
+    } catch (e) {}
+  };
+  ['click', 'touchstart', 'keydown'].forEach(evt => {
+    document.addEventListener(evt, unlockAudio, { once: true, passive: true });
+  });
+}
+
+/**
+ * Web Audio API Context (Zero external MP3 dependencies, 100% offline & infallible)
+ */
+function getAudioContext() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      audioCtx = new AudioContextClass();
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+  return audioCtx;
+}
+
+/**
+ * Play a synthesized acoustic beep
+ */
+function playSynthBeep(freq, type = 'sine', duration = 0.14, startTimeOffset = 0, volume = 0.28) {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const now = ctx.currentTime + startTimeOffset;
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + duration);
+  } catch (err) {
+    console.warn('Audio synthesis notice:', err);
+  }
+}
+
+/**
+ * Dual-Tone Urgent Siren Chime (Modern Logistics Driver Style)
+ */
+function playDualBeepChime() {
+  if (!isSoundEnabled) return;
+  // Sequence: 880Hz -> 1320Hz -> 880Hz
+  playSynthBeep(880, 'sine', 0.12, 0, 0.35);
+  playSynthBeep(1320, 'sine', 0.18, 0.14, 0.4);
+  playSynthBeep(880, 'sine', 0.14, 0.34, 0.35);
+}
+
+/**
+ * Start Continuous Siren Alert Loop until Rider interacts
+ */
+function startOrderAlertSirenLoop() {
+  if (!isSoundEnabled) return;
+  stopOrderAlertSirenLoop();
+  playDualBeepChime();
+  sirenInterval = setInterval(() => {
+    playDualBeepChime();
+  }, 1300);
+}
+
+/**
+ * Stop Siren Alert Loop
+ */
+function stopOrderAlertSirenLoop() {
+  if (sirenInterval) {
+    clearInterval(sirenInterval);
+    sirenInterval = null;
+  }
+}
+
+/**
+ * Toggle Rider Alert Sound (Mute / Unmute)
+ */
+function toggleRiderAlertSound() {
+  isSoundEnabled = !isSoundEnabled;
+  localStorage.setItem('rudraksha_rider_sound_enabled', isSoundEnabled ? 'true' : 'false');
+  updateRiderSoundButtonUI();
+
+  if (isSoundEnabled) {
+    playDualBeepChime();
+    showToast('🔊 Order siren alert turned ON!', 'success');
+  } else {
+    stopOrderAlertSirenLoop();
+    showToast('🔇 Order siren alert muted.', 'info');
+  }
+}
+
+function updateRiderSoundButtonUI() {
+  const btn = document.getElementById('btnRiderSoundToggle');
+  const icon = document.getElementById('soundToggleIcon');
+  const text = document.getElementById('soundToggleText');
+  const modalStatus = document.getElementById('alertSoundStatusText');
+
+  if (btn && icon && text) {
+    if (isSoundEnabled) {
+      btn.style.color = '#22c55e';
+      btn.style.borderColor = 'rgba(34,197,94,0.3)';
+      btn.style.background = 'rgba(34,197,94,0.08)';
+      icon.className = 'fa-solid fa-volume-high';
+      text.innerText = 'Sound ON';
+    } else {
+      btn.style.color = '#94a3b8';
+      btn.style.borderColor = 'rgba(255,255,255,0.15)';
+      btn.style.background = 'rgba(255,255,255,0.04)';
+      icon.className = 'fa-solid fa-volume-xmark';
+      text.innerText = 'Sound OFF';
+    }
+  }
+
+  if (modalStatus) {
+    modalStatus.innerHTML = isSoundEnabled
+      ? '<i class="fa-solid fa-volume-high me-1"></i> Siren Active'
+      : '<i class="fa-solid fa-volume-xmark me-1 text-muted"></i> Siren Muted';
+    modalStatus.style.color = isSoundEnabled ? '#22c55e' : '#94a3b8';
+  }
+}
+
+/**
+ * Browser & PWA Push Notification Permission Request
+ */
+async function requestRiderNotifPermission() {
+  if (!('Notification' in window)) {
+    showToast('Notifications are not supported in this browser.', 'info');
+    return;
+  }
+
+  if (Notification.permission === 'granted') {
+    showToast('✅ Push alerts are already enabled!', 'success');
+    showRiderBrowserNotification({
+      parcel_id: 'RDR-TEST',
+      total_amount: 150,
+      pickup_address: 'Test Pickup Point',
+      drop_address: 'Test Drop Point'
+    });
+    return;
+  }
+
+  try {
+    const perm = await Notification.requestPermission();
+    updateRiderNotifButtonUI();
+    if (perm === 'granted') {
+      showToast('🎉 Push notifications enabled for new orders!', 'success');
+      showRiderBrowserNotification({
+        parcel_id: 'RDR-WELCOME',
+        total_amount: 199,
+        pickup_address: 'Civil Lines, Jaipur',
+        drop_address: 'Vaishali Nagar, Jaipur'
+      });
+    } else {
+      showToast('Notifications were denied. You will still receive in-app popups & sound.', 'info');
+    }
+  } catch (err) {
+    console.warn('Notification permission error:', err);
+  }
+}
+
+function updateRiderNotifButtonUI() {
+  const btn = document.getElementById('btnRiderNotifPerm');
+  const text = document.getElementById('notifPermText');
+  if (!btn || !text) return;
+
+  if (!('Notification' in window)) {
+    btn.style.display = 'none';
+    return;
+  }
+
+  if (Notification.permission === 'granted') {
+    btn.style.color = '#22c55e';
+    btn.style.borderColor = 'rgba(34,197,94,0.3)';
+    btn.style.background = 'rgba(34,197,94,0.08)';
+    text.innerText = 'Push: Active';
+  } else if (Notification.permission === 'denied') {
+    btn.style.color = '#ef4444';
+    btn.style.borderColor = 'rgba(239,68,68,0.3)';
+    btn.style.background = 'rgba(239,68,68,0.08)';
+    text.innerText = 'Push: Blocked';
+  } else {
+    btn.style.color = '#38bdf8';
+    btn.style.borderColor = 'rgba(56,189,248,0.3)';
+    btn.style.background = 'rgba(56,189,248,0.08)';
+    text.innerText = 'Enable Push';
+  }
+}
+
+/**
+ * Trigger System / Browser Notification (Works even if tab is minimized)
+ */
+function showRiderBrowserNotification(order) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  try {
+    const pId = order.parcel_id || order.id || 'ORDER';
+    const fare = Number(order.total_amount || 0);
+    const pickup = (order.pickup_address || 'Pickup Point').slice(0, 35);
+    const drop = (order.drop_address || 'Drop Point').slice(0, 35);
+
+    const notif = new Notification(`🚨 Naya Order Aaya! Kamai: ₹${fare}`, {
+      body: `Pickup: ${pickup} ➔ Drop: ${drop}\nTap karein aur turant accept karein!`,
+      icon: 'driver-icon-192.png',
+      badge: 'driver-icon-192.png',
+      tag: `rudraksha-order-${pId}`,
+      requireInteraction: true,
+      silent: false
+    });
+
+    notif.onclick = () => {
+      window.focus();
+      notif.close();
+      openNewOrderAlertModal(order);
+    };
+  } catch (err) {
+    console.warn('Browser notification display error:', err);
+  }
+}
+
+/**
+ * Open High-Priority New Order Alert Modal with Countdown & Sound
+ */
+function openNewOrderAlertModal(order) {
+  if (!order) return;
+  currentAlertingOrder = order;
+
+  const overlay = document.getElementById('newOrderAlertOverlay');
+  const fareEl = document.getElementById('alertModalFare');
+  const btnFareEl = document.getElementById('alertBtnFare');
+  const idEl = document.getElementById('alertModalOrderId');
+  const pickupEl = document.getElementById('alertModalPickup');
+  const dropEl = document.getElementById('alertModalDrop');
+  const secEl = document.getElementById('alertCountdownSeconds');
+  const barEl = document.getElementById('alertTimerProgress');
+
+  const pId = order.parcel_id || order.id || 'RDR-JOB';
+  const fare = Number(order.total_amount || 0);
+
+  if (fareEl) fareEl.innerText = `₹${fare}`;
+  if (btnFareEl) btnFareEl.innerText = `${fare}`;
+  if (idEl) idEl.innerText = `Booking #${pId} • ${(order.parcel_type || 'Package').toUpperCase()}`;
+  if (pickupEl) pickupEl.innerText = order.pickup_address || 'Pickup Location, Jaipur';
+  if (dropEl) dropEl.innerText = order.drop_address || 'Delivery Location, Jaipur';
+
+  // Start 45s countdown timer
+  if (alertCountdownInterval) clearInterval(alertCountdownInterval);
+  let remainingSeconds = 45;
+  if (secEl) secEl.innerText = remainingSeconds;
+  if (barEl) barEl.style.width = '100%';
+
+  alertCountdownInterval = setInterval(() => {
+    remainingSeconds--;
+    if (secEl) secEl.innerText = remainingSeconds;
+    if (barEl) {
+      const pct = Math.max(0, (remainingSeconds / 45) * 100);
+      barEl.style.width = `${pct}%`;
+    }
+
+    if (remainingSeconds <= 0) {
+      dismissNewOrderAlert(false);
+      showToast('Order alert auto-dismissed. Still available in feed.', 'info');
+    }
+  }, 1000);
+
+  // Play audio alarm siren
+  startOrderAlertSirenLoop();
+
+  // Vibrate phone if mobile browser supports Vibration API
+  if ('vibrate' in navigator) {
+    try { navigator.vibrate([300, 150, 300, 150, 500]); } catch (e) {}
+  }
+
+  // Fire background browser push notification
+  showRiderBrowserNotification(order);
+
+  // Show modal
+  if (overlay) {
+    overlay.classList.add('active');
+  }
+}
+
+/**
+ * Dismiss the Alert Modal and silence audio
+ */
+function dismissNewOrderAlert(isManual = true) {
+  stopOrderAlertSirenLoop();
+  if (alertCountdownInterval) {
+    clearInterval(alertCountdownInterval);
+    alertCountdownInterval = null;
+  }
+
+  const overlay = document.getElementById('newOrderAlertOverlay');
+  if (overlay) {
+    overlay.classList.remove('active');
+  }
+
+  if (isManual) {
+    showToast('Siren silenced. Job is waiting in your feed.', 'info');
+  }
+}
+
+/**
+ * Rider clicks "ACCEPT ORDER" on Alert Modal
+ */
+async function acceptIncomingAlertOrder() {
+  if (!currentAlertingOrder) return;
+  const orderToAccept = currentAlertingOrder;
+  const orderId = orderToAccept.parcel_id || orderToAccept.id;
+
+  dismissNewOrderAlert(false);
+
+  // Auto-switch to On Duty if not already
+  if (currentDriver && !currentDriver.onDuty) {
+    await toggleDriverDuty();
+  }
+
+  await acceptDriverJob(orderId);
+}
+
+/**
+ * Test Order Alert Button (Interactive Simulation for User & Driver)
+ */
+function triggerTestNewOrderAlert() {
+  const sampleLocalities = [
+    { pickup: 'Vaishali Nagar (Near Amrapali Circle), Jaipur', drop: 'Mansarovar Metro Station (Pillar 64), Jaipur', fare: 180 },
+    { pickup: 'Malviya Nagar (World Trade Park), Jaipur', drop: 'C-Scheme (Ahinsa Circle), Jaipur', fare: 220 },
+    { pickup: 'Raja Park (LBS College Marg), Jaipur', drop: 'Jagatpura (Near Railway Flyover), Jaipur', fare: 260 },
+    { pickup: 'Tonk Road (Gandhi Nagar Station), Jaipur', drop: 'Sitapura Industrial Area, Jaipur', fare: 310 }
+  ];
+  const randLoc = sampleLocalities[Math.floor(Math.random() * sampleLocalities.length)];
+  const testJobId = 'RDR-' + Math.floor(10000 + Math.random() * 90000);
+
+  const testOrder = {
+    parcel_id: testJobId,
+    id: testJobId,
+    total_amount: randLoc.fare,
+    pickup_address: randLoc.pickup,
+    drop_address: randLoc.drop,
+    parcel_type: 'Urgent Express Box / Document',
+    sender_name: 'Jaipur Merchant Hub',
+    sender_phone: '9829012345',
+    receiver_name: 'Customer Delivery Point',
+    receiver_phone: '9829067890',
+    created_at: new Date().toISOString()
+  };
+
+  showToast('🔔 Testing New Order Alert Siren & Modal...', 'info');
+  openNewOrderAlertModal(testOrder);
 }
