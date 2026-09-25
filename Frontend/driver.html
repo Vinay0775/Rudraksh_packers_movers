@@ -922,12 +922,12 @@
         </button>
       </form>
 
-      <!-- Direct PWA App Download Button on Login Screen -->
+      <!-- Direct Android APK Download Button on Login Screen -->
       <div style="margin-top: 14px;" id="loginInstallContainer">
-        <button type="button" onclick="triggerPwaInstall()" style="width: 100%; background: rgba(249,115,22,0.12); border: 1.5px dashed rgba(249,115,22,0.45); color: #fb923c; border-radius: 14px; padding: 11px; font-size: 0.82rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
-          <i class="fa-solid fa-download"></i>
-          <span>📲 Download / Install Driver App on Phone</span>
-        </button>
+        <a href="./downloads/RudrakshaDriver.apk" download="RudrakshaDriver.apk" style="width: 100%; background: linear-gradient(135deg, #22c55e, #16a34a); color: #000; border-radius: 14px; padding: 12px; font-size: 0.86rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; box-shadow: 0 4px 16px rgba(34,197,94,0.35);">
+          <i class="fa-brands fa-android" style="font-size: 1.15rem;"></i>
+          <span>📲 Download Official Android App (.APK)</span>
+        </a>
       </div>
 
       <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); text-align: center;">
@@ -1000,19 +1000,19 @@
         </div>
       </div>
 
-      <!-- Prominent 1-Click Install Banner in Jobs Feed -->
-      <div id="feedInstallBanner" style="background: linear-gradient(135deg, rgba(249,115,22,0.18) 0%, rgba(20,20,26,0.95) 100%); border: 1.5px solid rgba(249,115,22,0.4); border-radius: 16px; padding: 12px 16px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.35);">
+      <!-- Prominent 1-Click Install & APK Download Banner in Jobs Feed -->
+      <div id="feedInstallBanner" style="background: linear-gradient(135deg, rgba(34,197,94,0.18) 0%, rgba(20,20,26,0.95) 100%); border: 1.5px solid rgba(34,197,94,0.4); border-radius: 16px; padding: 12px 16px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.35);">
         <div style="display: flex; align-items: center; gap: 12px;">
-          <img src="driver-icon-192.png" alt="Driver App" style="width: 40px; height: 40px; border-radius: 12px; border: 1.5px solid #f97316; object-fit: cover;">
+          <img src="driver-icon-192.png" alt="Driver App" style="width: 40px; height: 40px; border-radius: 12px; border: 1.5px solid #22c55e; object-fit: cover;">
           <div>
-            <div style="font-weight: 800; font-size: 0.88rem; color: #fff;">Rudraksha Driver App</div>
-            <div style="font-size: 0.72rem; color: #94a3b8;">1-Tap me phone me download & install karein</div>
+            <div style="font-weight: 800; font-size: 0.88rem; color: #fff;">Official Android App (.APK)</div>
+            <div style="font-size: 0.72rem; color: #94a3b8;">High-pitch siren & background lock-screen alerts</div>
           </div>
         </div>
-        <button type="button" onclick="triggerPwaInstall()" style="background: linear-gradient(135deg, #f97316, #ea580c); border: none; color: #fff; border-radius: 12px; padding: 8px 15px; font-size: 0.82rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 14px rgba(249,115,22,0.45); flex-shrink: 0;">
-          <i class="fa-solid fa-download"></i>
-          <span>Install App</span>
-        </button>
+        <a href="./downloads/RudrakshaDriver.apk" download="RudrakshaDriver.apk" style="background: linear-gradient(135deg, #22c55e, #16a34a); color: #000; border-radius: 12px; padding: 8px 15px; font-size: 0.82rem; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 14px rgba(34,197,94,0.45); flex-shrink: 0;">
+          <i class="fa-brands fa-android"></i>
+          <span>Download APK</span>
+        </a>
       </div>
 
       <!-- Stats Ribbon -->

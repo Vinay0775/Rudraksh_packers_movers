@@ -22,3 +22,12 @@ Thumbs.db
 # Local database fallback runtime data
 Backend/data/
 Backend/logs/
+
+# Flutter build artifacts
+driver_app/build/
+driver_app/android/build/
+driver_app/.dart_tool/
+driver_app/.gradle/
+driver_app/android/.gradle/
+Frontend/downloads/*.apk
+
