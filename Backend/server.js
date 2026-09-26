@@ -38,10 +38,10 @@ app.get(['/downloads/RudrakshaDriver.apk', '/download-driver-apk', '/download-ap
 app.get(['/api/app-version', '/api/rider/app-version'], (req, res) => {
   res.json({
     success: true,
-    version: '1.2.0',
-    versionCode: 2,
+    version: '1.2.1',
+    versionCode: 3,
     apkUrl: 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk',
-    releaseNotes: '1. 1-Click In-App Auto Update System\n2. Driver Profile Photo Upload with Camera/Gallery & DB Sync\n3. 4 Full Tabs: Jobs Feed, Active Trip, My Profile, Support\n4. Google Maps GPS Navigation & In-Line OTP Verification',
+    releaseNotes: '1. Fixed Completed Deliveries and Earnings sync\n2. Real-time Vinay Kumar order history sync\n3. High-pitch siren & clean dark navigation',
     forceUpdate: false,
     fileSizeMB: '52.5 MB'
   });
@@ -681,9 +681,13 @@ app.get('/api/rider/earnings', requireRider, async (req, res, next) => {
     const riderPhone = String(req.rider.phone || '').replace(/\D/g, '');
     const parcels = await db.getParcels();
 
-    // Filter delivered parcels completed by THIS rider only
+    // Filter delivered parcels completed by THIS rider only (flexible phone, ID, or name match)
+    const riderName = String(req.rider.driver_name || '').toLowerCase().trim();
     const myDelivered = parcels.filter(p => {
-      const isMyTrip = (p.driver_id === riderId) || (p.assigned_driver_phone && String(p.assigned_driver_phone).replace(/\D/g, '') === riderPhone);
+      const isMyTrip = (p.driver_id && String(p.driver_id) === String(riderId)) ||
+                       (p.assigned_driver_phone && String(p.assigned_driver_phone).replace(/\D/g, '') === riderPhone) ||
+                       (p.driver_phone && String(p.driver_phone).replace(/\D/g, '') === riderPhone) ||
+                       (p.assigned_driver_name && riderName && String(p.assigned_driver_name).toLowerCase().trim() === riderName);
       const isDone = (p.booking_status === 'delivered' || p.status === 'delivered');
       return isMyTrip && isDone;
     });
@@ -716,11 +720,15 @@ app.get('/api/rider/earnings', requireRider, async (req, res, next) => {
 
       return {
         id: p.parcel_id || p.id,
+        parcel_id: p.parcel_id || p.id,
         date: p.delivery_time || p.updated_at || p.created_at,
         timestamp: tripTime,
         pickup: p.pickup_address,
+        pickup_address: p.pickup_address,
         drop: p.drop_address,
+        drop_address: p.drop_address,
         distance_km: p.distance_km || 4,
+        total_amount: orderFare,
         customer_price: orderFare,
         driver_earning: orderFare, // 100% received by driver directly from customer
         payment_mode: p.payment_method || 'Cash / Direct UPI',
@@ -733,12 +741,14 @@ app.get('/api/rider/earnings', requireRider, async (req, res, next) => {
       commission_rate: 0, // 0% commission
       driver_share_percent: 100, // 100% goes to driver
       dateOfJoining: req.rider.approved_at || req.rider.created_at || req.rider.date || '2026-08-01T00:00:00.000Z',
+      totalEarnings: allTimeEarnings,
       todayEarnings,
       last7DaysEarnings,
       last30DaysEarnings,
       last6MonthsEarnings,
       last1YearEarnings,
       allTimeEarnings,
+      completedTrips: myDelivered.length,
       completedTripsCount: myDelivered.length,
       trips
     });

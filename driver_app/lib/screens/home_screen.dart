@@ -866,8 +866,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildFeedView() {
     final driver = ApiService.currentDriver;
     final isOnDuty = driver?.onDuty ?? true;
-    final totalEarn = _earningsData?['totalEarnings'] ?? 0;
-    final tripsCount = _earningsData?['completedTrips'] ?? 0;
+    final totalEarn = _earningsData?['totalEarnings'] ?? _earningsData?['allTimeEarnings'] ?? _earningsData?['todayEarnings'] ?? 0;
+    final tripsCount = _earningsData?['completedTrips'] ?? _earningsData?['completedTripsCount'] ?? 0;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -1680,8 +1680,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildProfileTab() {
     final driver = ApiService.currentDriver;
     final isOnDuty = driver?.onDuty ?? true;
-    final totalEarn = _earningsData?['totalEarnings'] ?? 0;
-    final tripsCount = _earningsData?['completedTrips'] ?? 0;
+    final totalEarn = _earningsData?['totalEarnings'] ?? _earningsData?['allTimeEarnings'] ?? _earningsData?['todayEarnings'] ?? 0;
+    final tripsCount = _earningsData?['completedTrips'] ?? _earningsData?['completedTripsCount'] ?? 0;
     final tripsList = (_earningsData?['trips'] as List?) ?? [];
 
     return ListView(
@@ -1932,13 +1932,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text('#${t['parcel_id'] ?? t['id'] ?? '-'}',
                             style: const TextStyle(
                                 color: Colors.white, fontWeight: FontWeight.bold)),
-                        Text('${t['drop_address'] ?? 'Jaipur'}',
+                        Text('${t['drop_address'] ?? t['drop'] ?? 'Jaipur'}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(color: Colors.white54, fontSize: 11)),
                       ],
                     ),
-                    Text('+₹${t['total_amount'] ?? 0}',
+                    Text('+₹${t['total_amount'] ?? t['driver_earning'] ?? t['customer_price'] ?? 0}',
                         style: const TextStyle(
                             color: Color(0xFF22C55E), fontWeight: FontWeight.bold)),
                   ],
@@ -1952,7 +1952,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onPressed: () =>
               UpdateService.checkAndPromptUpdate(context, showNoUpdateToast: true),
           icon: const Icon(Icons.system_update_rounded, color: Colors.black, size: 18),
-          label: const Text('Check for App Updates (v1.2.0)',
+          label: const Text('Check for App Updates (v1.2.1)',
               style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF22C55E),
