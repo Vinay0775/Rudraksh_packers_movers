@@ -26,6 +26,19 @@ app.get(['/downloads/RudrakshaDriver.apk', '/download-driver-apk'], (req, res) =
   res.status(404).send('APK file is updating. Please try again in 1 minute.');
 });
 
+// App Auto-Update Metadata Endpoint for In-App Updates
+app.get(['/api/app-version', '/api/rider/app-version'], (req, res) => {
+  res.json({
+    success: true,
+    version: '1.2.0',
+    versionCode: 2,
+    apkUrl: 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk',
+    releaseNotes: '1. 1-Click In-App Auto Update System\n2. Driver Profile Photo Upload with Camera/Gallery & DB Sync\n3. 4 Full Tabs: Jobs Feed, Active Trip, My Profile, Support\n4. Google Maps GPS Navigation & In-Line OTP Verification',
+    forceUpdate: false,
+    fileSizeMB: '52.5 MB'
+  });
+});
+
 const isProduction = process.env.NODE_ENV === 'production';
 const ADMIN_USER = process.env.ADMIN_USER || 'Rudrakshapackers&parcel';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Bannaji1234@';
