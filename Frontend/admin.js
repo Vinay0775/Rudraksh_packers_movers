@@ -415,7 +415,7 @@ function logoutAdmin() {
    2. DYNAMIC TAB NAVIGATION & SEARCH
    ========================================================================== */
 function switchAdminTab(tabName) {
-  const tabs = ['dashboard', 'bookings', 'fleet', 'rates', 'coupons', 'theme', 'parcels', 'riders'];
+  const tabs = ['dashboard', 'bookings', 'fleet', 'rates', 'coupons', 'theme', 'parcels', 'riders', 'earnings'];
 
   tabs.forEach((t) => {
     const dockBtn = document.getElementById(`dock-${t}`);
@@ -444,6 +444,8 @@ function switchAdminTab(tabName) {
     loadAdminParcels();
   } else if (tabName === 'riders') {
     renderRiderApplicationsTable();
+  } else if (tabName === 'earnings') {
+    renderAdminEarningsLedger();
   }
 
   // Scroll to top on tab switch
@@ -1615,8 +1617,10 @@ async function refreshAdminAll() {
     await loadBookingsFromBackend();
     await loadAdminParcels();
     await loadRiderApplications();
-    loadAdminThemeSettings();
     updateDashboardMetrics();
+    if (document.getElementById('tab-earnings')?.classList.contains('active')) {
+      renderAdminEarningsLedger();
+    }
     _adminLastRefreshTime = new Date();
     updateAdminRefreshBadge();
     showAdminToast('✅ Sync Complete: All bookings & rider applications updated!', 'success');
@@ -2917,5 +2921,509 @@ window.addEventListener('storage', (e) => {
     autoRefreshParcelPanel();
   }
 });
+
+/* ==========================================================================
+   14. FINANCIAL LEDGER & REVENUE ANALYSIS CONTROLLER (Live Supabase & Backend Sync)
+   ========================================================================== */
+let cachedEarningsAnalysis = null;
+let cachedEarningsLedger = [];
+let cachedDriverSummary = [];
+
+/**
+ * Main Controller: Fetch Live Earnings Analysis from Server / Local DB
+ */
+async function renderAdminEarningsLedger() {
+  const tableBody = document.getElementById('earningsLedgerTableBody');
+  const driverTableBody = document.getElementById('driverEarningsSummaryTableBody');
+
+  try {
+    // 1. Try to fetch unified live ledger from backend API
+    const res = await fetch(`${API_BASE}/admin/earnings-analysis`, {
+      headers: getAuthHeaders()
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success) {
+        cachedEarningsAnalysis = data.summary;
+        cachedEarningsLedger = data.ledger || [];
+        cachedDriverSummary = data.driverSummary || [];
+      }
+    } else {
+      throw new Error('Server returned ' + res.status);
+    }
+  } catch (err) {
+    // Fallback: Compute dynamically from in-memory adminBookings and allAdminParcels
+    console.info('Computing earnings locally from active state:', err.message);
+    computeEarningsFromLocalState();
+  }
+
+  // 2. Render KPIs & Metrics
+  updateEarningsKpis();
+
+  // 3. Populate Drivers Dropdown Filter
+  populateEarningsDriverFilter();
+
+  // 4. Render Table with Active Filters
+  filterEarningsLedger();
+}
+
+/**
+ * Local In-Memory Fallback calculation if server endpoint is temporarily unreachable
+ */
+function computeEarningsFromLocalState() {
+  const moversList = (adminBookings || []).map(b => {
+    const s = String(b.status || '').toLowerCase();
+    const isDelivered = (s === 'delivered' || s === 'completed');
+    const fare = Number(b.total_amount) || 0;
+    return {
+      id: b.id || b.reference_id,
+      order_ref: b.reference_id || b.id || 'RPM-BOOKING',
+      service_type: 'movers',
+      service_label: 'Packers & Movers',
+      cargo_type: b.selected_vehicle || b.cargo_type || 'Relocation Goods',
+      customer_name: b.customer_name || 'Customer',
+      customer_phone: b.customer_phone || '',
+      driver_name: b.assigned_driver_name || 'Fleet Captain',
+      driver_phone: b.assigned_driver_phone || '',
+      vehicle_number: b.assigned_vehicle || '',
+      pickup_address: b.pickup_address || '',
+      drop_address: b.drop_address || '',
+      distance_km: Number(b.distance_km) || 0,
+      fare: fare,
+      driver_earning: fare,
+      payment_method: b.payment_method || 'Cash / Offline',
+      status: isDelivered ? 'Delivered' : (b.status || 'Pending'),
+      is_delivered: isDelivered,
+      drop_timestamp: b.updated_at || b.shifting_date || b.created_at,
+      created_at: b.created_at
+    };
+  });
+
+  const parcelList = (allAdminParcels || []).map(p => {
+    const s = String(p.booking_status || p.status || '').toLowerCase();
+    const isDelivered = (s === 'delivered' || p.delivery_otp_verified === true);
+    const fare = Number(p.total_amount) || 0;
+    return {
+      id: p.id || p.parcel_id,
+      order_ref: p.parcel_id || p.id,
+      service_type: 'parcel',
+      service_label: 'On-Demand Parcel',
+      cargo_type: `${(p.vehicle_type || 'bike').toUpperCase()} • ${p.parcel_type || 'Package'}`,
+      customer_name: p.sender_name || 'Sender',
+      customer_phone: p.sender_phone || '',
+      receiver_name: p.receiver_name || '',
+      receiver_phone: p.receiver_phone || '',
+      driver_name: p.assigned_driver_name || 'Express Rider',
+      driver_phone: p.assigned_driver_phone || p.driver_phone || '',
+      vehicle_number: p.vehicle_number || '',
+      vehicle_type: p.vehicle_type || 'Bike / Scooter',
+      parcel_type: p.parcel_type || 'Package',
+      pickup_address: p.pickup_address || '',
+      drop_address: p.drop_address || '',
+      distance_km: Number(p.distance_km) || 0,
+      fare: fare,
+      driver_earning: fare,
+      payment_method: p.payment_method || 'Direct Cash / UPI',
+      status: isDelivered ? 'Delivered' : (p.booking_status || p.status),
+      is_delivered: isDelivered,
+      drop_timestamp: p.delivery_time || p.updated_at || p.created_at,
+      created_at: p.created_at
+    };
+  });
+
+  cachedEarningsLedger = [...moversList, ...parcelList].sort((a, b) => {
+    const tA = new Date(a.drop_timestamp || a.created_at).getTime() || 0;
+    const tB = new Date(b.drop_timestamp || b.created_at).getTime() || 0;
+    return tB - tA;
+  });
+
+  const totalMoversRev = moversList.filter(x => x.is_delivered).reduce((sum, x) => sum + x.fare, 0);
+  const totalParcelsRev = parcelList.filter(x => x.is_delivered).reduce((sum, x) => sum + x.fare, 0);
+  const grossRevenue = totalMoversRev + totalParcelsRev;
+
+  const driverSummary = {};
+  cachedEarningsLedger.filter(x => x.is_delivered).forEach(x => {
+    const dKey = (x.driver_name || 'Unassigned').trim();
+    if (!driverSummary[dKey]) {
+      driverSummary[dKey] = {
+        driver_name: dKey,
+        driver_phone: x.driver_phone || '',
+        vehicle_number: x.vehicle_number || '',
+        trips_count: 0,
+        total_earned: 0,
+        last_drop_time: x.drop_timestamp
+      };
+    }
+    driverSummary[dKey].trips_count += 1;
+    driverSummary[dKey].total_earned += x.fare;
+    if (!driverSummary[dKey].driver_phone && x.driver_phone) driverSummary[dKey].driver_phone = x.driver_phone;
+    if (!driverSummary[dKey].vehicle_number && x.vehicle_number) driverSummary[dKey].vehicle_number = x.vehicle_number;
+    const curLast = new Date(driverSummary[dKey].last_drop_time || 0).getTime();
+    const thisTime = new Date(x.drop_timestamp || 0).getTime();
+    if (thisTime > curLast) driverSummary[dKey].last_drop_time = x.drop_timestamp;
+  });
+
+  const driverList = Object.values(driverSummary).sort((a, b) => b.total_earned - a.total_earned);
+
+  cachedEarningsAnalysis = {
+    grossRevenue,
+    totalMoversRev,
+    totalParcelsRev,
+    totalDeliveredCount: moversList.filter(x => x.is_delivered).length + parcelList.filter(x => x.is_delivered).length,
+    moversCount: moversList.filter(x => x.is_delivered).length,
+    parcelsCount: parcelList.filter(x => x.is_delivered).length,
+    allOrdersCount: cachedEarningsLedger.length,
+    topDriver: driverList[0] || null
+  };
+
+  cachedDriverSummary = driverList;
+}
+
+/**
+ * Update Top Metric KPI Cards
+ */
+function updateEarningsKpis() {
+  if (!cachedEarningsAnalysis) return;
+
+  const s = cachedEarningsAnalysis;
+  animateCountUp('earnKpiTotalRev', s.grossRevenue || 0, 1000, '₹');
+  animateCountUp('earnKpiMoversRev', s.totalMoversRev || 0, 800, '₹');
+  animateCountUp('earnKpiParcelsRev', s.totalParcelsRev || 0, 800, '₹');
+
+  const subTotal = document.getElementById('earnKpiTotalSub');
+  if (subTotal) subTotal.innerText = `${s.totalDeliveredCount || 0} Delivered Orders (${s.allOrdersCount || 0} Total in Ledger)`;
+
+  const subMovers = document.getElementById('earnKpiMoversSub');
+  if (subMovers) subMovers.innerText = `${s.moversCount || 0} Relocations Delivered`;
+
+  const subParcels = document.getElementById('earnKpiParcelsSub');
+  if (subParcels) subParcels.innerText = `${s.parcelsCount || 0} Express Parcels Delivered`;
+
+  const topDriverEl = document.getElementById('earnKpiTopDriver');
+  const topDriverSubEl = document.getElementById('earnKpiTopDriverSub');
+
+  if (s.topDriver) {
+    if (topDriverEl) topDriverEl.innerText = s.topDriver.driver_name;
+    if (topDriverSubEl) topDriverSubEl.innerText = `₹${(s.topDriver.total_earned || 0).toLocaleString('en-IN')} Earned (${s.topDriver.trips_count || 0} Deliveries)`;
+  } else {
+    if (topDriverEl) topDriverEl.innerText = 'Standby Fleet';
+    if (topDriverSubEl) topDriverSubEl.innerText = 'No completed deliveries yet';
+  }
+}
+
+/**
+ * Populate Unique Drivers in Filter Dropdown
+ */
+function populateEarningsDriverFilter() {
+  const select = document.getElementById('earnFilterDriver');
+  if (!select) return;
+
+  const currentVal = select.value;
+  const driverNames = new Set();
+  cachedEarningsLedger.forEach(item => {
+    if (item.driver_name && item.driver_name !== 'Unassigned' && item.driver_name !== 'Express Rider') {
+      driverNames.add(item.driver_name.trim());
+    }
+  });
+
+  let html = `<option value="all">All Fleet Drivers (${driverNames.size})</option>`;
+  Array.from(driverNames).sort().forEach(d => {
+    html += `<option value="${d}">${d}</option>`;
+  });
+  select.innerHTML = html;
+  if (currentVal && Array.from(driverNames).includes(currentVal)) {
+    select.value = currentVal;
+  }
+}
+
+/**
+ * Filter & Render Main Detailed Ledger & Driver Leaderboard
+ */
+function filterEarningsLedger() {
+  const searchQ = (document.getElementById('earnSearchInput')?.value || '').trim().toLowerCase();
+  const serviceFilter = document.getElementById('earnFilterService')?.value || 'all';
+  const driverFilter = document.getElementById('earnFilterDriver')?.value || 'all';
+  const statusFilter = document.getElementById('earnFilterStatus')?.value || 'delivered';
+
+  const tableBody = document.getElementById('earningsLedgerTableBody');
+  const statsEl = document.getElementById('earnLedgerStats');
+
+  // Filter items
+  const filtered = cachedEarningsLedger.filter(item => {
+    // 1. Service Filter
+    if (serviceFilter !== 'all' && item.service_type !== serviceFilter) return false;
+
+    // 2. Driver Filter
+    if (driverFilter !== 'all' && String(item.driver_name || '').toLowerCase() !== driverFilter.toLowerCase()) return false;
+
+    // 3. Status Filter
+    if (statusFilter === 'delivered' && !item.is_delivered) return false;
+
+    // 4. Search Filter
+    if (searchQ) {
+      const matchRef = String(item.order_ref || '').toLowerCase().includes(searchQ);
+      const matchDriver = String(item.driver_name || '').toLowerCase().includes(searchQ);
+      const matchCustomer = String(item.customer_name || '').toLowerCase().includes(searchQ);
+      const matchPickup = String(item.pickup_address || '').toLowerCase().includes(searchQ);
+      const matchDrop = String(item.drop_address || '').toLowerCase().includes(searchQ);
+      const matchPayment = String(item.payment_method || '').toLowerCase().includes(searchQ);
+      if (!matchRef && !matchDriver && !matchCustomer && !matchPickup && !matchDrop && !matchPayment) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const totalFilteredFare = filtered.reduce((sum, x) => sum + (Number(x.fare) || 0), 0);
+  if (statsEl) {
+    statsEl.innerHTML = `Showing <span class="text-white">${filtered.length}</span> of ${cachedEarningsLedger.length} orders • Total Fare: <span style="color: #D0FD38;">₹${totalFilteredFare.toLocaleString('en-IN')}</span>`;
+  }
+
+  // Render Table Rows
+  if (!tableBody) return;
+  if (filtered.length === 0) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center py-5 text-muted">
+          <i class="fa-solid fa-folder-open mb-2" style="font-size: 2rem; opacity: 0.3;"></i>
+          <div>No orders match the selected filters.</div>
+          <button class="btn btn-sm btn-outline-secondary mt-2" onclick="resetEarningsFilters()">Reset All Filters</button>
+        </td>
+      </tr>
+    `;
+  } else {
+    tableBody.innerHTML = filtered.map(item => {
+      const isMovers = item.service_type === 'movers';
+      const serviceBadge = isMovers 
+        ? `<span class="badge" style="background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); font-size: 0.7rem;"><i class="fa-solid fa-truck-moving me-1"></i> Packers & Movers</span>`
+        : `<span class="badge" style="background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); font-size: 0.7rem;"><i class="fa-solid fa-box-open me-1"></i> Parcel Delivery</span>`;
+
+      // Format Date & Exact Drop Time
+      let dropDateStr = '-';
+      let dropTimeStr = '-';
+      if (item.drop_timestamp) {
+        try {
+          const d = new Date(item.drop_timestamp);
+          if (!isNaN(d.getTime())) {
+            dropDateStr = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+            dropTimeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+          }
+        } catch {}
+      }
+
+      // Status Badge
+      let statusBadge = '';
+      if (item.is_delivered) {
+        statusBadge = `<span class="badge" style="background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.4);"><i class="fa-solid fa-circle-check me-1"></i> Delivered ✅</span>`;
+      } else {
+        statusBadge = `<span class="badge" style="background: rgba(234,179,8,0.15); color: #eab308; border: 1px solid rgba(234,179,8,0.4);"><i class="fa-solid fa-truck-fast me-1"></i> ${(item.status || 'Active').toUpperCase()}</span>`;
+      }
+
+      // Payment Badge
+      const paymentBadge = `<span class="badge bg-dark border border-secondary text-light" style="font-size: 0.7rem;">${item.payment_method || 'Cash / UPI'}</span>`;
+
+      const driverPhone = item.driver_phone ? `<span class="text-muted small d-block"><i class="fa-solid fa-phone me-1 text-success"></i>+91 ${item.driver_phone}</span>` : '';
+      const vehicleNum = item.vehicle_number ? `<span class="badge bg-secondary bg-opacity-25 text-white-50 border border-secondary border-opacity-25" style="font-size: 0.65rem;">${item.vehicle_number}</span>` : '';
+
+      return `
+        <tr>
+          <td>
+            <div class="mb-1">${serviceBadge}</div>
+            <div class="fw-bold text-white font-monospace" style="font-size: 0.85rem; color: #D0FD38 !important;">#${item.order_ref}</div>
+            <div class="small text-muted" style="font-size: 0.72rem;">${item.cargo_type || 'Cargo'}</div>
+          </td>
+          <td>
+            <div class="fw-bold text-white d-flex align-items-center gap-1">
+              <i class="fa-solid fa-id-badge text-warning me-1"></i> ${item.driver_name || 'Fleet Captain'}
+            </div>
+            ${driverPhone}
+            ${vehicleNum}
+          </td>
+          <td style="max-width: 240px;">
+            <div class="small text-white text-truncate" title="${item.pickup_address}">
+              <i class="fa-solid fa-location-dot text-danger me-1"></i> <span class="text-white-50">From:</span> ${item.pickup_address || 'Origin'}
+            </div>
+            <div class="small text-white text-truncate mt-1" title="${item.drop_address}">
+              <i class="fa-solid fa-flag-checkered text-success me-1"></i> <span class="text-white-50">To:</span> <strong class="text-white">${item.drop_address || 'Destination'}</strong>
+            </div>
+            <div class="small mt-1">
+              <span class="badge bg-dark border border-secondary text-info" style="font-size: 0.68rem;"><i class="fa-solid fa-road me-1"></i>${item.distance_km || 0} km</span>
+            </div>
+          </td>
+          <td>
+            <div class="text-white fw-bold" style="font-size: 0.85rem;">
+              <i class="fa-regular fa-clock me-1 text-warning"></i>${dropTimeStr}
+            </div>
+            <div class="small text-muted" style="font-size: 0.72rem;">
+              <i class="fa-regular fa-calendar me-1"></i>${dropDateStr}
+            </div>
+          </td>
+          <td>
+            <div class="fw-bold fs-6" style="color: #22c55e;">₹${(Number(item.fare) || 0).toLocaleString('en-IN')}</div>
+            <div class="small text-white-50" style="font-size: 0.7rem;">Rider: ₹${(Number(item.driver_earning) || 0).toLocaleString('en-IN')}</div>
+          </td>
+          <td>
+            ${paymentBadge}
+          </td>
+          <td>
+            ${statusBadge}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Render Driver Summary Leaderboard
+  renderDriverEarningsTable();
+}
+
+/**
+ * Render Driver Summary Table
+ */
+function renderDriverEarningsTable() {
+  const tbody = document.getElementById('driverEarningsSummaryTableBody');
+  if (!tbody) return;
+
+  if (cachedDriverSummary.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No completed driver trips recorded yet.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = cachedDriverSummary.map((d, index) => {
+    const avgFare = d.trips_count > 0 ? Math.round(d.total_earned / d.trips_count) : 0;
+    let lastDropStr = '-';
+    if (d.last_drop_time) {
+      try {
+        const dt = new Date(d.last_drop_time);
+        if (!isNaN(dt.getTime())) {
+          lastDropStr = `${dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, ${dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+        }
+      } catch {}
+    }
+
+    const rankBadge = index === 0 
+      ? `<span class="badge bg-warning text-dark"><i class="fa-solid fa-crown me-1"></i> #1 Top Earner</span>`
+      : `<span class="badge bg-dark border border-secondary text-muted">#${index + 1}</span>`;
+
+    return `
+      <tr>
+        <td>
+          <div class="fw-bold text-white d-flex align-items-center gap-2">
+            ${d.driver_name} ${rankBadge}
+          </div>
+        </td>
+        <td>
+          <span class="text-white font-monospace"><i class="fa-solid fa-phone me-1 text-success"></i>+91 ${d.driver_phone || '-'}</span>
+        </td>
+        <td>
+          <span class="badge bg-secondary bg-opacity-25 text-white border border-secondary border-opacity-25">${d.vehicle_number || 'RJ Fleet'}</span>
+        </td>
+        <td>
+          <span class="badge bg-success bg-opacity-20 text-success fw-bold px-2 py-1">${d.trips_count} Delivered</span>
+        </td>
+        <td>
+          <span class="fw-bold fs-6" style="color: #D0FD38;">₹${d.total_earned.toLocaleString('en-IN')}</span>
+        </td>
+        <td>
+          <span class="text-white-50">₹${avgFare} / trip</span>
+        </td>
+        <td>
+          <span class="text-muted small"><i class="fa-regular fa-clock me-1 text-warning"></i>${lastDropStr}</span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+/**
+ * Reset all earnings filters to default
+ */
+function resetEarningsFilters() {
+  const searchInput = document.getElementById('earnSearchInput');
+  const serviceSel = document.getElementById('earnFilterService');
+  const driverSel = document.getElementById('earnFilterDriver');
+  const statusSel = document.getElementById('earnFilterStatus');
+
+  if (searchInput) searchInput.value = '';
+  if (serviceSel) serviceSel.value = 'all';
+  if (driverSel) driverSel.value = 'all';
+  if (statusSel) statusSel.value = 'delivered';
+
+  filterEarningsLedger();
+}
+
+/**
+ * Re-sync Live Ledger from Backend
+ */
+async function refreshEarningsLedger() {
+  showAdminToast('🔄 Syncing live earnings ledger with database...', 'info');
+  await Promise.all([
+    loadBookingsFromBackend(),
+    loadAdminParcels()
+  ]);
+  await renderAdminEarningsLedger();
+  showAdminToast('✅ Earnings ledger updated with live database!', 'success');
+}
+
+/**
+ * Export Filtered Earnings Ledger to CSV
+ */
+function exportEarningsLedgerCSV() {
+  if (!cachedEarningsLedger || cachedEarningsLedger.length === 0) {
+    showAdminToast('⚠️ No earnings data available to export.', 'warning');
+    return;
+  }
+
+  const headers = [
+    'Service Type',
+    'Order Ref',
+    'Cargo / Package',
+    'Customer Name',
+    'Customer Phone',
+    'Assigned Driver',
+    'Driver Phone',
+    'Vehicle Number',
+    'Pickup Address',
+    'Drop Address',
+    'Distance (km)',
+    'Gross Fare (INR)',
+    'Payment Mode',
+    'Delivery Status',
+    'Drop Timestamp'
+  ];
+
+  const rows = cachedEarningsLedger.map(item => [
+    `"${item.service_label || item.service_type}"`,
+    `"${item.order_ref || item.id}"`,
+    `"${item.cargo_type || ''}"`,
+    `"${item.customer_name || ''}"`,
+    `"${item.customer_phone || ''}"`,
+    `"${item.driver_name || ''}"`,
+    `"${item.driver_phone || ''}"`,
+    `"${item.vehicle_number || ''}"`,
+    `"${(item.pickup_address || '').replace(/"/g, '""')}"`,
+    `"${(item.drop_address || '').replace(/"/g, '""')}"`,
+    item.distance_km || 0,
+    item.fare || 0,
+    `"${item.payment_method || 'Cash'}"`,
+    `"${item.status || ''}"`,
+    `"${item.drop_timestamp || ''}"`
+  ]);
+
+  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  const today = new Date().toISOString().slice(0, 10);
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `Rudraksha_Earnings_Ledger_${today}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showAdminToast('📥 Earnings Ledger exported successfully to CSV!', 'success');
+}
+
 
 

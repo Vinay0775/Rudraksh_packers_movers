@@ -1460,6 +1460,149 @@ app.post('/api/bookings/:id/verify-delivery-otp', requireAdminOrRider, async (re
   }
 });
 
+// 12. Comprehensive Admin Financial & Earnings Analytics Endpoint
+app.get('/api/admin/earnings-analysis', async (req, res, next) => {
+  try {
+    const [bookings, parcels, rawDrivers] = await Promise.all([
+      db.getBookings().catch(() => []),
+      db.getParcels().catch(() => []),
+      db.getDrivers().catch(() => [])
+    ]);
+
+    const drivers = rawDrivers || [];
+    const driverMap = new Map();
+    drivers.forEach(d => {
+      const cleanPhone = String(d.phone || '').replace(/\D/g, '');
+      if (cleanPhone) driverMap.set(cleanPhone, d);
+      if (d.id) driverMap.set(String(d.id), d);
+    });
+
+    // 1. Process Movers Relocations
+    const moversList = (bookings || []).map(b => {
+      const s = String(b.status || '').toLowerCase();
+      const isDelivered = (s === 'delivered' || s === 'completed');
+      const fare = Number(b.total_amount) || 0;
+      const driverPhone = String(b.assigned_driver_phone || '').replace(/\D/g, '');
+      const driverObj = driverMap.get(driverPhone) || null;
+
+      return {
+        id: b.id || b.reference_id,
+        order_ref: b.reference_id || b.id,
+        service_type: 'movers',
+        service_label: 'Packers & Movers',
+        cargo_type: b.selected_vehicle || b.cargo_type || 'Relocation Goods',
+        customer_name: b.customer_name || 'Customer',
+        customer_phone: b.customer_phone || '',
+        driver_name: b.assigned_driver_name || (driverObj ? driverObj.driver_name : 'Fleet Captain'),
+        driver_phone: b.assigned_driver_phone || (driverObj ? driverObj.phone : ''),
+        vehicle_number: b.assigned_vehicle || (driverObj ? driverObj.vehicle_number : ''),
+        pickup_address: b.pickup_address || '',
+        drop_address: b.drop_address || '',
+        distance_km: Number(b.distance_km) || 0,
+        fare: fare,
+        driver_earning: fare,
+        payment_method: b.payment_method || 'Cash / Offline',
+        payment_status: b.payment_status || (isDelivered ? 'Paid' : 'Pending'),
+        status: isDelivered ? 'Delivered' : (b.status || 'Pending'),
+        is_delivered: isDelivered,
+        drop_timestamp: b.updated_at || b.shifting_date || b.created_at,
+        created_at: b.created_at
+      };
+    });
+
+    // 2. Process On-Demand Parcels
+    const parcelList = (parcels || []).map(p => {
+      const s = String(p.booking_status || p.status || '').toLowerCase();
+      const isDelivered = (s === 'delivered' || p.delivery_otp_verified === true);
+      const fare = Number(p.total_amount) || 0;
+      const driverPhone = String(p.assigned_driver_phone || p.driver_phone || '').replace(/\D/g, '');
+      const driverObj = driverMap.get(driverPhone) || driverMap.get(String(p.driver_id || '')) || null;
+
+      return {
+        id: p.id || p.parcel_id,
+        order_ref: p.parcel_id || p.id,
+        service_type: 'parcel',
+        service_label: 'On-Demand Parcel',
+        cargo_type: `${(p.vehicle_type || 'bike').toUpperCase()} • ${p.parcel_type || 'Package'}`,
+        customer_name: p.sender_name || 'Sender',
+        customer_phone: p.sender_phone || '',
+        receiver_name: p.receiver_name || '',
+        receiver_phone: p.receiver_phone || '',
+        driver_name: p.assigned_driver_name || (driverObj ? driverObj.driver_name : 'Express Rider'),
+        driver_phone: driverPhone || (driverObj ? driverObj.phone : ''),
+        vehicle_number: p.vehicle_number || (driverObj ? driverObj.vehicle_number : ''),
+        vehicle_type: p.vehicle_type || 'Bike / Scooter',
+        parcel_type: p.parcel_type || 'Package',
+        pickup_address: p.pickup_address || '',
+        drop_address: p.drop_address || '',
+        distance_km: Number(p.distance_km) || 0,
+        fare: fare,
+        driver_earning: fare,
+        payment_method: p.payment_method || 'Direct Cash / UPI',
+        status: isDelivered ? 'Delivered' : (p.booking_status || p.status),
+        is_delivered: isDelivered,
+        drop_timestamp: p.delivery_time || p.updated_at || p.created_at,
+        created_at: p.created_at
+      };
+    });
+
+    // Unified Ledger sorted by drop_timestamp desc
+    const unifiedLedger = [...moversList, ...parcelList].sort((a, b) => {
+      const tA = new Date(a.drop_timestamp || a.created_at).getTime() || 0;
+      const tB = new Date(b.drop_timestamp || b.created_at).getTime() || 0;
+      return tB - tA;
+    });
+
+    const totalMoversRev = moversList.filter(x => x.is_delivered).reduce((sum, x) => sum + x.fare, 0);
+    const totalParcelsRev = parcelList.filter(x => x.is_delivered).reduce((sum, x) => sum + x.fare, 0);
+    const grossRevenue = totalMoversRev + totalParcelsRev;
+
+    // Driver-wise aggregation
+    const driverSummary = {};
+    unifiedLedger.filter(x => x.is_delivered).forEach(x => {
+      const dKey = (x.driver_name || 'Unassigned').trim();
+      if (!driverSummary[dKey]) {
+        driverSummary[dKey] = {
+          driver_name: dKey,
+          driver_phone: x.driver_phone || '',
+          vehicle_number: x.vehicle_number || '',
+          trips_count: 0,
+          total_earned: 0,
+          last_drop_time: x.drop_timestamp
+        };
+      }
+      driverSummary[dKey].trips_count += 1;
+      driverSummary[dKey].total_earned += x.fare;
+      if (!driverSummary[dKey].driver_phone && x.driver_phone) driverSummary[dKey].driver_phone = x.driver_phone;
+      if (!driverSummary[dKey].vehicle_number && x.vehicle_number) driverSummary[dKey].vehicle_number = x.vehicle_number;
+      // keep latest drop time
+      const curLast = new Date(driverSummary[dKey].last_drop_time || 0).getTime();
+      const thisTime = new Date(x.drop_timestamp || 0).getTime();
+      if (thisTime > curLast) driverSummary[dKey].last_drop_time = x.drop_timestamp;
+    });
+
+    const driverList = Object.values(driverSummary).sort((a, b) => b.total_earned - a.total_earned);
+
+    res.json({
+      success: true,
+      summary: {
+        grossRevenue,
+        totalMoversRev,
+        totalParcelsRev,
+        totalDeliveredCount: moversList.filter(x => x.is_delivered).length + parcelList.filter(x => x.is_delivered).length,
+        moversCount: moversList.filter(x => x.is_delivered).length,
+        parcelsCount: parcelList.filter(x => x.is_delivered).length,
+        allOrdersCount: unifiedLedger.length,
+        topDriver: driverList[0] || null
+      },
+      driverSummary: driverList,
+      ledger: unifiedLedger
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 /* ==========================================================================
    DRIVERS & FLEET ENDPOINTS
    ========================================================================== */
