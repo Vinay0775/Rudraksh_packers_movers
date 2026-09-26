@@ -52,15 +52,21 @@
 
     window.startDriverApkDownload = function(e, el) {
       if (e && e.preventDefault) e.preventDefault();
-      const directApkUrl = 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk';
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const apkUrl = isLocal
+        ? '/downloads/RudrakshaDriver.apk'
+        : 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk';
       if (typeof window.showToast === 'function') {
-        window.showToast('📲 Official Rudraksha Driver APK (52 MB) download shuru ho raha hai...', 'info');
+        window.showToast('📲 Official Rudraksha Driver APK (52.5 MB) download shuru ho raha hai...', 'info');
       }
-      // Force direct download from GitHub Releases CDN
-      const win = window.open(directApkUrl, '_blank');
-      if (!win) {
-        window.location.href = directApkUrl;
-      }
+      const a = document.createElement('a');
+      a.href = apkUrl;
+      a.download = 'RudrakshaDriver.apk';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() {
+        if (a.parentNode) a.parentNode.removeChild(a);
+      }, 500);
     };
 
     if ('serviceWorker' in navigator) {
@@ -216,7 +222,7 @@
     @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.5)} }
 
     /* ===================== MAIN ===================== */
-    .rider-main { max-width: 600px; margin: 0 auto; padding: 16px 14px 90px; }
+    .rider-main { max-width: 600px; margin: 0 auto; padding: 16px 14px 135px; }
 
     /* ===================== STATS RIBBON ===================== */
     .stats-ribbon {
@@ -545,24 +551,31 @@
     /* ===================== BOTTOM TAB BAR ===================== */
     .bottom-bar {
       position: fixed; bottom: 0; left: 0; right: 0;
-      background: rgba(11,12,14,0.95);
-      backdrop-filter: blur(16px);
-      border-top: 1px solid var(--border);
+      background: rgba(15, 17, 23, 0.96);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
       z-index: 100;
+      box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.6);
     }
     .bottom-tab {
-      flex: 1; display: flex; flex-direction: column; align-items: center;
-      padding: 10px 4px 8px;
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 10px 4px 9px;
       cursor: pointer;
-      color: var(--text-muted);
+      color: #94a3b8;
+      background: transparent !important;
+      border: none !important;
+      outline: none;
+      font-family: inherit;
       transition: all 0.2s;
-      font-size: 0.6rem; font-weight: 600;
+      font-size: 0.65rem; font-weight: 700;
       text-decoration: none;
+      line-height: 1.2;
     }
-    .bottom-tab i { font-size: 1.1rem; margin-bottom: 3px; }
-    .bottom-tab.active { color: var(--accent); }
-    .bottom-tab:hover { color: var(--accent); }
+    .bottom-tab i { font-size: 1.15rem; margin-bottom: 4px; }
+    .bottom-tab.active { color: #f97316; }
+    .bottom-tab:hover { color: #f97316; }
 
     /* ===================== RIDER PROFILE SETUP ===================== */
     .setup-overlay {
@@ -672,226 +685,6 @@
       border-radius: 18px;
       background: linear-gradient(135deg, #f97316, #ea580c);
       display: flex; align-items: center; justify-content: center;
-    /* ===================== NEW ORDER INCOMING ALERT MODAL ===================== */
-    .new-order-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.88);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      z-index: 10050;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-    }
-    .new-order-overlay.active {
-      display: flex;
-    }
-    .new-order-card {
-      background: #13141c;
-      border: 2px solid #f97316;
-      box-shadow: 0 0 50px rgba(249, 115, 22, 0.45), 0 20px 60px rgba(0,0,0,0.9);
-      border-radius: 26px;
-      padding: 24px 20px;
-      width: 100%;
-      max-width: 440px;
-      animation: popAlertIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-      position: relative;
-      text-align: center;
-    }
-    @keyframes popAlertIn {
-      from { opacity: 0; transform: scale(0.85) translateY(20px); }
-      to { opacity: 1; transform: scale(1) translateY(0); }
-    }
-    .new-order-siren-ring {
-      width: 68px;
-      height: 68px;
-      border-radius: 50%;
-      background: rgba(249, 115, 22, 0.16);
-      border: 2px solid #f97316;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 12px;
-      font-size: 1.8rem;
-      color: #f97316;
-      animation: sirenPulse 1.2s infinite ease-in-out;
-      box-shadow: 0 0 30px rgba(249, 115, 22, 0.4);
-    }
-    @keyframes sirenPulse {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(249, 115, 22, 0.3); }
-      50% { transform: scale(1.1); box-shadow: 0 0 40px rgba(249, 115, 22, 0.7); }
-    }
-    .new-order-live-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(239, 68, 68, 0.18);
-      border: 1px solid rgba(239, 68, 68, 0.4);
-      color: #f87171;
-      font-size: 0.75rem;
-      font-weight: 800;
-      padding: 4px 14px;
-      border-radius: 20px;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      margin-bottom: 12px;
-    }
-    .pulse-dot-red {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #ef4444;
-      display: inline-block;
-      animation: blinkRed 0.8s infinite;
-    }
-    @keyframes blinkRed {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.8); }
-    }
-    .new-order-fare-box {
-      background: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(20, 20, 26, 0.8) 100%);
-      border: 1.5px solid rgba(34, 197, 94, 0.35);
-      border-radius: 18px;
-      padding: 14px;
-      margin-bottom: 16px;
-    }
-    .new-order-fare-title {
-      font-size: 0.74rem;
-      color: #94a3b8;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      font-weight: 700;
-    }
-    .new-order-fare-val {
-      font-size: 2.2rem;
-      font-weight: 900;
-      color: #22c55e;
-      line-height: 1.1;
-      margin: 4px 0 2px;
-    }
-    .new-order-fare-sub {
-      font-size: 0.72rem;
-      color: #cbd5e1;
-      font-weight: 600;
-    }
-    .new-order-route-card {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 16px;
-      padding: 14px;
-      margin-bottom: 16px;
-      text-align: left;
-    }
-    .new-order-step {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-    }
-    .new-order-step-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.75rem;
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-    .new-order-step-icon.pickup { background: rgba(249, 115, 22, 0.2); color: #f97316; }
-    .new-order-step-icon.drop { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
-    .new-order-step-tag {
-      font-size: 0.64rem;
-      font-weight: 800;
-      color: #94a3b8;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .new-order-step-addr {
-      font-size: 0.88rem;
-      font-weight: 700;
-      color: #fff;
-      margin-top: 1px;
-      line-height: 1.35;
-    }
-    .new-order-step-line {
-      width: 2px;
-      height: 14px;
-      background: rgba(255, 255, 255, 0.15);
-      margin: 3px 0 3px 13px;
-    }
-    .new-order-timer-wrap {
-      margin-bottom: 18px;
-    }
-    .new-order-timer-text {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.74rem;
-      color: #94a3b8;
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-    .new-order-timer-bar {
-      width: 100%;
-      height: 6px;
-      background: rgba(255, 255, 255, 0.08);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-    .new-order-timer-progress {
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, #22c55e, #f97316);
-      transition: width 1s linear;
-    }
-    .new-order-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .btn-alert-accept {
-      width: 100%;
-      background: linear-gradient(135deg, #22c55e, #16a34a);
-      border: none;
-      color: #fff;
-      border-radius: 14px;
-      padding: 15px;
-      font-size: 1rem;
-      font-weight: 800;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45);
-      transition: all 0.2s;
-    }
-    .btn-alert-accept:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 28px rgba(34, 197, 94, 0.6);
-    }
-    .btn-alert-decline {
-      width: 100%;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      color: #cbd5e1;
-      border-radius: 14px;
-      padding: 12px;
-      font-size: 0.84rem;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: all 0.2s;
-    }
-    .btn-alert-decline:hover {
-      background: rgba(239, 68, 68, 0.15);
-      border-color: rgba(239, 68, 68, 0.35);
-      color: #f87171;
     }
   </style>
 </head>
@@ -1363,69 +1156,7 @@
     </div>
   </div>
 
-  <!-- =================== INCOMING NEW ORDER ALERT MODAL =================== -->
-  <div class="new-order-overlay" id="newOrderAlertOverlay">
-    <div class="new-order-card">
-      <!-- Animated Siren Icon -->
-      <div class="new-order-siren-ring">
-        <i class="fa-solid fa-bell fa-shake"></i>
-      </div>
 
-      <!-- Urgent Alert Badge -->
-      <div class="new-order-live-badge" id="alertModalBadge">
-        <span class="pulse-dot-red"></span> <span id="alertModalBadgeText">NAYA ORDER AAYA HAI! (NEW JOB)</span>
-      </div>
-
-      <!-- Earnings Highlight Box -->
-      <div class="new-order-fare-box">
-        <div class="new-order-fare-title" id="alertModalFareTitle">Aapki Kamai (100% Direct Cash/UPI)</div>
-        <div class="new-order-fare-val" id="alertModalFare">₹0</div>
-        <div class="new-order-fare-sub" id="alertModalOrderId">Booking #---</div>
-      </div>
-
-      <!-- Route Details -->
-      <div class="new-order-route-card">
-        <div class="new-order-step">
-          <div class="new-order-step-icon pickup"><i class="fa-solid fa-arrow-up"></i></div>
-          <div style="flex: 1;">
-            <div class="new-order-step-tag">Pickup Location</div>
-            <div class="new-order-step-addr" id="alertModalPickup">Pickup Point</div>
-          </div>
-        </div>
-        <div class="new-order-step-line"></div>
-        <div class="new-order-step">
-          <div class="new-order-step-icon drop"><i class="fa-solid fa-location-dot"></i></div>
-          <div style="flex: 1;">
-            <div class="new-order-step-tag">Delivery Location</div>
-            <div class="new-order-step-addr" id="alertModalDrop">Drop Point</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 45-Second Countdown Timer Bar -->
-      <div class="new-order-timer-wrap">
-        <div class="new-order-timer-text">
-          <span>Auto-dismiss in <strong id="alertCountdownSeconds" style="color: #f97316;">45</strong>s</span>
-          <span id="alertSoundStatusText" style="color: #22c55e;"><i class="fa-solid fa-volume-high me-1"></i> Siren Active</span>
-        </div>
-        <div class="new-order-timer-bar">
-          <div class="new-order-timer-progress" id="alertTimerProgress"></div>
-        </div>
-      </div>
-
-      <!-- Interactive Actions: Accept or Dismiss -->
-      <div class="new-order-actions">
-        <button type="button" class="btn-alert-accept" id="btnAcceptAlertOrder" onclick="acceptIncomingAlertOrder()">
-          <i class="fa-solid fa-circle-check" id="alertBtnIcon"></i>
-          <span id="alertBtnLabel">ACCEPT ORDER (Kamai ₹<span id="alertBtnFare">0</span>)</span>
-        </button>
-        <button type="button" class="btn-alert-decline" onclick="dismissNewOrderAlert(true)">
-          <i class="fa-solid fa-bell-slash"></i>
-          <span>Dismiss / Mute Siren</span>
-        </button>
-      </div>
-    </div>
-  </div>
 
   <!-- Dedicated Rider Partner Engine JS -->
   <script src="driver.js?v=3.8.0"></script>

@@ -1359,14 +1359,14 @@ function buildFeedCard(parcel) {
 
   return `
     <div class="feed-card" id="card-${pId}">
-      <div class="feed-top">
+      <div class="feed-top" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
         <div>
-          <span class="feed-badge">⚡ NEW DELIVERY JOB</span>
-          <div class="feed-title">${pId} • ${(parcel.parcel_type || 'Package').toUpperCase()}</div>
+          <div style="font-weight: 800; font-size: 0.95rem; color: #fff; letter-spacing: -0.2px;">${pId}</div>
+          <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">${(parcel.parcel_type || 'Package')} Delivery</div>
         </div>
-        <div class="feed-fare">
-          <div class="feed-fare-val">₹${riderShare}</div>
-          <div class="feed-fare-sub">100% Direct Cash/UPI</div>
+        <div style="text-align: right;">
+          <div style="font-size: 1.35rem; font-weight: 900; color: #22c55e;">₹${riderShare}</div>
+          <div style="font-size: 0.65rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">Fare</div>
         </div>
       </div>
 
@@ -2024,6 +2024,7 @@ function openNewOrderAlertModal(order) {
   currentAlertingOrder = order;
 
   const overlay = document.getElementById('newOrderAlertOverlay');
+  if (!overlay) return;
   const fareEl = document.getElementById('alertModalFare');
   const btnFareEl = document.getElementById('alertBtnFare');
   const idEl = document.getElementById('alertModalOrderId');
@@ -2185,16 +2186,23 @@ function triggerTestNewOrderAlert() {
  */
 window.startDriverApkDownload = function(e, el) {
   if (e && e.preventDefault) e.preventDefault();
-  const directApkUrl = 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk';
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const apkUrl = isLocal
+    ? '/downloads/RudrakshaDriver.apk'
+    : 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk';
   try {
     if (typeof showToast === 'function') {
-      showToast('📲 Official Rudraksha Driver APK (52 MB) download ho raha hai...', 'success');
+      showToast('📲 Official Rudraksha Driver APK (52.5 MB) download ho raha hai...', 'success');
     }
   } catch (err) {
     console.error('Download toast error:', err);
   }
-  const win = window.open(directApkUrl, '_blank');
-  if (!win) {
-    window.location.href = directApkUrl;
-  }
+  const a = document.createElement('a');
+  a.href = apkUrl;
+  a.download = 'RudrakshaDriver.apk';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() {
+    if (a.parentNode) a.parentNode.removeChild(a);
+  }, 500);
 };
