@@ -476,7 +476,32 @@ function handleGlobalSearch(query) {
   if (['fleet', 'vehicle', 'truck', 'driver'].includes(q)) switchAdminTab('fleet');
   else if (['rate', 'price', 'tariff', 'floor'].includes(q)) switchAdminTab('rates');
   else if (['coupon', 'promo', 'discount'].includes(q)) switchAdminTab('coupons');
-  else if (['theme', 'color', 'brand', 'contact'].includes(q)) switchAdminTab('theme'); else if (['parcel', 'parcels', 'package', 'consignment'].includes(q)) switchAdminTab('parcels');
+  else if (['theme', 'color', 'brand', 'contact'].includes(q)) switchAdminTab('theme');
+  else if (['parcel', 'parcels', 'package', 'consignment'].includes(q)) switchAdminTab('parcels');
+  else if (['earning', 'earnings', 'revenue', 'ledger', 'profit', 'money', 'payout'].includes(q)) switchAdminTab('earnings');
+  else if (['booking', 'bookings', 'relocation', 'shift'].includes(q)) switchAdminTab('bookings');
+  else if (['rider', 'riders', 'partner', 'application', 'driver app'].includes(q)) switchAdminTab('riders');
+}
+
+// Global Ctrl+K Shortcut to focus search bar
+window.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    const searchInput = document.getElementById('globalSearchInput');
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.select();
+    }
+  }
+});
+
+// Universal PWA Install Trigger
+function triggerPwaInstall() {
+  if (typeof window.triggerPwaInstall === 'function' && window.triggerPwaInstall !== triggerPwaInstall) {
+    window.triggerPwaInstall();
+  } else {
+    showAdminToast('📱 To install Admin App on Mobile/PC, tap browser menu (⋮) and select "Add to Home screen" or "Install App"!', 'info');
+  }
 }
 
 /* ==========================================================================

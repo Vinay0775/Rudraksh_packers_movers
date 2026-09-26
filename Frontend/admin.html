@@ -109,56 +109,64 @@
 
       <!-- TOP BAR HEADER WITH BRAND LOGO -->
       <header class="cyber-top-header">
-        <div class="d-flex align-items-center gap-3">
-          <div class="cyber-header-brand" onclick="switchAdminTab('dashboard')" title="Rudraksha Hub" style="cursor: pointer;">
-            <div class="cyber-brand-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <path d="M4 6L14 3L11 9L20 6L17 12L20 18L10 21L13 15L4 18L7 12L4 6Z" fill="#D0FD38"/>
-              </svg>
+        <!-- Brand Identity (Left) -->
+        <div class="cyber-header-brand" onclick="switchAdminTab('dashboard')" title="Rudraksha Enterprise Hub" style="cursor: pointer;">
+          <div class="cyber-brand-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M4 6L14 3L11 9L20 6L17 12L20 18L10 21L13 15L4 18L7 12L4 6Z" fill="#D0FD38"/>
+            </svg>
+          </div>
+          <div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="fw-extrabold text-white lh-1" style="font-family: 'Outfit', sans-serif; font-size: 1.05rem; letter-spacing: 0.5px;">RUDRAKSHA <span style="color: #D0FD38;">HUB</span></span>
+              <span class="cyber-header-badge">ENTERPRISE</span>
             </div>
-            <div class="d-none d-sm-block">
-              <div class="fw-extrabold text-white lh-1" style="font-family: 'Outfit', sans-serif; font-size: 1.05rem;">RUDRAKSHA <span style="color: #D0FD38;">HUB</span></div>
-              <div class="text-muted" style="font-size: 0.68rem; letter-spacing: 0.5px;">COMMAND CENTER</div>
-            </div>
+            <div class="text-muted small" style="font-size: 0.68rem; letter-spacing: 0.4px;">Fleet & Logistics Command</div>
           </div>
         </div>
 
+        <!-- Global Search Bar (Center) -->
         <div class="cyber-search-box d-none d-md-flex">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" id="globalSearchInput" placeholder="Search bookings, drivers, routes..." oninput="handleGlobalSearch(this.value)">
+          <input type="text" id="globalSearchInput" placeholder="Quick search bookings, drivers, routes..." oninput="handleGlobalSearch(this.value)">
+          <kbd class="cyber-search-kbd">Ctrl+K</kbd>
         </div>
 
+        <!-- Unified Actions Toolbar (Right) -->
         <div class="cyber-header-actions">
-          <button type="button" id="btnAdminInstall" class="pwa-admin-install-btn pwa-install-trigger" title="Install Rudraksha Admin as a Mobile / Desktop App">
-            <i class="fa-solid fa-mobile-screen-button"></i> <span>Install Admin App</span>
-          </button>
-
-          <div class="cyber-sync-status">
+          <!-- Live Status Pill -->
+          <div class="cyber-sync-status" id="backendStatusPill" title="Live Database Connection">
             <span class="cyber-pulse-dot"></span>
-            <span id="backendStatusText">Live API Connected</span>
+            <span id="backendStatusText">Supabase Active 🟢</span>
           </div>
 
-          <button class="btn-cyber-outline" id="btnAdminTopSync" onclick="refreshAdminAll()" title="Refresh & Sync All Data">
-            <i class="fa-solid fa-rotate" id="iconAdminTopSync"></i> <span class="d-none d-lg-inline">Sync</span>
-          </button>
+          <!-- Quick Action Buttons Group -->
+          <div class="cyber-header-toolbar">
+            <button type="button" class="cyber-header-btn" id="btnAdminTopSync" onclick="refreshAdminAll()" title="Refresh & Sync Live Database">
+              <i class="fa-solid fa-rotate" id="iconAdminTopSync"></i> <span>Sync</span>
+            </button>
+            <a href="index.html" target="_blank" rel="noopener noreferrer" class="cyber-header-btn" title="Open Client Website in New Tab">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Website</span>
+            </a>
+            <button type="button" id="btnAdminInstall" class="cyber-header-btn btn-install-highlight" onclick="triggerPwaInstall()" title="Install Rudraksha Admin as a Desktop/Mobile App">
+              <i class="fa-solid fa-mobile-screen-button"></i> <span>Install App</span>
+            </button>
+          </div>
 
-          <a href="index.html" class="btn-cyber-outline d-none d-sm-inline-flex" title="View Customer Website">
-            <i class="fa-solid fa-arrow-up-right-from-square"></i> <span class="d-none d-lg-inline">Website</span>
-          </a>
-
-          <div class="cyber-profile-card">
-            <div class="cyber-profile-avatar d-flex align-items-center justify-content-center" style="background: rgba(208,253,56,0.12); border: 1.5px solid #D0FD38; border-radius: 12px; width: 40px; height: 40px; color: #D0FD38; font-size: 1.1rem;">
+          <!-- Master Admin Profile & Logout Pill -->
+          <div class="cyber-admin-profile-pill">
+            <div class="admin-avatar-glow" title="Master Security Verified">
               <i class="fa-solid fa-shield-halved"></i>
             </div>
-            <div class="cyber-profile-info d-none d-lg-flex">
-              <span class="cyber-profile-name" id="adminDisplayName">Rudraksha Admin</span>
-              <span class="cyber-profile-rating"><i class="fa-solid fa-circle-check text-success"></i> Command Center</span>
+            <div class="d-none d-xl-flex flex-column text-start me-1">
+              <span class="admin-name-title" id="adminDisplayName">Rudraksha Admin</span>
+              <span class="admin-role-badge"><i class="fa-solid fa-circle-check text-success"></i> Super Admin</span>
             </div>
+            <button type="button" class="cyber-header-logout-btn" onclick="logoutAdmin()" title="Secure Lock & Sign Out">
+              <i class="fa-solid fa-power-off"></i>
+              <span class="d-none d-lg-inline">Logout</span>
+            </button>
           </div>
-
-          <button type="button" class="btn-cyber-outline" onclick="logoutAdmin()" style="border-color: rgba(239, 68, 68, 0.4); color: #f87171;" title="Log Out from Admin Hub">
-            <i class="fa-solid fa-arrow-right-from-bracket"></i> <span class="d-none d-sm-inline">Logout</span>
-          </button>
         </div>
       </header>
 
@@ -223,7 +231,7 @@
           <div class="cyber-card cyber-grid-col-5">
             <div class="cyber-card-header">
               <span class="cyber-card-title">Distance Traveled</span>
-              <button class="cyber-card-menu-btn"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+              <button class="cyber-card-menu-btn" onclick="switchAdminTab('fleet')" title="View Fleet Distance & Transport"><i class="fa-solid fa-ellipsis-vertical"></i></button>
             </div>
 
             <!-- Vector World Map with Pulsing Neon Pins -->
@@ -243,7 +251,7 @@
                   <span class="cyber-speed-val" id="dashTotalKm">0</span>
                   <span class="cyber-speed-unit">km/transit</span>
                 </div>
-                <span class="cyber-badge-pill" style="font-size: 0.7rem;">Live Fleet <i class="fa-solid fa-chevron-down ms-1"></i></span>
+                <span class="cyber-badge-pill" style="font-size: 0.7rem; cursor: pointer;" onclick="switchAdminTab('fleet')" title="Manage Live Fleet">Live Fleet <i class="fa-solid fa-arrow-right ms-1"></i></span>
               </div>
 
               <div class="cyber-track-progress-wrapper">
@@ -318,7 +326,7 @@
           <div class="cyber-card cyber-grid-col-4">
             <div class="cyber-card-header">
               <span class="cyber-card-title">Today's Activity</span>
-              <button class="cyber-card-menu-btn"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+              <button class="cyber-card-menu-btn" onclick="switchAdminTab('earnings')" title="View Earnings & Activity"><i class="fa-solid fa-ellipsis-vertical"></i></button>
             </div>
 
             <div class="cyber-bar-chart-container">
@@ -405,7 +413,7 @@
           <div class="cyber-card cyber-grid-col-6">
             <div class="cyber-card-header">
               <span class="cyber-card-title">Traffic & Demand Intensity</span>
-              <span class="cyber-badge-pill active-glow"><span class="dot"></span> Active Now | 14 Live</span>
+              <span class="cyber-badge-pill active-glow" style="cursor: pointer;" onclick="switchAdminTab('parcels')" title="View Active Parcels"><span class="dot"></span> Active Now | 14 Live</span>
             </div>
 
             <!-- Glowing Bezier Wave Graphic -->
@@ -427,7 +435,7 @@
           <div class="cyber-card cyber-grid-col-6">
             <div class="cyber-card-header">
               <span class="cyber-card-title">Performance Metrics</span>
-              <button class="cyber-card-menu-btn"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+              <button class="cyber-card-menu-btn" onclick="switchAdminTab('riders')" title="View Rider Partner Metrics"><i class="fa-solid fa-ellipsis-vertical"></i></button>
             </div>
 
             <div class="cyber-radial-container">
