@@ -3,7 +3,7 @@
  * Ultra-resilient, crash-proof caching with live network priority
  */
 
-const CACHE_NAME = 'rudraksha-pwa-v3.7.0';
+const CACHE_NAME = 'rudraksha-pwa-v3.8.0';
 const STATIC_ASSETS = [
   './index.html',
   './parcel.html',
@@ -76,6 +76,12 @@ self.addEventListener('fetch', (event) => {
   // 2. Completely bypass APIs, maps, geocoders, Firebase & backend
   if (
     url.pathname.startsWith('/api') ||
+    url.pathname.endsWith('.apk') ||
+    url.pathname.includes('.apk') ||
+    url.pathname.includes('RudrakshaDriver') ||
+    url.pathname.includes('download') ||
+    url.hostname.includes('github') ||
+    url.hostname.includes('githubusercontent') ||
     url.port === '5000' ||
     url.port === '3000' ||
     url.hostname.includes('onrender.com') ||

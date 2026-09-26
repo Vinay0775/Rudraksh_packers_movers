@@ -2184,11 +2184,17 @@ function triggerTestNewOrderAlert() {
  * Downloads the full 51.9 MB APK from GitHub CDN / Render
  */
 window.startDriverApkDownload = function(e, el) {
+  if (e && e.preventDefault) e.preventDefault();
+  const directApkUrl = 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk';
   try {
     if (typeof showToast === 'function') {
       showToast('📲 Official Rudraksha Driver APK (52 MB) download ho raha hai...', 'success');
     }
   } catch (err) {
     console.error('Download toast error:', err);
+  }
+  const win = window.open(directApkUrl, '_blank');
+  if (!win) {
+    window.location.href = directApkUrl;
   }
 };

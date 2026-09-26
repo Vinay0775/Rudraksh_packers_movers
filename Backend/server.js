@@ -16,14 +16,9 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, '../Frontend')));
 
 // Dedicated Official Android APK Direct Download Endpoint
-app.get(['/downloads/RudrakshaDriver.apk', '/download-driver-apk'], (req, res) => {
-  const fs = require('fs');
-  const apkPath = path.join(__dirname, '../Frontend/downloads/RudrakshaDriver.apk');
-  if (fs.existsSync(apkPath)) {
-    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-    return res.download(apkPath, 'RudrakshaDriver.apk');
-  }
-  res.status(404).send('APK file is updating. Please try again in 1 minute.');
+app.get(['/downloads/RudrakshaDriver.apk', '/download-driver-apk', '/download-apk', '/download/apk'], (req, res) => {
+  const apkDownloadUrl = 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk';
+  return res.redirect(apkDownloadUrl);
 });
 
 // App Auto-Update Metadata Endpoint for In-App Updates
