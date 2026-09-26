@@ -23,10 +23,12 @@ Thumbs.db
 Backend/data/
 Backend/logs/
 
-# Flutter build artifacts
+# Flutter build artifacts & Binary APKs
 driver_app/build/
 driver_app/android/build/
 driver_app/.dart_tool/
 driver_app/.gradle/
 driver_app/android/.gradle/
+Frontend/downloads/*.apk
+*.apk
 
