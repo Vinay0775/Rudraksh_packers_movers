@@ -7,6 +7,7 @@ import '../models/order_model.dart';
 import '../services/alert_manager.dart';
 import '../services/api_service.dart';
 import '../services/permission_service.dart';
+import '../services/update_service.dart';
 import '../widgets/order_alert_dialog.dart';
 import 'login_screen.dart';
 
@@ -43,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _startBackgroundPolling();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PermissionService.checkAndRequestAllPermissions(context);
+      UpdateService.checkAndPromptUpdate(context);
     });
   }
 
@@ -1944,6 +1946,21 @@ class _HomeScreenState extends State<HomeScreen> {
               )),
           const SizedBox(height: 16),
         ],
+
+        // Check for App Updates Button
+        ElevatedButton.icon(
+          onPressed: () =>
+              UpdateService.checkAndPromptUpdate(context, showNoUpdateToast: true),
+          icon: const Icon(Icons.system_update_rounded, color: Colors.black, size: 18),
+          label: const Text('Check for App Updates (v1.2.0)',
+              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF22C55E),
+            minimumSize: const Size(double.infinity, 44),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        const SizedBox(height: 12),
 
         // Logout Button
         OutlinedButton.icon(
