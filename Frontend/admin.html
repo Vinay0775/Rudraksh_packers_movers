@@ -33,7 +33,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 
   <!-- Futuristic Cyberpunk Dark Design System & PWA Styles -->
-  <link rel="stylesheet" href="admin.css?v=2.8">
+  <link rel="stylesheet" href="admin.css?v=2.9">
   <link rel="stylesheet" href="pwa-install.css">
 </head>
 <body class="cyber-dark-body">
@@ -110,33 +110,50 @@
     <!-- MAIN CONTENT WRAPPER -->
     <main class="cyber-main-content" id="cyberMainContent">
 
-      <!-- TOP BAR HEADER WITH BRAND LOGO -->
+      <!-- TOP BAR HEADER WITH BRAND LOGO & DUAL RESPONSIVE ROWS -->
       <header class="cyber-top-header">
-        <!-- Brand Identity (Left) -->
-        <div class="cyber-header-brand" onclick="switchAdminTab('dashboard')" title="Rudraksha Enterprise Hub" style="cursor: pointer;">
-          <div class="cyber-brand-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M4 6L14 3L11 9L20 6L17 12L20 18L10 21L13 15L4 18L7 12L4 6Z" fill="#D0FD38"/>
-            </svg>
-          </div>
-          <div>
-            <div class="d-flex align-items-center gap-2">
-              <span class="fw-extrabold text-white lh-1" style="font-family: 'Outfit', sans-serif; font-size: 1.05rem; letter-spacing: 0.5px;">RUDRAKSHA <span style="color: #D0FD38;">HUB</span></span>
-              <span class="cyber-header-badge">ENTERPRISE</span>
+        <!-- Top Row: Brand Identity (Left) & Admin Profile / Logout (Right) -->
+        <div class="cyber-header-top-row">
+          <div class="cyber-header-brand" onclick="switchAdminTab('dashboard')" title="Rudraksha Enterprise Hub" style="cursor: pointer;">
+            <div class="cyber-brand-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M4 6L14 3L11 9L20 6L17 12L20 18L10 21L13 15L4 18L7 12L4 6Z" fill="#D0FD38"/>
+              </svg>
             </div>
-            <div class="text-muted small" style="font-size: 0.68rem; letter-spacing: 0.4px;">Fleet & Logistics Command</div>
+            <div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="fw-extrabold text-white lh-1" style="font-family: 'Outfit', sans-serif; font-size: 1.05rem; letter-spacing: 0.5px;">RUDRAKSHA <span style="color: #D0FD38;">HUB</span></span>
+                <span class="cyber-header-badge">ENTERPRISE</span>
+              </div>
+              <div class="text-muted small" style="font-size: 0.68rem; letter-spacing: 0.4px;">Fleet & Logistics Command</div>
+            </div>
+          </div>
+
+          <!-- Master Admin Profile & Logout Pill -->
+          <div class="cyber-admin-profile-pill">
+            <div class="admin-avatar-glow" title="Master Security Verified">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div class="d-none d-xl-flex flex-column text-start me-1">
+              <span class="admin-name-title" id="adminDisplayName">Rudraksha Admin</span>
+              <span class="admin-role-badge"><i class="fa-solid fa-circle-check text-success"></i> Super Admin</span>
+            </div>
+            <button type="button" class="cyber-header-logout-btn" onclick="logoutAdmin()" title="Secure Lock & Sign Out">
+              <i class="fa-solid fa-power-off"></i>
+              <span>Logout</span>
+            </button>
           </div>
         </div>
 
-        <!-- Global Search Bar (Center) -->
-        <div class="cyber-search-box d-none d-md-flex">
+        <!-- Global Search Bar (Desktop Center) -->
+        <div class="cyber-search-box d-none d-lg-flex">
           <i class="fa-solid fa-magnifying-glass"></i>
           <input type="text" id="globalSearchInput" placeholder="Quick search bookings, drivers, routes..." oninput="handleGlobalSearch(this.value)">
           <kbd class="cyber-search-kbd">Ctrl+K</kbd>
         </div>
 
-        <!-- Unified Actions Toolbar (Right) -->
-        <div class="cyber-header-actions">
+        <!-- Bottom Row (Mobile) / Right Row (Desktop): Status Pill & Action Buttons Group -->
+        <div class="cyber-header-bottom-row">
           <!-- Live Status Pill -->
           <div class="cyber-sync-status" id="backendStatusPill" title="Live Database Connection">
             <span class="cyber-pulse-dot"></span>
@@ -152,22 +169,7 @@
               <i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Website</span>
             </a>
             <button type="button" id="btnAdminInstall" class="cyber-header-btn btn-install-highlight" onclick="triggerPwaInstall()" title="Install Rudraksha Admin as a Desktop/Mobile App">
-              <i class="fa-solid fa-mobile-screen-button"></i> <span>Install App</span>
-            </button>
-          </div>
-
-          <!-- Master Admin Profile & Logout Pill -->
-          <div class="cyber-admin-profile-pill">
-            <div class="admin-avatar-glow" title="Master Security Verified">
-              <i class="fa-solid fa-shield-halved"></i>
-            </div>
-            <div class="d-none d-xl-flex flex-column text-start me-1">
-              <span class="admin-name-title" id="adminDisplayName">Rudraksha Admin</span>
-              <span class="admin-role-badge"><i class="fa-solid fa-circle-check text-success"></i> Super Admin</span>
-            </div>
-            <button type="button" class="cyber-header-logout-btn" onclick="logoutAdmin()" title="Secure Lock & Sign Out">
-              <i class="fa-solid fa-power-off"></i>
-              <span class="d-none d-lg-inline">Logout</span>
+              <i class="fa-solid fa-mobile-screen-button"></i> <span>Install</span>
             </button>
           </div>
         </div>
@@ -1358,27 +1360,27 @@
                 <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="top: 14px; left: 16px;"></i>
               </div>
             </div>
-            <div class="col-md-2 col-6">
-              <select class="cyber-select" id="earnFilterService" onchange="filterEarningsLedger()">
+            <div class="col-lg-2 col-md-4 col-6">
+              <select class="cyber-select w-100" id="earnFilterService" onchange="filterEarningsLedger()">
                 <option value="all">All Services (All)</option>
                 <option value="movers">🏠 Packers & Movers</option>
                 <option value="parcel">📦 Parcel Deliveries</option>
               </select>
             </div>
-            <div class="col-md-2 col-6">
-              <select class="cyber-select" id="earnFilterDriver" onchange="filterEarningsLedger()">
+            <div class="col-lg-2 col-md-4 col-6">
+              <select class="cyber-select w-100" id="earnFilterDriver" onchange="filterEarningsLedger()">
                 <option value="all">All Fleet Drivers</option>
               </select>
             </div>
-            <div class="col-md-2 col-6">
-              <select class="cyber-select" id="earnFilterStatus" onchange="filterEarningsLedger()">
+            <div class="col-lg-2 col-md-4 col-12">
+              <select class="cyber-select w-100" id="earnFilterStatus" onchange="filterEarningsLedger()">
                 <option value="delivered">✅ Delivered Only</option>
                 <option value="all">All Statuses (Incl. In-Transit)</option>
               </select>
             </div>
-            <div class="col-md-3 col-6 d-flex gap-2 justify-content-md-end">
-              <button class="btn-cyber-outline btn-sm py-2 px-3 flex-fill text-nowrap" onclick="refreshEarningsLedger()"><i class="fa-solid fa-rotate me-1"></i> Sync Live</button>
-              <button class="btn-cyber-neon btn-sm py-2 px-3 flex-fill text-nowrap" onclick="exportEarningsLedgerCSV()"><i class="fa-solid fa-file-csv me-1"></i> Export CSV</button>
+            <div class="col-lg-3 col-md-12 col-12 d-flex gap-2 justify-content-md-end mt-2 mt-lg-0">
+              <button class="btn-cyber-outline btn-sm py-2 px-3 flex-fill text-nowrap" id="btnEarnSync" onclick="refreshEarningsLedger()"><i class="fa-solid fa-rotate me-1"></i> Sync Live</button>
+              <button class="btn-cyber-neon btn-sm py-2 px-3 flex-fill text-nowrap" id="btnEarnExportCSV" onclick="exportEarningsLedgerCSV()"><i class="fa-solid fa-file-csv me-1"></i> Export CSV</button>
             </div>
           </div>
         </div>
@@ -1737,7 +1739,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
   <!-- Futuristic Admin App Script -->
-  <script src="admin.js?v=2.7"></script>
+  <script src="admin.js?v=2.9"></script>
 
   <!-- PWA Universal Install Script -->
   <script src="pwa-install.js"></script>
