@@ -870,10 +870,10 @@ function initFleetRadarMap() {
       attributionControl: false
     }).setView([26.9124, 75.7873], 12);
 
-    // OpenStreetMap / CartoDB Voyager tiles
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    // Official Free Public OpenStreetMap Engine (100% Free, Zero API Key Required)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      subdomains: 'abcd'
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
     }).addTo(fleetRadarMapInstance);
 
     fleetRadarMarkersGroup = L.layerGroup().addTo(fleetRadarMapInstance);
@@ -961,7 +961,8 @@ async function refreshFleetRadarMap(manual = false) {
         `);
       });
 
-      if (bounds.length > 0 && manual) {
+      if (bounds.length > 0 && (manual || !window._fleetMapCenteredOnce)) {
+        window._fleetMapCenteredOnce = true;
         fleetRadarMapInstance.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
       }
     }
