@@ -76,9 +76,9 @@ class UpdateService {
       showUpdateDialog(context, info);
     } else if (showNoUpdateToast) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✓ Aapka app pehle se hi latest version (v1.2.0) par hai!'),
-          backgroundColor: Color(0xFF22C55E),
+        SnackBar(
+          content: Text('✓ Aapka app pehle se hi latest version (v$currentVersion) par hai!'),
+          backgroundColor: const Color(0xFF22C55E),
         ),
       );
     }

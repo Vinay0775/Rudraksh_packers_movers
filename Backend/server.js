@@ -671,6 +671,22 @@ app.post('/api/rider/location', requireRider, async (req, res, next) => {
 });
 
 // 4C. Admin & Operations: Get Live Fleet GPS Locations for Radar Map
+// Fixed Jaipur Fleet Base Stations (Accurate geographic points in Jaipur)
+const KNOWN_DRIVER_BASES = {
+  // Vinay Kumar (Bindayaka, Siwar Mod, Sirsi Road, Jaipur)
+  '8619384774': { lat: 26.9288, lng: 75.6880, area: 'Siwar Mod, Bindayaka, Sirsi Rd' },
+  // Hemant Yadav (Vaishali Estate, Gandhi Path, Jaipur)
+  '7232825204': { lat: 26.8920, lng: 75.7260, area: 'Vaishali Estate, Gandhi Path' },
+  // Purshottam Yadav (Sanganer / Mansarovar Jaipur)
+  '7232825205': { lat: 26.8400, lng: 75.7800, area: 'Sanganer, Jaipur' },
+  // Rajesh Kumar (Mansarovar, Jaipur)
+  '9876543210': { lat: 26.8650, lng: 75.7650, area: 'Mansarovar, Jaipur' },
+  // Vikram Singh (Vidhyadhar Nagar, Jaipur)
+  '9829012345': { lat: 26.9650, lng: 75.7800, area: 'Vidhyadhar Nagar, Jaipur' },
+  // Ramesh Meena (Malviya Nagar, Jaipur)
+  '9414098765': { lat: 26.8550, lng: 75.8150, area: 'Malviya Nagar, Jaipur' }
+};
+
 app.get('/api/admin/drivers-live-locations', requireAdminOrRider, async (req, res, next) => {
   try {
     const drivers = await db.getDrivers();
@@ -691,9 +707,10 @@ app.get('/api/admin/drivers-live-locations', requireAdminOrRider, async (req, re
         } catch {}
       }
 
-      // Default fallback coordinates around Jaipur center if not yet GPS-fixed
-      const defaultJaipurLat = 26.9124 + ((Math.random() - 0.5) * 0.05);
-      const defaultJaipurLng = 75.7873 + ((Math.random() - 0.5) * 0.05);
+      // Exact Jaipur known home base coordinates (never Math.random so markers never jump)
+      const baseStation = KNOWN_DRIVER_BASES[cleanPhone] || { lat: 26.9124, lng: 75.7873, area: 'Jaipur Base' };
+      const finalLat = lat != null ? Number(lat) : baseStation.lat;
+      const finalLng = lng != null ? Number(lng) : baseStation.lng;
 
       return {
         id: d.id,
@@ -703,9 +720,10 @@ app.get('/api/admin/drivers-live-locations', requireAdminOrRider, async (req, re
         vehicle_type: d.vehicle_type || 'Express Bike',
         status: d.status || 'available',
         onDuty: d.onDuty !== false,
-        latitude: lat != null ? Number(lat) : defaultJaipurLat,
-        longitude: lng != null ? Number(lng) : defaultJaipurLng,
+        latitude: finalLat,
+        longitude: finalLng,
         hasLiveGps: lat != null && lng != null,
+        base_area: baseStation.area,
         speed: live ? live.speed : 0,
         heading: live ? live.heading : 0,
         avatar_url: d.avatar_url || (cleanPhone && riderAvatarStore.has(cleanPhone) ? riderAvatarStore.get(cleanPhone) : null),

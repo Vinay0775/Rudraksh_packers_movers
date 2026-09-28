@@ -1980,8 +1980,8 @@ class _HomeScreenState extends State<HomeScreen> {
           onPressed: () =>
               UpdateService.checkAndPromptUpdate(context, showNoUpdateToast: true),
           icon: const Icon(Icons.system_update_rounded, color: Colors.black, size: 18),
-          label: const Text('Check for App Updates (v1.2.1)',
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          label: Text('Check for App Updates (v${UpdateService.currentVersion})',
+              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF22C55E),
             minimumSize: const Size(double.infinity, 44),
