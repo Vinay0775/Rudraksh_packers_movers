@@ -645,16 +645,107 @@ async function clearAllAdminBookings() {
   }
 }
 
-function renderBookingsTable(list = adminBookings) {
-  const tbody = document.getElementById('bookingsTableBody');
-  if (!tbody) return;
+const ORDERS_PER_PAGE = 15;
+let adminBookingsCurrentPage = 1;
+let adminBookingsCurrentList = null;
 
-  if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><i class="fa-solid fa-inbox me-2"></i>No bookings found.</td></tr>`;
+let allAdminParcelsCurrentPage = 1;
+let allAdminParcelsCurrentList = null;
+
+function renderPaginationControls(containerId, currentPage, totalPages, onPageClickFnName) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  if (totalPages <= 1) {
+    container.innerHTML = '';
     return;
   }
 
-  tbody.innerHTML = list.map((b) => {
+  let html = '';
+
+  // Prev Button
+  const prevDisabled = currentPage <= 1 ? 'disabled' : '';
+  html += `<button type="button" class="cyber-page-btn" ${prevDisabled} onclick="${onPageClickFnName}(${currentPage - 1})" title="Previous Page">
+    <i class="fa-solid fa-chevron-left"></i>
+  </button>`;
+
+  // Page Numbers with smart ellipsis
+  const pages = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (currentPage > 3) pages.push('...');
+
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(totalPages - 1, currentPage + 1);
+    for (let i = start; i <= end; i++) {
+      if (!pages.includes(i)) pages.push(i);
+    }
+
+    if (currentPage < totalPages - 2) pages.push('...');
+    if (!pages.includes(totalPages)) pages.push(totalPages);
+  }
+
+  pages.forEach(p => {
+    if (p === '...') {
+      html += `<span class="cyber-page-ellipsis">…</span>`;
+    } else {
+      const activeClass = p === currentPage ? 'active' : '';
+      html += `<button type="button" class="cyber-page-btn ${activeClass}" onclick="${onPageClickFnName}(${p})">${p}</button>`;
+    }
+  });
+
+  // Next Button
+  const nextDisabled = currentPage >= totalPages ? 'disabled' : '';
+  html += `<button type="button" class="cyber-page-btn" ${nextDisabled} onclick="${onPageClickFnName}(${currentPage + 1})" title="Next Page">
+    <i class="fa-solid fa-chevron-right"></i>
+  </button>`;
+
+  container.innerHTML = html;
+}
+
+function goToBookingsPage(page) {
+  renderBookingsTable(adminBookingsCurrentList || adminBookings, page);
+  const table = document.getElementById('bookingsTableBody');
+  if (table) table.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderBookingsTable(list = adminBookings, page = null) {
+  adminBookingsCurrentList = list;
+  if (page !== null) {
+    adminBookingsCurrentPage = page;
+  } else if (list !== adminBookings) {
+    adminBookingsCurrentPage = 1;
+  }
+
+  const tbody = document.getElementById('bookingsTableBody');
+  const pagWrapper = document.getElementById('bookingsPaginationWrapper');
+  const pagInfo = document.getElementById('bookingsPaginationInfo');
+  if (!tbody) return;
+
+  const total = list.length;
+  const totalPages = Math.max(1, Math.ceil(total / ORDERS_PER_PAGE));
+  adminBookingsCurrentPage = Math.min(Math.max(1, adminBookingsCurrentPage), totalPages);
+
+  if (total === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><i class="fa-solid fa-inbox me-2"></i>No bookings found.</td></tr>`;
+    if (pagWrapper) pagWrapper.style.display = 'none';
+    return;
+  }
+
+  if (pagWrapper) pagWrapper.style.display = 'flex';
+
+  const startIndex = (adminBookingsCurrentPage - 1) * ORDERS_PER_PAGE;
+  const endIndex = Math.min(startIndex + ORDERS_PER_PAGE, total);
+  const pageItems = list.slice(startIndex, endIndex);
+
+  if (pagInfo) {
+    pagInfo.innerHTML = `Showing <strong>${startIndex + 1}–${endIndex}</strong> of <strong>${total}</strong> bookings (Page ${adminBookingsCurrentPage} of ${totalPages})`;
+  }
+  renderPaginationControls('bookingsPaginationControls', adminBookingsCurrentPage, totalPages, 'goToBookingsPage');
+
+  tbody.innerHTML = pageItems.map((b) => {
     // Ensure unique PINs per order
     if (!b.pickup_otp || b.pickup_otp === '3821') {
       b.pickup_otp = String(Math.floor(1000 + Math.random() * 9000));
@@ -2299,16 +2390,47 @@ function searchParcelsTable(query) {
   renderParcelsTable(filtered);
 }
 
-function renderParcelsTable(list = allAdminParcels) {
+function goToParcelsPage(page) {
+  renderParcelsTable(allAdminParcelsCurrentList || allAdminParcels, page);
+  const table = document.getElementById('parcelsTableBody');
+  if (table) table.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderParcelsTable(list = allAdminParcels, page = null) {
+  allAdminParcelsCurrentList = list;
+  if (page !== null) {
+    allAdminParcelsCurrentPage = page;
+  } else if (list !== allAdminParcels) {
+    allAdminParcelsCurrentPage = 1;
+  }
+
   const tbody = document.getElementById('parcelsTableBody');
+  const pagWrapper = document.getElementById('parcelsPaginationWrapper');
+  const pagInfo = document.getElementById('parcelsPaginationInfo');
   if (!tbody) return;
 
-  if (list.length === 0) {
+  const total = list.length;
+  const totalPages = Math.max(1, Math.ceil(total / ORDERS_PER_PAGE));
+  allAdminParcelsCurrentPage = Math.min(Math.max(1, allAdminParcelsCurrentPage), totalPages);
+
+  if (total === 0) {
     tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted"><i class="fa-solid fa-box-open me-2"></i>No parcel deliveries found.</td></tr>`;
+    if (pagWrapper) pagWrapper.style.display = 'none';
     return;
   }
 
-  tbody.innerHTML = list.map(p => {
+  if (pagWrapper) pagWrapper.style.display = 'flex';
+
+  const startIndex = (allAdminParcelsCurrentPage - 1) * ORDERS_PER_PAGE;
+  const endIndex = Math.min(startIndex + ORDERS_PER_PAGE, total);
+  const pageItems = list.slice(startIndex, endIndex);
+
+  if (pagInfo) {
+    pagInfo.innerHTML = `Showing <strong>${startIndex + 1}–${endIndex}</strong> of <strong>${total}</strong> parcels (Page ${allAdminParcelsCurrentPage} of ${totalPages})`;
+  }
+  renderPaginationControls('parcelsPaginationControls', allAdminParcelsCurrentPage, totalPages, 'goToParcelsPage');
+
+  tbody.innerHTML = pageItems.map(p => {
     const pId = p.parcel_id || p.id || 'RP-PCL-XXXX';
     const sName = p.sender_name || 'Sender';
     const sPhone = p.sender_phone || '-';

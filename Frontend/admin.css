@@ -1527,3 +1527,73 @@ body.cyber-dark-body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ==========================================================================
+   CYBER PAGINATION STYLES (Admin Bookings & Parcels)
+   ========================================================================== */
+.cyber-pagination-wrapper {
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cyber-page-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cfd8dc;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  user-select: none;
+}
+
+.cyber-page-btn:hover:not(:disabled) {
+  background: rgba(208, 253, 56, 0.15);
+  border-color: #D0FD38;
+  color: #D0FD38;
+  transform: translateY(-1px);
+}
+
+.cyber-page-btn.active {
+  background: #D0FD38 !important;
+  border-color: #D0FD38 !important;
+  color: #0b0f19 !important;
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(208, 253, 56, 0.4);
+}
+
+.cyber-page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.cyber-page-ellipsis {
+  color: #64748b;
+  padding: 0 5px;
+  font-weight: bold;
+  user-select: none;
+}
+
+@media (max-width: 768px) {
+  .cyber-pagination-wrapper {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+  .cyber-page-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 4px 9px;
+    font-size: 0.78rem;
+  }
+}
+
+
