@@ -40,8 +40,8 @@ app.get(['/api/app-version', '/api/rider/app-version'], (req, res) => {
   const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
   res.json({
     success: true,
-    version: '1.2.3',
-    versionCode: 5,
+    version: '1.2.4',
+    versionCode: 6,
     apkUrl: `${protocol}://${host}/downloads/RudrakshaDriver.apk`,
     fallbackApkUrl: 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk',
     releaseNotes: '1. Persistent Background Foreground Service: New order alert & siren works even when phone is locked or screen off\n2. Heads-up notification on lock screen with Accept and Decline buttons\n3. Vehicle-specific driver matching & real-time GPS tracking',

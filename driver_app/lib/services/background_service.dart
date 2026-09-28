@@ -106,11 +106,12 @@ class DriverTaskHandler extends TaskHandler {
             // Trigger full siren sound, vibration & lock screen notification with Accept/Decline actions!
             await AlertManager().triggerNewOrderAlert(order);
 
-            // Update foreground service notification with Accept/Decline action buttons
+            // Update foreground service notification with Mute, Accept & Decline action buttons
             await FlutterForegroundTask.updateService(
-              notificationTitle: '🚨 NAYA ORDER ASSIGNED! (₹${order.totalAmount.toInt()})',
+              notificationTitle: '🔔 NAYA ORDER ASSIGNED! (₹${order.totalAmount.toInt()})',
               notificationText: '📍 ${order.pickupAddress.split(',')[0]} ➔ ${order.dropAddress.split(',')[0]}',
               notificationButtons: [
+                const NotificationButton(id: 'silence_order', text: '🔇 MUTE'),
                 const NotificationButton(id: 'accept_order', text: '✅ ACCEPT'),
                 const NotificationButton(id: 'decline_order', text: '❌ DECLINE'),
               ],
@@ -138,7 +139,18 @@ class DriverTaskHandler extends TaskHandler {
   @override
   void onNotificationButtonPressed(String id) async {
     debugPrint('[BackgroundService] Notification button clicked: $id');
-    if (id == 'accept_order') {
+    if (id == 'silence_order') {
+      // Instantly silence sound and vibration, but keep order active for review
+      await AlertManager().muteSound();
+      await FlutterForegroundTask.updateService(
+        notificationTitle: '🔔 Order Assigned (Sound Muted)',
+        notificationText: 'Tap ACCEPT to start or DECLINE to skip',
+        notificationButtons: [
+          const NotificationButton(id: 'accept_order', text: '✅ ACCEPT'),
+          const NotificationButton(id: 'decline_order', text: '❌ DECLINE'),
+        ],
+      );
+    } else if (id == 'accept_order') {
       await AlertManager().stopAlert();
       if (_lastNotifiedParcelId != null) {
         try {

@@ -27,8 +27,8 @@ class UpdateInfo {
 
 class UpdateService {
   // Current App Version Constants
-  static const String currentVersion = '1.2.3';
-  static const int currentVersionCode = 5;
+  static const String currentVersion = '1.2.4';
+  static const int currentVersionCode = 6;
 
   /// Check server for latest app version
   static Future<UpdateInfo?> checkForUpdate() async {

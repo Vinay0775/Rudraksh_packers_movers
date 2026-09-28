@@ -23,6 +23,7 @@ class _OrderAlertDialogState extends State<OrderAlertDialog>
     with SingleTickerProviderStateMixin {
   int _secondsLeft = 45;
   Timer? _timer;
+  bool _isMuted = false;
   late AnimationController _animController;
   late Animation<double> _pulseAnimation;
 
@@ -305,25 +306,72 @@ class _OrderAlertDialogState extends State<OrderAlertDialog>
 
               const SizedBox(height: 20),
 
-              // 6. Action Buttons
+              // 6. Action Buttons: [1. Silence / Mute], [2. Decline], [3. Accept]
               Row(
                 children: [
+                  // Button 1: Silence / Mute Sound
+                  Expanded(
+                    flex: 1,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        setState(() => _isMuted = true);
+                        AlertManager().muteSound();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _isMuted ? const Color(0xFF22C55E) : Colors.amberAccent,
+                        side: BorderSide(
+                          color: _isMuted ? const Color(0xFF22C55E) : Colors.amberAccent,
+                          width: 1.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded, size: 20),
+                          const SizedBox(height: 2),
+                          Text(
+                            _isMuted ? 'MUTED' : 'SILENCE',
+                            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Button 2: Decline Order
                   Expanded(
                     flex: 1,
                     child: OutlinedButton(
                       onPressed: _dismissAlert,
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white60,
+                        foregroundColor: Colors.white70,
                         side: const BorderSide(color: Colors.white24),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
-                      child: const Text('Silence'),
+                      child: const Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.close_rounded, size: 20),
+                          SizedBox(height: 2),
+                          Text(
+                            'DECLINE',
+                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
+
+                  // Button 3: Accept Order
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
@@ -338,7 +386,7 @@ class _OrderAlertDialogState extends State<OrderAlertDialog>
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         elevation: 4,
                       ),
                       child: Row(
@@ -346,10 +394,10 @@ class _OrderAlertDialogState extends State<OrderAlertDialog>
                         children: [
                           Icon(isDirect
                               ? Icons.navigation_rounded
-                              : Icons.check_circle_rounded),
+                              : Icons.check_circle_rounded, size: 20),
                           const SizedBox(width: 6),
                           Text(
-                            isDirect ? 'START ROUTE' : 'ACCEPT ORDER',
+                            isDirect ? 'START' : 'ACCEPT',
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
                               fontSize: 14,

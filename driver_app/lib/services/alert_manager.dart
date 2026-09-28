@@ -34,12 +34,19 @@ class AlertManager {
       await _notificationsPlugin.initialize(
         initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse details) {
-          debugPrint('Dispatch notification clicked: ${details.actionId}, payload: ${details.payload}');
-          stopAlert();
-          if (details.actionId == 'decline_order') {
+          debugPrint('Dispatch notification action: ${details.actionId}, payload: ${details.payload}');
+          if (details.actionId == 'silence_order') {
+            muteSound();
+          } else if (details.actionId == 'decline_order') {
+            stopAlert(notifId: details.payload?.hashCode);
             onActionCallback?.call('decline', details.payload);
-          } else {
+          } else if (details.actionId == 'accept_order') {
+            stopAlert(notifId: details.payload?.hashCode);
             onActionCallback?.call('accept', details.payload);
+            FlutterForegroundTask.launchApp();
+          } else {
+            // Tapping notification body mutes sound and brings app to foreground
+            muteSound();
             FlutterForegroundTask.launchApp();
           }
         },
@@ -129,14 +136,21 @@ class AlertManager {
         autoCancel: false,
         actions: const [
           AndroidNotificationAction(
+            'silence_order',
+            '🔇 SILENCE / MUTE',
+            showsUserInterface: false,
+            cancelNotification: false,
+          ),
+          AndroidNotificationAction(
             'accept_order',
-            '✅ ACCEPT ORDER',
+            '✅ ACCEPT',
             showsUserInterface: true,
             cancelNotification: true,
           ),
           AndroidNotificationAction(
             'decline_order',
             '❌ DECLINE',
+            showsUserInterface: false,
             cancelNotification: true,
           ),
         ],
@@ -183,9 +197,11 @@ class AlertManager {
     }
   }
 
-  Future<void> stopAlert({int? notifId}) async {
+  /// Instantly stops audio and vibration without dismissing the order
+  Future<void> muteSound() async {
     _isPlaying = false;
     _vibrateTimer?.cancel();
+    _vibrateTimer = null;
     try {
       await _audioPlayer.stop();
     } catch (e) {
@@ -196,6 +212,11 @@ class AlertManager {
     } catch (e) {
       debugPrint('Vibration cancel error: $e');
     }
+  }
+
+  /// Completely stops alert and dismisses notification
+  Future<void> stopAlert({int? notifId}) async {
+    await muteSound();
     try {
       if (notifId != null) {
         await _notificationsPlugin.cancel(notifId);
