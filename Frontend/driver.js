@@ -38,8 +38,10 @@ let sirenInterval = null;
 let alertCountdownInterval = null;
 let currentAlertingOrder = null;
 let seenOrderIds = new Set();
+let acknowledgedAssignedTrips = new Set();
 let isFeedInitialSyncDone = false;
 let lastSeenActiveTripId = null;
+let riderGeoWatchId = null;
 
 /* ==========================================================================
    1. INITIALIZATION & AUTHENTICATION
@@ -183,6 +185,38 @@ function onRiderAuthSuccess() {
   loadDriverEarnings();
   loadDriverFeed(true);
   checkAndPromptNotificationPermission();
+  initRiderLiveGeolocation();
+}
+
+function initRiderLiveGeolocation() {
+  if (!('geolocation' in navigator) || riderGeoWatchId) return;
+
+  function transmitPosition(pos) {
+    if (!currentDriver || currentDriver.onDuty === false) return;
+    const { latitude, longitude, speed, heading, accuracy } = pos.coords;
+    fetch(`${API_BASE}/rider/location`, {
+      method: 'POST',
+      headers: getRiderHeaders(),
+      body: JSON.stringify({
+        latitude,
+        longitude,
+        speed: speed || 0,
+        heading: heading || 0,
+        accuracy: accuracy || 0
+      })
+    }).catch(() => {});
+  }
+
+  try {
+    navigator.geolocation.getCurrentPosition(transmitPosition, () => {}, { enableHighAccuracy: true });
+    riderGeoWatchId = navigator.geolocation.watchPosition(transmitPosition, () => {}, {
+      enableHighAccuracy: true,
+      maximumAge: 15000,
+      timeout: 10000
+    });
+  } catch (e) {
+    console.warn('Geolocation init warning:', e);
+  }
 }
 
 async function submitDriverLogin() {
@@ -1209,30 +1243,25 @@ async function loadDriverFeed(showRefreshAnim = false) {
   if (feedCountEl) feedCountEl.innerText = availableList.length > 0 ? availableList.length : '';
 
   // Automatic Real-Time Order Arrival Detection & Trigger (Direct Assignment & Open Pool)
-  if (!isFeedInitialSyncDone) {
-    availableList.forEach(p => seenOrderIds.add(String(p.parcel_id || p.id)));
-    if (currentActiveTrip) {
-      lastSeenActiveTripId = String(currentActiveTrip.parcel_id || currentActiveTrip.id);
-    }
-    isFeedInitialSyncDone = true;
-  } else {
-    // 1. Direct Admin Assignment Detection & Urgent Alert
-    if (currentActiveTrip) {
-      const activeTripId = String(currentActiveTrip.parcel_id || currentActiveTrip.id);
-      const tripStatus = currentActiveTrip.booking_status || currentActiveTrip.status || '';
-      const isDirectAdminAssigned = tripStatus === 'driver_assigned' || tripStatus === 'received';
+  // 1. Direct Admin Assignment Detection & Urgent Alert
+  if (currentActiveTrip) {
+    const activeTripId = String(currentActiveTrip.parcel_id || currentActiveTrip.id);
+    const tripStatus = currentActiveTrip.booking_status || currentActiveTrip.status || '';
+    const isDirectAdminAssigned = tripStatus === 'driver_assigned' || tripStatus === 'received';
 
-      if (isDirectAdminAssigned && (lastSeenActiveTripId !== activeTripId)) {
-        lastSeenActiveTripId = activeTripId;
-        currentActiveTrip.isDirectAssignment = true;
-        openNewOrderAlertModal(currentActiveTrip);
-      }
+    // If assigned by admin and not yet acknowledged in this session, trigger siren and popup immediately!
+    if (isDirectAdminAssigned && !acknowledgedAssignedTrips.has(activeTripId)) {
+      lastSeenActiveTripId = activeTripId;
+      currentActiveTrip.isDirectAssignment = true;
+      openNewOrderAlertModal(currentActiveTrip);
+    }
+  }
+
+  // 2. Open Available Pool Jobs Detection & Alert
+  if (currentDriver && currentDriver.onDuty !== false && !currentActiveTrip) {
+    if (!isFeedInitialSyncDone) {
+      availableList.forEach(p => seenOrderIds.add(String(p.parcel_id || p.id)));
     } else {
-      lastSeenActiveTripId = null;
-    }
-
-    // 2. Open Available Pool Jobs Detection & Alert
-    if (currentDriver && currentDriver.onDuty !== false && !currentActiveTrip) {
       const brandNewJobs = availableList.filter(p => !seenOrderIds.has(String(p.parcel_id || p.id)));
       if (brandNewJobs.length > 0) {
         const latestJob = brandNewJobs[0];
@@ -1240,10 +1269,12 @@ async function loadDriverFeed(showRefreshAnim = false) {
         latestJob.isDirectAssignment = false;
         openNewOrderAlertModal(latestJob);
       }
-    } else {
-      availableList.forEach(p => seenOrderIds.add(String(p.parcel_id || p.id)));
     }
+  } else {
+    availableList.forEach(p => seenOrderIds.add(String(p.parcel_id || p.id)));
   }
+
+  isFeedInitialSyncDone = true;
 
   if (currentActiveTrip) {
     feedList.innerHTML = `
@@ -2105,6 +2136,10 @@ function dismissNewOrderAlert(isManual = true) {
     alertCountdownInterval = null;
   }
 
+  if (currentAlertingOrder) {
+    acknowledgedAssignedTrips.add(String(currentAlertingOrder.parcel_id || currentAlertingOrder.id));
+  }
+
   const overlay = document.getElementById('newOrderAlertOverlay');
   if (overlay) {
     overlay.classList.remove('active');
@@ -2124,6 +2159,7 @@ async function acceptIncomingAlertOrder() {
   const orderId = orderToAccept.parcel_id || orderToAccept.id;
   const isDirect = orderToAccept.isDirectAssignment === true;
 
+  acknowledgedAssignedTrips.add(String(orderId));
   dismissNewOrderAlert(false);
 
   if (isDirect) {

@@ -6,11 +6,13 @@ import '../services/alert_manager.dart';
 class OrderAlertDialog extends StatefulWidget {
   final OrderModel order;
   final VoidCallback onAccept;
+  final VoidCallback? onDecline;
 
   const OrderAlertDialog({
     super.key,
     required this.order,
     required this.onAccept,
+    this.onDecline,
   });
 
   @override
@@ -54,6 +56,7 @@ class _OrderAlertDialogState extends State<OrderAlertDialog>
     if (mounted) {
       Navigator.of(context, rootNavigator: true).pop();
     }
+    widget.onDecline?.call();
   }
 
   @override

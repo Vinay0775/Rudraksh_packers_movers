@@ -29,6 +29,9 @@
   <!-- Bootstrap 5 Grid & Modals (Scoped) -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
+  <!-- Leaflet OpenStreetMap Interactive Radar CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+
   <!-- Futuristic Cyberpunk Dark Design System & PWA Styles -->
   <link rel="stylesheet" href="admin.css">
   <link rel="stylesheet" href="pwa-install.css">
@@ -509,6 +512,45 @@
            TAB 3: FLEET & VEHICLES MANAGEMENT (Add Custom Vehicles & Drivers)
            ====================================================================== -->
       <section class="cyber-tab-panel" id="tab-fleet">
+        <!-- Section: Live GPS Fleet Radar & Real-Time Driver Tracking -->
+        <div class="cyber-table-card mb-4" style="background: linear-gradient(180deg, #131926 0%, #0d121f 100%); border: 1px solid rgba(34, 197, 94, 0.25); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+            <div>
+              <div class="d-flex align-items-center gap-2">
+                <span style="width: 10px; height: 10px; border-radius: 50%; background: #22c55e; display: inline-block; box-shadow: 0 0 10px #22c55e; animation: pulse 1.5s infinite;"></span>
+                <h5 class="fw-bold text-white mb-0">
+                  <i class="fa-solid fa-satellite-dish me-2 text-warning"></i>Live Fleet GPS Radar & Nearest Driver Dispatch
+                </h5>
+              </div>
+              <span class="small text-muted">Real-time GPS coordinates transmitted from Driver App every 25s with live speedometer and nearest driver matching.</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-dark border border-secondary px-3 py-2 text-light" id="radarDriverCountBadge">
+                <i class="fa-solid fa-motorcycle text-success me-1"></i> Drivers Online: <strong id="radarOnlineCount" class="text-success">0</strong>
+              </span>
+              <button class="btn-cyber-outline btn-sm py-2 px-3" onclick="refreshFleetRadarMap(true)">
+                <i class="fa-solid fa-rotate me-1"></i> Refresh Radar
+              </button>
+            </div>
+          </div>
+
+          <!-- Radar Map Container -->
+          <div style="position: relative; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1); background: #0b0f19;">
+            <div id="fleetRadarMap" style="height: 420px; width: 100%; z-index: 1;"></div>
+            <!-- Overlay Legend -->
+            <div style="position: absolute; bottom: 15px; left: 15px; z-index: 1000; background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(8px); padding: 8px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); font-size: 12px; color: #cbd5e1;">
+              <span class="me-3"><span style="display:inline-block; width:10px; height:10px; background:#22c55e; border-radius:50%; margin-right:5px;"></span>On-Duty / Ready</span>
+              <span class="me-3"><span style="display:inline-block; width:10px; height:10px; background:#f59e0b; border-radius:50%; margin-right:5px;"></span>On Active Trip</span>
+              <span><span style="display:inline-block; width:10px; height:10px; background:#64748b; border-radius:50%; margin-right:5px;"></span>Offline</span>
+            </div>
+          </div>
+
+          <!-- Live Drivers Telemetry Cards Grid -->
+          <div class="row g-3 mt-2" id="liveFleetTelemetryGrid">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
         <!-- Section A: Dedicated Transport Vehicles -->
         <div class="cyber-table-card mb-4">
           <div class="d-flex justify-content-between align-items-center mb-4">
@@ -1512,8 +1554,23 @@
               <div class="small text-muted mt-1">Sender: <strong id="assignParcelSender" class="text-white">-</strong> ➔ Receiver: <strong id="assignParcelReceiver" class="text-white">-</strong></div>
             </div>
 
+            <!-- Proximity-Based Nearest Driver Recommendation -->
+            <div id="nearestDriverRecommendationBanner" class="p-2 mb-3 rounded-3 d-flex align-items-center justify-content-between" style="background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.35);">
+              <div class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-bolt text-success fs-5"></i>
+                <div>
+                  <div class="small fw-bold text-success" id="nearestDriverBannerTitle">Scanning Nearest Driver...</div>
+                  <div class="text-white-50" style="font-size: 11px;" id="nearestDriverBannerSub">Matching live GPS location with pickup address</div>
+                </div>
+              </div>
+              <span class="badge bg-success text-dark font-monospace fw-bold" id="nearestDriverEtaBadge">⚡ NEAREST</span>
+            </div>
+
             <div class="mb-3">
-              <label class="cyber-label">Choose Available Rider / Driver</label>
+              <label class="cyber-label d-flex justify-content-between">
+                <span>Choose Dispatch Rider / Driver</span>
+                <span class="text-success small" id="nearestDriverDistTip">Sorted by distance</span>
+              </label>
               <select class="cyber-select" id="assignParcelDriverSelect" required>
                 <!-- Populated dynamically -->
               </select>
@@ -1676,8 +1733,11 @@
   <!-- Bootstrap 5 JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+  <!-- Leaflet OpenStreetMap Interactive Radar Map Engine -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
   <!-- Futuristic Admin App Script -->
-  <script src="admin.js?v=2.6"></script>
+  <script src="admin.js?v=2.7"></script>
 
   <!-- PWA Universal Install Script -->
   <script src="pwa-install.js"></script>

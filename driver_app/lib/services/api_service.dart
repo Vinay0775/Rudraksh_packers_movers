@@ -355,6 +355,37 @@ class ApiService {
     }
   }
 
+  // 11. Send Live GPS Location
+  static Future<bool> sendLocation({
+    required double latitude,
+    required double longitude,
+    double? speed,
+    double? heading,
+    double? accuracy,
+  }) async {
+    try {
+      if (_cachedToken == null) return false;
+
+      final url = Uri.parse('${ApiConfig.currentBaseUrl}/rider/location');
+      final res = await http.post(
+        url,
+        headers: _getHeaders(),
+        body: jsonEncode({
+          'latitude': latitude,
+          'longitude': longitude,
+          'speed': speed ?? 0,
+          'heading': heading ?? 0,
+          'accuracy': accuracy ?? 0,
+        }),
+      ).timeout(const Duration(seconds: 8));
+
+      return res.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error sending location: $e');
+      return false;
+    }
+  }
+
   // Logout
   static Future<void> logout() async {
     _cachedToken = null;
@@ -364,3 +395,4 @@ class ApiService {
     await prefs.remove(_sessionKey);
   }
 }
+

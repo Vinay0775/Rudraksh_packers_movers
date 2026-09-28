@@ -440,6 +440,9 @@ function switchAdminTab(tabName) {
   if (tabName === 'dashboard') {
     triggerDashboardAnimations();
     renderDashboardRiderApps();
+  } else if (tabName === 'fleet') {
+    loadFleetVehicles();
+    setTimeout(() => { initFleetRadarMap(); }, 200);
   } else if (tabName === 'parcels') {
     loadAdminParcels();
   } else if (tabName === 'riders') {
@@ -846,7 +849,154 @@ async function handleStatusChange(bookingId, newStatus) {
 }
 
 /* ==========================================================================
-   5. FLEET & DEDICATED VEHICLES
+   5. LIVE FLEET GPS RADAR & DRIVER TRACKING MAP ENGINE (LEAFLET.JS)
+   ========================================================================== */
+let fleetRadarMapInstance = null;
+let fleetRadarMarkersGroup = null;
+let fleetRadarRefreshTimer = null;
+
+function initFleetRadarMap() {
+  const mapContainer = document.getElementById('fleetRadarMap');
+  if (!mapContainer || typeof L === 'undefined') return;
+
+  if (!fleetRadarMapInstance) {
+    fleetRadarMapInstance = L.map('fleetRadarMap', {
+      zoomControl: true,
+      attributionControl: false
+    }).setView([26.9124, 75.7873], 12);
+
+    // OpenStreetMap / CartoDB Voyager tiles
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+      subdomains: 'abcd'
+    }).addTo(fleetRadarMapInstance);
+
+    fleetRadarMarkersGroup = L.layerGroup().addTo(fleetRadarMapInstance);
+  } else {
+    setTimeout(() => {
+      fleetRadarMapInstance.invalidateSize();
+    }, 250);
+  }
+
+  refreshFleetRadarMap();
+
+  // Set recurring auto-refresh every 15 seconds while fleet tab is active
+  if (!fleetRadarRefreshTimer) {
+    fleetRadarRefreshTimer = setInterval(() => {
+      const fleetPanel = document.getElementById('tab-fleet');
+      if (fleetPanel && fleetPanel.classList.contains('active')) {
+        refreshFleetRadarMap(false);
+      }
+    }, 15000);
+  }
+}
+
+async function refreshFleetRadarMap(manual = false) {
+  if (manual) showAdminToast('Refreshing Live Fleet GPS Radar...');
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/drivers-live-locations`, {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) return;
+
+    const data = await res.json();
+    const drivers = data.drivers || [];
+
+    // Update count badges
+    const onlineDrivers = drivers.filter(d => d.onDuty !== false);
+    const countEl = document.getElementById('radarOnlineCount');
+    if (countEl) countEl.innerText = `${onlineDrivers.length} / ${drivers.length}`;
+
+    if (fleetRadarMarkersGroup && fleetRadarMapInstance) {
+      fleetRadarMarkersGroup.clearLayers();
+      const bounds = [];
+
+      drivers.forEach(d => {
+        const isOnline = d.onDuty !== false;
+        const lat = Number(d.latitude);
+        const lng = Number(d.longitude);
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        bounds.push([lat, lng]);
+
+        const markerColor = isOnline ? '#22c55e' : '#64748b';
+        const pulseEffect = isOnline ? `<span style="position: absolute; width: 34px; height: 34px; border-radius: 50%; background: rgba(34,197,94,0.3); animation: pulse 1.5s infinite; top: -5px; left: -5px; pointer-events: none;"></span>` : '';
+
+        const customIcon = L.divIcon({
+          className: 'radar-driver-pin',
+          html: `
+            <div style="position: relative; width: 24px; height: 24px;">
+              ${pulseEffect}
+              <div style="width: 24px; height: 24px; border-radius: 50%; background: ${markerColor}; border: 2px solid #ffffff; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+                <i class="fa-solid fa-motorcycle" style="color: #000; font-size: 11px;"></i>
+              </div>
+            </div>
+          `,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
+        const marker = L.marker([lat, lng], { icon: customIcon }).addTo(fleetRadarMarkersGroup);
+        const timeAgo = d.updated_at ? new Date(d.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently';
+
+        marker.bindPopup(`
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; min-width: 190px; color: #0f172a; padding: 4px;">
+            <div style="font-weight: 800; font-size: 14px; margin-bottom: 2px;">${d.driver_name}</div>
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">${d.vehicle_type} (${d.vehicle_number})</div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px;">
+              <span>Status: <strong style="color: ${isOnline ? '#16a34a' : '#64748b'}">${isOnline ? '🟢 On-Duty' : '⚪ Offline'}</strong></span>
+              <span>Speed: <strong>${d.speed || 0} km/h</strong></span>
+            </div>
+            <div style="font-size: 10px; color: #94a3b8; margin-bottom: 8px;">GPS Updated: ${timeAgo}</div>
+            <a href="tel:${d.phone}" style="display: block; text-align: center; background: #22c55e; color: #000; padding: 6px 10px; border-radius: 6px; font-weight: 800; font-size: 11px; text-decoration: none;">
+              <i class="fa-solid fa-phone me-1"></i> Call Driver (+91 ${d.phone})
+            </a>
+          </div>
+        `);
+      });
+
+      if (bounds.length > 0 && manual) {
+        fleetRadarMapInstance.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+      }
+    }
+
+    // Render Telemetry Grid
+    const grid = document.getElementById('liveFleetTelemetryGrid');
+    if (grid) {
+      if (drivers.length === 0) {
+        grid.innerHTML = `<div class="col-12 text-center text-muted py-3">No registered drivers found in fleet</div>`;
+      } else {
+        grid.innerHTML = drivers.map(d => {
+          const isOnline = d.onDuty !== false;
+          return `
+            <div class="col-md-4 col-sm-6">
+              <div style="background: rgba(17, 24, 39, 0.7); border: 1px solid ${isOnline ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255,255,255,0.08)'}; border-radius: 12px; padding: 12px 14px;">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <div class="fw-bold text-white fs-6">${d.driver_name}</div>
+                  <span class="badge ${isOnline ? 'bg-success' : 'bg-secondary'}" style="font-size: 10px;">
+                    ${isOnline ? 'ON-DUTY' : 'OFFLINE'}
+                  </span>
+                </div>
+                <div class="small text-muted mb-2">${d.vehicle_type} • ${d.vehicle_number || 'Plate Pending'}</div>
+                <div class="d-flex justify-content-between align-items-center small text-light" style="font-size: 11px;">
+                  <span><i class="fa-solid fa-gauge text-warning me-1"></i> ${d.speed || 0} km/h</span>
+                  <span><i class="fa-solid fa-location-crosshairs text-info me-1"></i> ${d.hasLiveGps ? 'GPS Fix' : 'Jaipur Base'}</span>
+                  <a href="tel:${d.phone}" class="text-success text-decoration-none fw-bold"><i class="fa-solid fa-phone"></i> Call</a>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  } catch (err) {
+    console.warn('Fleet radar refresh error:', err);
+  }
+}
+
+/* ==========================================================================
+   5B. FLEET & DEDICATED VEHICLES
    ========================================================================== */
 async function loadFleetVehicles() {
   try {
@@ -2344,7 +2494,7 @@ Please confirm pickup on your driver portal.`;
   }).join('');
 }
 
-function openAssignParcelDriverModal(parcelId) {
+async function openAssignParcelDriverModal(parcelId) {
   const parcel = allAdminParcels.find(p => (p.parcel_id === parcelId || p.id === parcelId));
   if (!parcel) return;
 
@@ -2363,34 +2513,46 @@ function openAssignParcelDriverModal(parcelId) {
   if (otp2El) otp2El.innerText = parcel.delivery_otp;
 
   const select = document.getElementById('assignParcelDriverSelect');
-  if (select) {
-    const driversList = [];
-    if (Array.isArray(allRiderApplications) && allRiderApplications.length > 0) {
-      allRiderApplications.forEach(d => {
-        driversList.push({
-          name: d.name,
-          phone: d.phone,
-          veh: d.vehType || 'Express Partner',
-          vehnum: d.vehNum || ''
-        });
-      });
-    }
-    if (Array.isArray(adminDrivers) && adminDrivers.length > 0) {
-      adminDrivers.forEach(d => {
-        if (!driversList.some(x => String(x.phone).replace(/\D/g, '') === String(d.phone).replace(/\D/g, ''))) {
-          driversList.push({
-            name: d.driver_name,
-            phone: d.phone,
-            veh: d.vehicle_type || 'Dedicated Fleet',
-            vehnum: d.vehicle_number || ''
-          });
-        }
-      });
-    }
+  const bannerTitle = document.getElementById('nearestDriverBannerTitle');
+  const bannerSub = document.getElementById('nearestDriverBannerSub');
+  const etaBadge = document.getElementById('nearestDriverEtaBadge');
+  const distTip = document.getElementById('nearestDriverDistTip');
 
-    if (driversList.length > 0) {
-      select.innerHTML = driversList.map(d => `
-        <option value="${d.name}" data-phone="${d.phone}" data-veh="${d.veh}" data-vehnum="${d.vehnum}">${d.name} - ${d.veh} (${d.vehnum || 'No plate'}) • Phone: ${d.phone}</option>
+  if (bannerTitle) bannerTitle.innerText = 'Scanning Nearest Drivers...';
+  if (bannerSub) bannerSub.innerText = `Matching pickup location: ${parcel.pickup_address || 'Jaipur'}`;
+  if (etaBadge) etaBadge.innerText = 'CALCULATING';
+
+  // 1. Initial quick render from registered drivers
+  const baseDriversList = [];
+  if (Array.isArray(allRiderApplications) && allRiderApplications.length > 0) {
+    allRiderApplications.forEach(d => {
+      baseDriversList.push({
+        id: d.driverId || d.id,
+        name: d.name,
+        phone: d.phone,
+        veh: d.vehType || 'Express Partner',
+        vehnum: d.vehNum || ''
+      });
+    });
+  }
+  if (Array.isArray(adminDrivers) && adminDrivers.length > 0) {
+    adminDrivers.forEach(d => {
+      if (!baseDriversList.some(x => String(x.phone).replace(/\D/g, '') === String(d.phone).replace(/\D/g, ''))) {
+        baseDriversList.push({
+          id: d.id,
+          name: d.driver_name,
+          phone: d.phone,
+          veh: d.vehicle_type || 'Dedicated Fleet',
+          vehnum: d.vehicle_number || ''
+        });
+      }
+    });
+  }
+
+  if (select) {
+    if (baseDriversList.length > 0) {
+      select.innerHTML = baseDriversList.map(d => `
+        <option value="${d.name}" data-id="${d.id || ''}" data-phone="${d.phone}" data-veh="${d.veh}" data-vehnum="${d.vehnum}">${d.name} - ${d.veh} (${d.vehnum || 'No plate'}) • Phone: ${d.phone}</option>
       `).join('');
     } else {
       select.innerHTML = `<option value="" disabled selected>No registered drivers available - please register driver first</option>`;
@@ -2399,6 +2561,45 @@ function openAssignParcelDriverModal(parcelId) {
 
   const modal = new bootstrap.Modal(document.getElementById('assignParcelDriverModal'));
   modal.show();
+
+  // 2. Query Real-Time Nearest Drivers from Backend
+  try {
+    const res = await fetch(`${API_BASE}/admin/nearest-drivers`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        pickup_address: parcel.pickup_address || '',
+        pickup_lat: parcel.pickup_lat || 26.9124,
+        pickup_lng: parcel.pickup_lng || 75.7873
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.drivers) && data.drivers.length > 0) {
+        const sorted = data.drivers;
+        const topDriver = sorted[0];
+
+        if (bannerTitle) bannerTitle.innerHTML = `⚡ Recommended: <strong class="text-white">${topDriver.driver_name}</strong> (${topDriver.distance_km} KM away)`;
+        if (bannerSub) bannerSub.innerHTML = `ETA: <strong>~${topDriver.eta_minutes} mins</strong> • ${topDriver.vehicle_type} (${topDriver.vehicle_number}) • ${topDriver.onDuty ? '<span class="text-success">🟢 On-Duty</span>' : '<span class="text-muted">⚪ Off-Duty</span>'}`;
+        if (etaBadge) etaBadge.innerText = `${topDriver.distance_km} KM (ETA ~${topDriver.eta_minutes}m)`;
+        if (distTip) distTip.innerText = '⚡ Sorted nearest to pickup point';
+
+        if (select) {
+          select.innerHTML = sorted.map((d, idx) => {
+            const isTop = idx === 0;
+            const prefix = isTop ? '⚡ [NEAREST RECOMMENDED] ' : '';
+            return `
+              <option value="${d.driver_name}" data-id="${d.id || ''}" data-phone="${d.phone}" data-veh="${d.vehicle_type}" data-vehnum="${d.vehicle_number}" ${isTop ? 'selected' : ''}>
+                ${prefix}${d.driver_name} (${d.distance_km} KM away | ETA ~${d.eta_minutes}m) • ${d.vehicle_type} - ${d.vehicle_number}
+              </option>
+            `;
+          }).join('');
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Nearest driver matching error:', err);
+  }
 }
 
 async function submitParcelDriverAssignment() {
@@ -2406,12 +2607,14 @@ async function submitParcelDriverAssignment() {
   const select = document.getElementById('assignParcelDriverSelect');
   const selectedOption = select?.selectedOptions?.[0];
   const driverName = select?.value || 'Assigned Driver';
+  const driverId = selectedOption?.getAttribute('data-id') || '';
   const driverPhone = selectedOption?.getAttribute('data-phone') || '7296831460';
   const driverVeh = selectedOption?.getAttribute('data-veh') || 'Bike';
   const driverVehNum = selectedOption?.getAttribute('data-vehnum') || '-';
 
   const p = allAdminParcels.find(x => (x.parcel_id === parcelId || x.id === parcelId));
   if (p) {
+    p.driver_id = driverId;
     p.assigned_driver_name = driverName;
     p.assigned_driver_phone = driverPhone;
     p.assigned_vehicle_type = driverVeh;
@@ -2432,6 +2635,7 @@ async function submitParcelDriverAssignment() {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
+          driver_id: driverId,
           driver_name: driverName,
           driver_phone: driverPhone,
           vehicle_type: driverVeh,
@@ -2445,7 +2649,7 @@ async function submitParcelDriverAssignment() {
     }
   }
 
-  showAdminToast(`Driver "${driverName}" assigned to Parcel ${parcelId}! Pickup & Delivery OTPs active.`);
+  showAdminToast(`🚨 Driver "${driverName}" assigned to Parcel ${parcelId}! Siren & notification dispatched to driver.`);
   bootstrap.Modal.getInstance(document.getElementById('assignParcelDriverModal'))?.hide();
   renderParcelsTable();
   updateParcelMetrics();

@@ -38,12 +38,12 @@ app.get(['/downloads/RudrakshaDriver.apk', '/download-driver-apk', '/download-ap
 app.get(['/api/app-version', '/api/rider/app-version'], (req, res) => {
   res.json({
     success: true,
-    version: '1.2.1',
-    versionCode: 3,
+    version: '1.2.2',
+    versionCode: 4,
     apkUrl: 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk',
-    releaseNotes: '1. Fixed Completed Deliveries and Earnings sync\n2. Real-time Vinay Kumar order history sync\n3. High-pitch siren & clean dark navigation',
+    releaseNotes: '1. 100% Reliable Loud Siren & Notification on new assigned orders\n2. Real-time GPS Location Tracking & Nearest Driver Dispatch\n3. Fullscreen instant alert dialog',
     forceUpdate: false,
-    fileSizeMB: '52.5 MB'
+    fileSizeMB: '53.0 MB'
   });
 });
 
@@ -380,6 +380,19 @@ app.post('/api/rider-applications/:id/reject', requireAdmin, async (req, res, ne
    ========================================================================== */
 
 const riderAvatarStore = new Map();
+const driverLocationStore = new Map();
+
+// Haversine formula: Great-circle distance between two GPS coordinates in KM
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+}
 
 // 1. Rider Login with Phone & 4-Digit Security PIN
 app.post('/api/rider/login', async (req, res, next) => {
@@ -604,6 +617,176 @@ app.patch('/api/rider/duty', requireRider, async (req, res, next) => {
       updated_at: new Date().toISOString()
     });
     res.json({ success: true, onDuty: isDuty, message: isDuty ? 'You are now ONLINE & ready for trips! 🟢' : 'You are now OFFLINE. 🔴' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 4B. Rider Real-Time GPS Location Transmission
+app.post('/api/rider/location', requireRider, async (req, res, next) => {
+  try {
+    const { latitude, longitude, speed, heading, accuracy } = req.body;
+    if (latitude == null || longitude == null) {
+      return res.status(400).json({ error: 'Latitude and longitude are required.' });
+    }
+
+    const riderId = req.rider.id;
+    const riderPhone = String(req.rider.phone || '').replace(/\D/g, '');
+    const cleanLat = Number(latitude);
+    const cleanLng = Number(longitude);
+
+    const locationRecord = {
+      driver_id: riderId,
+      phone: riderPhone,
+      driver_name: req.rider.driver_name,
+      vehicle_number: req.rider.vehicle_number || '',
+      vehicle_type: req.rider.vehicle_type || 'Bike',
+      status: req.rider.onDuty !== false ? 'online' : 'off_duty',
+      onDuty: req.rider.onDuty !== false,
+      latitude: cleanLat,
+      longitude: cleanLng,
+      speed: Number(speed || 0),
+      heading: Number(heading || 0),
+      accuracy: Number(accuracy || 0),
+      updated_at: new Date().toISOString()
+    };
+
+    driverLocationStore.set(riderId, locationRecord);
+    if (riderPhone) driverLocationStore.set(riderPhone, locationRecord);
+
+    // Persist to database in background
+    db.updateDriver(riderId, {
+      current_location: JSON.stringify({
+        lat: cleanLat,
+        lng: cleanLng,
+        speed: locationRecord.speed,
+        updated_at: locationRecord.updated_at
+      })
+    }).catch(e => console.warn('Supabase driver location sync warning:', e.message));
+
+    res.json({ success: true, message: 'GPS coordinates updated successfully.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 4C. Admin & Operations: Get Live Fleet GPS Locations for Radar Map
+app.get('/api/admin/drivers-live-locations', requireAdminOrRider, async (req, res, next) => {
+  try {
+    const drivers = await db.getDrivers();
+    const liveDrivers = drivers.map(d => {
+      const cleanPhone = String(d.phone || '').replace(/\D/g, '');
+      const live = driverLocationStore.get(d.id) || (cleanPhone ? driverLocationStore.get(cleanPhone) : null);
+
+      let lat = live ? live.latitude : null;
+      let lng = live ? live.longitude : null;
+      let updatedAt = live ? live.updated_at : null;
+
+      if ((lat == null || lng == null) && d.current_location) {
+        try {
+          const parsed = typeof d.current_location === 'string' ? JSON.parse(d.current_location) : d.current_location;
+          lat = parsed.lat || parsed.latitude;
+          lng = parsed.lng || parsed.longitude;
+          updatedAt = parsed.updated_at || d.updated_at;
+        } catch {}
+      }
+
+      // Default fallback coordinates around Jaipur center if not yet GPS-fixed
+      const defaultJaipurLat = 26.9124 + ((Math.random() - 0.5) * 0.05);
+      const defaultJaipurLng = 75.7873 + ((Math.random() - 0.5) * 0.05);
+
+      return {
+        id: d.id,
+        driver_name: d.driver_name,
+        phone: d.phone,
+        vehicle_number: d.vehicle_number || '-',
+        vehicle_type: d.vehicle_type || 'Express Bike',
+        status: d.status || 'available',
+        onDuty: d.onDuty !== false,
+        latitude: lat != null ? Number(lat) : defaultJaipurLat,
+        longitude: lng != null ? Number(lng) : defaultJaipurLng,
+        hasLiveGps: lat != null && lng != null,
+        speed: live ? live.speed : 0,
+        heading: live ? live.heading : 0,
+        avatar_url: d.avatar_url || (cleanPhone && riderAvatarStore.has(cleanPhone) ? riderAvatarStore.get(cleanPhone) : null),
+        updated_at: updatedAt || d.updated_at || new Date().toISOString()
+      };
+    });
+
+    res.json({ success: true, count: liveDrivers.length, drivers: liveDrivers });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 4D. Admin: Calculate Nearest Drivers to a Pickup Location
+app.post('/api/admin/nearest-drivers', requireAdminOrRider, async (req, res, next) => {
+  try {
+    let { pickup_lat, pickup_lng, pickup_address } = req.body;
+    let targetLat = Number(pickup_lat);
+    let targetLng = Number(pickup_lng);
+
+    // Fallback coordinates for Jaipur center if not provided
+    if (isNaN(targetLat) || isNaN(targetLng) || (targetLat === 0 && targetLng === 0)) {
+      targetLat = 26.9124;
+      targetLng = 75.7873;
+    }
+
+    const drivers = await db.getDrivers();
+    const evaluatedDrivers = [];
+
+    for (const d of drivers) {
+      const cleanPhone = String(d.phone || '').replace(/\D/g, '');
+      const live = driverLocationStore.get(d.id) || (cleanPhone ? driverLocationStore.get(cleanPhone) : null);
+
+      let lat = live ? live.latitude : null;
+      let lng = live ? live.longitude : null;
+      let updatedAt = live ? live.updated_at : null;
+
+      if ((lat == null || lng == null) && d.current_location) {
+        try {
+          const parsed = typeof d.current_location === 'string' ? JSON.parse(d.current_location) : d.current_location;
+          lat = parsed.lat || parsed.latitude;
+          lng = parsed.lng || parsed.longitude;
+          updatedAt = parsed.updated_at || d.updated_at;
+        } catch {}
+      }
+
+      if (lat == null || lng == null) {
+        lat = 26.9124 + ((Math.random() - 0.5) * 0.04);
+        lng = 75.7873 + ((Math.random() - 0.5) * 0.04);
+      }
+
+      const distKm = getDistanceFromLatLonInKm(targetLat, targetLng, lat, lng);
+      // Estimated arrival time: (distance / 25 km/h) * 60 mins, minimum 3 mins
+      const etaMinutes = Math.max(3, Math.round((distKm / 25) * 60));
+
+      evaluatedDrivers.push({
+        id: d.id,
+        driver_name: d.driver_name,
+        phone: d.phone,
+        vehicle_number: d.vehicle_number || '-',
+        vehicle_type: d.vehicle_type || 'Bike',
+        status: d.status || 'available',
+        onDuty: d.onDuty !== false,
+        latitude: lat,
+        longitude: lng,
+        hasLiveGps: live != null,
+        distance_km: distKm,
+        eta_minutes: etaMinutes,
+        avatar_url: d.avatar_url || (cleanPhone && riderAvatarStore.has(cleanPhone) ? riderAvatarStore.get(cleanPhone) : null),
+        updated_at: updatedAt || d.updated_at || new Date().toISOString()
+      });
+    }
+
+    // Sort ascending by distance (nearest first)
+    evaluatedDrivers.sort((a, b) => a.distance_km - b.distance_km);
+
+    res.json({
+      success: true,
+      pickup: { latitude: targetLat, longitude: targetLng, address: pickup_address || '' },
+      drivers: evaluatedDrivers
+    });
   } catch (err) {
     next(err);
   }
@@ -1293,9 +1476,20 @@ app.post('/api/parcels', async (req, res, next) => {
 // 5. Assign Driver to Parcel
 app.post('/api/parcels/:id/assign', requireAdmin, async (req, res, next) => {
   try {
-    const { driver_id, driver_name, driver_phone, vehicle_number, vehicle_type, pickup_otp, delivery_otp } = req.body;
+    let { driver_id, driver_name, driver_phone, vehicle_number, vehicle_type, pickup_otp, delivery_otp } = req.body;
     if (!driver_name || !driver_phone) {
       return res.status(400).json({ error: 'Please provide driver name and phone.' });
+    }
+
+    const cleanPhone = String(driver_phone || '').replace(/\D/g, '').slice(-10);
+    if (!driver_id && cleanPhone) {
+      const drivers = await db.getDrivers();
+      const matched = drivers.find(d => String(d.phone || '').replace(/\D/g, '').slice(-10) === cleanPhone);
+      if (matched) {
+        driver_id = matched.id;
+        vehicle_number = vehicle_number || matched.vehicle_number;
+        vehicle_type = vehicle_type || matched.vehicle_type;
+      }
     }
 
     const updated = await db.assignParcelDriver(req.params.id, {
@@ -1309,7 +1503,19 @@ app.post('/api/parcels/:id/assign', requireAdmin, async (req, res, next) => {
     });
 
     if (!updated) return res.status(404).json({ error: 'Parcel not found' });
-    res.json({ parcel: updated });
+
+    // Send Telegram alert
+    const msg = `🚨 *ORDER ASSIGNED TO DRIVER* 👨‍✈️\n` +
+                `━━━━━━━━━━━━━━━━━━━━\n` +
+                `🆔 *Order ID:* \`${updated.parcel_id || req.params.id}\`\n` +
+                `👨‍✈️ *Driver:* ${driver_name} (+91 ${driver_phone})\n` +
+                `📍 *Pickup:* ${updated.pickup_address || '-'}\n` +
+                `🏁 *Drop:* ${updated.drop_address || '-'}\n` +
+                `💰 *Amount:* ₹${updated.total_amount || 0}\n` +
+                `━━━━━━━━━━━━━━━━━━━━`;
+    telegram.sendTelegramMessage(msg).catch(console.error);
+
+    res.json({ success: true, parcel: updated });
   } catch (err) {
     next(err);
   }

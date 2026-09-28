@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/order_model.dart';
 import '../services/alert_manager.dart';
 import '../services/api_service.dart';
+import '../services/location_service.dart';
 import '../services/permission_service.dart';
 import '../services/update_service.dart';
 import '../widgets/order_alert_dialog.dart';
@@ -26,7 +27,8 @@ class _HomeScreenState extends State<HomeScreen> {
   OrderModel? _activeTrip;
   List<OrderModel> _availableJobs = [];
   final Set<String> _seenJobIds = {};
-  String? _lastSeenActiveTripId;
+  final Set<String> _acknowledgedAssignedTrips = {};
+  bool _isAlertDialogOpen = false;
   bool _isFirstSyncDone = false;
 
   // Earnings Data
@@ -42,6 +44,13 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadInitialData();
     _startBackgroundPolling();
+
+    // Start live GPS tracking if On-Duty
+    final isDuty = ApiService.currentDriver?.onDuty ?? true;
+    if (isDuty) {
+      LocationService().startTracking();
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PermissionService.checkAndRequestAllPermissions(context);
       UpdateService.checkAndPromptUpdate(context);
@@ -51,9 +60,23 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    LocationService().stopTracking();
     _pickupOtpController.dispose();
     _deliveryOtpController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleDutyToggle(bool val) async {
+    await ApiService.toggleDuty(val);
+    if (val) {
+      LocationService().startTracking();
+    } else {
+      LocationService().stopTracking();
+    }
+    if (mounted) {
+      setState(() {});
+      _syncFeed();
+    }
   }
 
   void _loadInitialData() async {
@@ -65,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _startBackgroundPolling() {
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 6), (timer) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       final isDuty = ApiService.currentDriver?.onDuty ?? true;
       if (isDuty) {
         _syncFeed();
@@ -80,32 +103,28 @@ class _HomeScreenState extends State<HomeScreen> {
     final OrderModel? active = res['activeTrip'];
     final List<OrderModel> available = res['availableJobs'] ?? [];
 
-    // Detect New Orders & Trigger Urgent Siren Alert
-    if (!_isFirstSyncDone) {
-      for (var job in available) {
-        _seenJobIds.add(job.parcelId);
-      }
-      if (active != null) {
-        _lastSeenActiveTripId = active.parcelId;
-      }
-      _isFirstSyncDone = true;
-    } else {
-      // 1. Direct Admin Assignment Detection
-      if (active != null) {
-        final isAssigned = active.bookingStatus == 'driver_assigned' ||
-            active.bookingStatus == 'received';
-        if (isAssigned && (_lastSeenActiveTripId != active.parcelId)) {
-          _lastSeenActiveTripId = active.parcelId;
-          active.isDirectAssignment = true;
+    // 1. Direct Admin Assignment Detection
+    // When an order is assigned by admin, bookingStatus will be 'driver_assigned' or 'received'.
+    // ALWAYS alert with siren and popup if driver has not acknowledged or accepted it in this session.
+    if (active != null) {
+      final isAssigned = (active.bookingStatus == 'driver_assigned' ||
+          active.bookingStatus == 'received');
+      if (isAssigned && !_acknowledgedAssignedTrips.contains(active.parcelId)) {
+        active.isDirectAssignment = true;
+        if (!_isAlertDialogOpen) {
           _triggerOrderAlert(active);
         }
-      } else {
-        _lastSeenActiveTripId = null;
       }
+    }
 
-      // 2. Open Available Pool Jobs Detection
-      final isDuty = ApiService.currentDriver?.onDuty ?? true;
-      if (isDuty && active == null) {
+    // 2. Open Available Pool Jobs Detection
+    final isDuty = ApiService.currentDriver?.onDuty ?? true;
+    if (isDuty && active == null) {
+      if (!_isFirstSyncDone) {
+        for (var job in available) {
+          _seenJobIds.add(job.parcelId);
+        }
+      } else {
         final newJobs =
             available.where((j) => !_seenJobIds.contains(j.parcelId)).toList();
         if (newJobs.isNotEmpty) {
@@ -114,14 +133,18 @@ class _HomeScreenState extends State<HomeScreen> {
             _seenJobIds.add(j.parcelId);
           }
           latest.isDirectAssignment = false;
-          _triggerOrderAlert(latest);
-        }
-      } else {
-        for (var j in available) {
-          _seenJobIds.add(j.parcelId);
+          if (!_isAlertDialogOpen) {
+            _triggerOrderAlert(latest);
+          }
         }
       }
+    } else {
+      for (var j in available) {
+        _seenJobIds.add(j.parcelId);
+      }
     }
+
+    _isFirstSyncDone = true;
 
     setState(() {
       _activeTrip = active;
@@ -137,6 +160,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _triggerOrderAlert(OrderModel order) {
+    if (_isAlertDialogOpen) return;
+    _isAlertDialogOpen = true;
+
     AlertManager().triggerNewOrderAlert(order);
 
     showDialog(
@@ -144,16 +170,27 @@ class _HomeScreenState extends State<HomeScreen> {
       barrierDismissible: false,
       builder: (ctx) => OrderAlertDialog(
         order: order,
+        onDecline: () {
+          _acknowledgedAssignedTrips.add(order.parcelId);
+          _isAlertDialogOpen = false;
+          AlertManager().stopAlert(notifId: order.parcelId.hashCode);
+        },
         onAccept: () async {
+          _acknowledgedAssignedTrips.add(order.parcelId);
+          _isAlertDialogOpen = false;
+          await AlertManager().stopAlert(notifId: order.parcelId.hashCode);
+
           if (order.isDirectAssignment) {
             _syncFeed();
-            setState(() => _currentTab = 1); // Switch to Active Trip
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('🚀 Trip Ready! Head to the pickup location.'),
-                backgroundColor: Color(0xFF22C55E),
-              ),
-            );
+            if (mounted) {
+              setState(() => _currentTab = 1); // Switch to Active Trip
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('🚀 Trip Ready! Head to the pickup location.'),
+                  backgroundColor: Color(0xFF22C55E),
+                ),
+              );
+            }
           } else {
             final res = await ApiService.acceptJob(order.parcelId);
             if (res['success'] == true) {
@@ -180,7 +217,10 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         },
       ),
-    );
+    ).then((_) {
+      _isAlertDialogOpen = false;
+      AlertManager().stopAlert(notifId: order.parcelId.hashCode);
+    });
   }
 
   // Google Maps Turn-by-Turn GPS Navigation
@@ -738,11 +778,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       : Colors.red.withValues(alpha: 0.4),
                 ),
               ),
-              onSelected: (val) async {
-                await ApiService.toggleDuty(val);
-                setState(() {});
-                _syncFeed();
-              },
+              onSelected: (val) => _handleDutyToggle(val),
             ),
           ),
           // Logout
@@ -904,11 +940,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () async {
-                    await ApiService.toggleDuty(true);
-                    setState(() {});
-                    _syncFeed();
-                  },
+                  onPressed: () => _handleDutyToggle(true),
                   style: TextButton.styleFrom(
                     backgroundColor: const Color(0xFF22C55E),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1848,11 +1880,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Switch(
                 value: isOnDuty,
                 activeThumbColor: const Color(0xFF22C55E),
-                onChanged: (val) async {
-                  await ApiService.toggleDuty(val);
-                  setState(() {});
-                  _syncFeed();
-                },
+                onChanged: (val) => _handleDutyToggle(val),
               ),
             ],
           ),
