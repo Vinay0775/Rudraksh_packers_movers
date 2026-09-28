@@ -422,7 +422,12 @@ function switchAdminTab(tabName) {
     const panel = document.getElementById(`tab-${t}`);
 
     if (t === tabName) {
-      if (dockBtn) dockBtn.classList.add('active');
+      if (dockBtn) {
+        dockBtn.classList.add('active');
+        try {
+          dockBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        } catch {}
+      }
       if (panel) {
         panel.classList.add('active');
         // Trigger re-animation
