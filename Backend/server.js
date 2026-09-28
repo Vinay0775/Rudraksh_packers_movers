@@ -36,14 +36,17 @@ app.get(['/downloads/RudrakshaDriver.apk', '/download-driver-apk', '/download-ap
 
 // App Auto-Update Metadata Endpoint for In-App Updates
 app.get(['/api/app-version', '/api/rider/app-version'], (req, res) => {
+  const host = req.get('host') || 'localhost:3000';
+  const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
   res.json({
     success: true,
-    version: '1.2.2',
-    versionCode: 4,
-    apkUrl: 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk',
-    releaseNotes: '1. 100% Reliable Loud Siren & Notification on new assigned orders\n2. Real-time GPS Location Tracking & Nearest Driver Dispatch\n3. Fullscreen instant alert dialog',
+    version: '1.2.3',
+    versionCode: 5,
+    apkUrl: `${protocol}://${host}/downloads/RudrakshaDriver.apk`,
+    fallbackApkUrl: 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk',
+    releaseNotes: '1. Persistent Background Foreground Service: New order alert & siren works even when phone is locked or screen off\n2. Heads-up notification on lock screen with Accept and Decline buttons\n3. Vehicle-specific driver matching & real-time GPS tracking',
     forceUpdate: false,
-    fileSizeMB: '53.0 MB'
+    fileSizeMB: '53.1 MB'
   });
 });
 
@@ -737,12 +740,25 @@ app.get('/api/admin/drivers-live-locations', requireAdminOrRider, async (req, re
   }
 });
 
-// 4D. Admin: Calculate Nearest Drivers to a Pickup Location
+function getVehicleCategory(veh) {
+  if (!veh) return 'bike';
+  const str = String(veh).toLowerCase().trim();
+  if (str.includes('auto') || str.includes('3w') || str.includes('3-w') || str.includes('3 wheeler') || str.includes('rickshaw') || str.includes('tempo')) {
+    return 'auto';
+  }
+  if (str.includes('truck') || str.includes('ace') || str.includes('tata') || str.includes('pickup') || str.includes('hathi') || str.includes('bolero') || str.includes('carrier') || str.includes('mini_truck') || str.includes('canter') || str.includes('container') || str.includes('commercial')) {
+    return 'truck';
+  }
+  return 'bike';
+}
+
+// 4D. Admin: Calculate Nearest Drivers to a Pickup Location with Vehicle Type Filtering
 app.post('/api/admin/nearest-drivers', requireAdminOrRider, async (req, res, next) => {
   try {
-    let { pickup_lat, pickup_lng, pickup_address } = req.body;
+    let { pickup_lat, pickup_lng, pickup_address, vehicle_type, vehicle_category } = req.body;
     let targetLat = Number(pickup_lat);
     let targetLng = Number(pickup_lng);
+    const targetCategory = vehicle_category || (vehicle_type ? getVehicleCategory(vehicle_type) : null);
 
     // Fallback coordinates for Jaipur center if not provided
     if (isNaN(targetLat) || isNaN(targetLng) || (targetLat === 0 && targetLng === 0)) {
@@ -771,13 +787,17 @@ app.post('/api/admin/nearest-drivers', requireAdminOrRider, async (req, res, nex
       }
 
       if (lat == null || lng == null) {
-        lat = 26.9124 + ((Math.random() - 0.5) * 0.04);
-        lng = 75.7873 + ((Math.random() - 0.5) * 0.04);
+        const baseStation = KNOWN_DRIVER_BASES[cleanPhone] || { lat: 26.9124, lng: 75.7873 };
+        lat = baseStation.lat;
+        lng = baseStation.lng;
       }
 
       const distKm = getDistanceFromLatLonInKm(targetLat, targetLng, lat, lng);
       // Estimated arrival time: (distance / 25 km/h) * 60 mins, minimum 3 mins
       const etaMinutes = Math.max(3, Math.round((distKm / 25) * 60));
+
+      const driverCat = getVehicleCategory(d.vehicle_type);
+      const isMatch = targetCategory ? (driverCat === targetCategory) : true;
 
       evaluatedDrivers.push({
         id: d.id,
@@ -785,6 +805,8 @@ app.post('/api/admin/nearest-drivers', requireAdminOrRider, async (req, res, nex
         phone: d.phone,
         vehicle_number: d.vehicle_number || '-',
         vehicle_type: d.vehicle_type || 'Bike',
+        vehicle_category: driverCat,
+        is_vehicle_match: isMatch,
         status: d.status || 'available',
         onDuty: d.onDuty !== false,
         latitude: lat,
@@ -797,13 +819,21 @@ app.post('/api/admin/nearest-drivers', requireAdminOrRider, async (req, res, nex
       });
     }
 
-    // Sort ascending by distance (nearest first)
-    evaluatedDrivers.sort((a, b) => a.distance_km - b.distance_km);
+    // Sort: matching vehicle drivers first, then by proximity (nearest first)
+    evaluatedDrivers.sort((a, b) => {
+      if (a.is_vehicle_match !== b.is_vehicle_match) {
+        return b.is_vehicle_match ? 1 : -1;
+      }
+      return a.distance_km - b.distance_km;
+    });
 
     res.json({
       success: true,
+      target_category: targetCategory,
       pickup: { latitude: targetLat, longitude: targetLng, address: pickup_address || '' },
-      drivers: evaluatedDrivers
+      drivers: evaluatedDrivers,
+      matching_drivers: evaluatedDrivers.filter(d => d.is_vehicle_match),
+      other_drivers: evaluatedDrivers.filter(d => !d.is_vehicle_match)
     });
   } catch (err) {
     next(err);
@@ -1520,20 +1550,22 @@ app.post('/api/parcels/:id/assign', requireAdmin, async (req, res, next) => {
       delivery_otp
     });
 
-    if (!updated) return res.status(404).json({ error: 'Parcel not found' });
+    const isReassign = Boolean(req.body.is_reassign);
+    const actionTitle = isReassign ? `🔄 *ORDER REASSIGNED TO NEW DRIVER* 👨‍✈️` : `🚨 *ORDER ASSIGNED TO DRIVER* 👨‍✈️`;
 
     // Send Telegram alert
-    const msg = `🚨 *ORDER ASSIGNED TO DRIVER* 👨‍✈️\n` +
+    const msg = `${actionTitle}\n` +
                 `━━━━━━━━━━━━━━━━━━━━\n` +
                 `🆔 *Order ID:* \`${updated.parcel_id || req.params.id}\`\n` +
                 `👨‍✈️ *Driver:* ${driver_name} (+91 ${driver_phone})\n` +
+                `🛵 *Vehicle:* ${vehicle_type || updated.assigned_vehicle_type || '-'}\n` +
                 `📍 *Pickup:* ${updated.pickup_address || '-'}\n` +
                 `🏁 *Drop:* ${updated.drop_address || '-'}\n` +
                 `💰 *Amount:* ₹${updated.total_amount || 0}\n` +
                 `━━━━━━━━━━━━━━━━━━━━`;
     telegram.sendTelegramMessage(msg).catch(console.error);
 
-    res.json({ success: true, parcel: updated });
+    res.json({ success: true, parcel: updated, is_reassign: isReassign });
   } catch (err) {
     next(err);
   }

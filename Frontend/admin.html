@@ -1544,16 +1544,35 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content" style="background: #17171A; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; color: #ffffff;">
         <div class="modal-header border-0 pb-0">
-          <h5 class="modal-title fw-bold"><i class="fa-solid fa-motorcycle me-2" style="color: #D0FD38;"></i>Assign Rider to Parcel</h5>
+          <h5 class="modal-title fw-bold" id="assignParcelModalTitle"><i class="fa-solid fa-motorcycle me-2" style="color: #D0FD38;"></i>Assign Rider to Parcel</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body p-4">
           <form id="assignParcelDriverForm" onsubmit="event.preventDefault(); submitParcelDriverAssignment();">
             <input type="hidden" id="assignParcelId">
+            <input type="hidden" id="assignParcelIsReassign" value="false">
             <div style="background: #111113; border: 1px solid var(--border-subtle); border-radius: 12px; padding: 14px; margin-bottom: 16px;">
-              <div class="small text-muted">Parcel Reference:</div>
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <div class="small text-muted">Parcel Reference:</div>
+                <span class="badge bg-warning text-dark font-monospace fw-bold" id="assignParcelReqVehBadge">🛵 BIKE</span>
+              </div>
               <div class="fw-bold fs-5 text-orange" id="assignParcelDisplayId">RP-PCL-XXXXXX</div>
               <div class="small text-muted mt-1">Sender: <strong id="assignParcelSender" class="text-white">-</strong> ➔ Receiver: <strong id="assignParcelReceiver" class="text-white">-</strong></div>
+              <!-- Current Assigned Driver banner (shown when reassigning) -->
+              <div id="assignParcelCurrentDriverBox" class="mt-2 pt-2 border-top border-secondary border-opacity-25" style="display: none;">
+                <div class="small text-muted">Currently Assigned: <span class="text-info fw-bold" id="assignParcelCurrentDriverName">-</span></div>
+              </div>
+            </div>
+
+            <!-- Vehicle Match Requirement Banner -->
+            <div id="assignParcelVehicleBanner" class="p-2 mb-3 rounded-3" style="background: rgba(234, 179, 8, 0.12); border: 1px solid rgba(234, 179, 8, 0.35);">
+              <div class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-filter text-warning fs-5"></i>
+                <div class="flex-grow-1">
+                  <div class="small fw-bold text-warning" id="assignParcelVehicleBannerTitle">Vehicle Filter Active</div>
+                  <div class="text-white-50" style="font-size: 11px;" id="assignParcelVehicleBannerSub">Showing only drivers matching customer booked vehicle.</div>
+                </div>
+              </div>
             </div>
 
             <!-- Proximity-Based Nearest Driver Recommendation -->
@@ -1576,6 +1595,12 @@
               <select class="cyber-select" id="assignParcelDriverSelect" required>
                 <!-- Populated dynamically -->
               </select>
+              <div class="form-check mt-2" id="assignParcelOverrideWrap">
+                <input class="form-check-input" type="checkbox" id="assignParcelOverrideToggle" onchange="toggleParcelVehicleFilter(this.checked)">
+                <label class="form-check-label text-muted small" for="assignParcelOverrideToggle" style="font-size: 0.76rem; cursor: pointer;">
+                  Show other fleet vehicle types (Emergency Override)
+                </label>
+              </div>
             </div>
 
             <!-- Auto-generated OTP preview for Admin -->
@@ -1602,7 +1627,7 @@
 
             <div id="assignParcelStatusMsg" class="small fw-semibold mb-3"></div>
 
-            <button type="submit" class="btn-cyber-neon w-100 py-3">
+            <button type="submit" id="btnAssignParcelSubmit" class="btn-cyber-neon w-100 py-3">
               <i class="fa-solid fa-circle-check me-1"></i> Dispatch Rider & Assign OTPs
             </button>
           </form>

@@ -6,6 +6,7 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/alert_manager.dart';
 import 'services/api_service.dart';
+import 'services/background_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +23,7 @@ void main() async {
   await ApiConfig.init();
   await ApiService.init();
   await AlertManager().init();
+  await BackgroundService.init();
 
   final bool isAuth = await ApiService.checkAuth();
 

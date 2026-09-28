@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart'
+    hide NotificationVisibility;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:vibration/vibration.dart';
 import '../models/order_model.dart';
@@ -17,6 +19,8 @@ class AlertManager {
   bool _isPlaying = false;
   Timer? _vibrateTimer;
 
+  static Function(String action, String? parcelId)? onActionCallback;
+
   static const String channelId = 'rudraksha_rider_dispatch_v3';
   static const String channelName = 'Direct Order Dispatch & Siren Alerts';
   static const String channelDesc =
@@ -29,8 +33,15 @@ class AlertManager {
 
       await _notificationsPlugin.initialize(
         initSettings,
-        onDidReceiveNotificationResponse: (details) {
-          debugPrint('Dispatch notification clicked: ${details.payload}');
+        onDidReceiveNotificationResponse: (NotificationResponse details) {
+          debugPrint('Dispatch notification clicked: ${details.actionId}, payload: ${details.payload}');
+          stopAlert();
+          if (details.actionId == 'decline_order') {
+            onActionCallback?.call('decline', details.payload);
+          } else {
+            onActionCallback?.call('accept', details.payload);
+            FlutterForegroundTask.launchApp();
+          }
         },
       );
 
@@ -75,6 +86,12 @@ class AlertManager {
     if (_isPlaying) return; // Prevent duplicate overlapping alert loops
     _isPlaying = true;
 
+    // Wake screen and display on lock screen immediately
+    try {
+      FlutterForegroundTask.wakeUpScreen();
+      FlutterForegroundTask.setOnLockScreenVisibility(true);
+    } catch (_) {}
+
     // 1. Play Siren Tone in Loop through Alarm Speaker Channel
     try {
       await _audioPlayer.setReleaseMode(ReleaseMode.loop);
@@ -94,7 +111,7 @@ class AlertManager {
           ? '🚨 NAYA ORDER ASSIGN HUA! (₹${order.totalAmount.toInt()})'
           : '⚡ NAYA PARCEL ORDER AVAILABLE! (₹${order.totalAmount.toInt()})';
       final body =
-          '📍 Pickup: ${order.pickupAddress}\n🏁 Drop: ${order.dropAddress}\nTurant App khol kar order accept karein!';
+          '📍 Pickup: ${order.pickupAddress}\n🏁 Drop: ${order.dropAddress}\nTap ACCEPT ya DECLINE karein!';
 
       final androidDetails = AndroidNotificationDetails(
         channelId,
@@ -110,6 +127,19 @@ class AlertManager {
         visibility: NotificationVisibility.public,
         ongoing: true,
         autoCancel: false,
+        actions: const [
+          AndroidNotificationAction(
+            'accept_order',
+            '✅ ACCEPT ORDER',
+            showsUserInterface: true,
+            cancelNotification: true,
+          ),
+          AndroidNotificationAction(
+            'decline_order',
+            '❌ DECLINE',
+            cancelNotification: true,
+          ),
+        ],
       );
 
       final notifDetails = NotificationDetails(android: androidDetails);

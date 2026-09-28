@@ -2329,9 +2329,21 @@ function renderParcelsTable(list = allAdminParcels) {
     const isPickupDone = p.pickup_otp_verified || ['picked_up', 'in_transit', 'out_for_delivery', 'delivered'].includes(status);
     const isDelivered = p.delivery_otp_verified || status === 'delivered';
 
+    const canChangeDriver = !isDelivered && status !== 'cancelled';
     const driverDisplay = p.assigned_driver_name
-      ? `<div><strong class="text-white small">👨‍✈️ ${p.assigned_driver_name}</strong><br><span class="small text-muted">+91 ${dPhone}</span></div>`
-      : `<button class="btn btn-sm btn-outline-warning rounded-pill py-0 px-2" style="font-size: 0.72rem;" onclick="openAssignParcelDriverModal('${pId}')"><i class="fa-solid fa-plus me-1"></i>Assign Driver</button>`;
+      ? `<div>
+           <strong class="text-white small">👨‍✈️ ${p.assigned_driver_name}</strong><br>
+           <span class="small text-muted">+91 ${dPhone}</span>
+           ${p.assigned_vehicle_type ? `<div class="badge bg-dark border border-secondary text-info-emphasis mt-1" style="font-size:0.65rem;">${p.assigned_vehicle_type}</div>` : ''}
+           ${canChangeDriver ? `
+             <div class="mt-1">
+               <button class="btn btn-sm btn-outline-info rounded-pill py-0 px-2 shadow-sm" style="font-size: 0.70rem;" onclick="openAssignParcelDriverModal('${pId}', true)" title="Change / Reassign Driver">
+                 <i class="fa-solid fa-arrows-rotate me-1"></i>Change Driver
+               </button>
+             </div>
+           ` : ''}
+         </div>`
+      : `<button class="btn btn-sm btn-outline-warning rounded-pill py-0 px-2" style="font-size: 0.72rem;" onclick="openAssignParcelDriverModal('${pId}', false)"><i class="fa-solid fa-plus me-1"></i>Assign Driver</button>`;
 
     const statusBadgeClass = {
       'searching_driver': 'bg-warning text-dark',
@@ -2500,75 +2512,208 @@ Please confirm pickup on your driver portal.`;
   }).join('');
 }
 
-async function openAssignParcelDriverModal(parcelId) {
+function getVehicleCategory(veh) {
+  if (!veh) return 'bike';
+  const str = String(veh).toLowerCase().trim();
+  if (str.includes('auto') || str.includes('3w') || str.includes('3-w') || str.includes('3 wheeler') || str.includes('rickshaw') || str.includes('tempo')) {
+    return 'auto';
+  }
+  if (str.includes('truck') || str.includes('ace') || str.includes('tata') || str.includes('pickup') || str.includes('hathi') || str.includes('bolero') || str.includes('carrier') || str.includes('mini_truck') || str.includes('canter') || str.includes('container') || str.includes('commercial')) {
+    return 'truck';
+  }
+  return 'bike';
+}
+
+function getVehicleCategoryLabel(cat) {
+  switch (cat) {
+    case 'auto': return '🛺 3-Wheeler (Auto / E-Rickshaw / Tempo)';
+    case 'truck': return '🚚 Mini Truck (Tata Ace / Pickup)';
+    case 'bike':
+    default: return '🛵 2-Wheeler (Bike / Scooter)';
+  }
+}
+
+let currentAssignParcelContext = null;
+
+function renderParcelDriverDropdown(showOtherVehicles = false) {
+  if (!currentAssignParcelContext) return;
+  const { allPool, targetCategory, targetCategoryLabel, parcel, isReassign } = currentAssignParcelContext;
+  const select = document.getElementById('assignParcelDriverSelect');
+  if (!select) return;
+
+  const matching = allPool.filter(d => d.category === targetCategory);
+  const others = allPool.filter(d => d.category !== targetCategory);
+
+  const overrideToggle = document.getElementById('assignParcelOverrideToggle');
+  const effectiveShowOther = showOtherVehicles || (matching.length === 0);
+  if (overrideToggle) overrideToggle.checked = effectiveShowOther;
+
+  let html = '';
+
+  if (matching.length > 0) {
+    html += `<optgroup label="✅ Matching Drivers (${targetCategoryLabel})">`;
+    matching.forEach((d, idx) => {
+      const isCurrent = isReassign && (d.name === parcel.assigned_driver_name || String(d.phone).replace(/\D/g, '').slice(-10) === String(parcel.assigned_driver_phone || '').replace(/\D/g, '').slice(-10));
+      const distInfo = d.distance_km != null ? ` (${d.distance_km} KM | ~${d.eta_minutes}m)` : '';
+      const prefix = d.isNearest ? '⚡ [NEAREST] ' : '';
+      const isSelected = isCurrent ? 'selected' : (idx === 0 && !isReassign ? 'selected' : '');
+      html += `
+        <option value="${d.name}" data-id="${d.id || ''}" data-phone="${d.phone}" data-veh="${d.veh}" data-vehnum="${d.vehnum}" ${isSelected}>
+          ${prefix}${d.name}${distInfo} • ${d.veh} (${d.vehnum || 'No plate'}) • +91 ${d.phone} ${isCurrent ? '⭐ [CURRENT]' : ''}
+        </option>
+      `;
+    });
+    html += `</optgroup>`;
+  } else {
+    html += `<option value="" disabled ${!effectiveShowOther ? 'selected' : ''}>⚠️ No registered drivers with ${targetCategoryLabel} found in fleet</option>`;
+  }
+
+  if (effectiveShowOther && others.length > 0) {
+    html += `<optgroup label="⚠️ Other Vehicles (Different Category - Emergency Override)">`;
+    others.forEach((d, idx) => {
+      const isCurrent = isReassign && (d.name === parcel.assigned_driver_name || String(d.phone).replace(/\D/g, '').slice(-10) === String(parcel.assigned_driver_phone || '').replace(/\D/g, '').slice(-10));
+      const distInfo = d.distance_km != null ? ` (${d.distance_km} KM)` : '';
+      const isSelected = (matching.length === 0 && idx === 0 && !isCurrent) ? 'selected' : (isCurrent ? 'selected' : '');
+      html += `
+        <option value="${d.name}" data-id="${d.id || ''}" data-phone="${d.phone}" data-veh="${d.veh}" data-vehnum="${d.vehnum}" ${isSelected}>
+          ⚠️ ${d.name}${distInfo} • ${d.veh} (${d.vehnum || 'No plate'}) • +91 ${d.phone} ${isCurrent ? '⭐ [CURRENT]' : ''}
+        </option>
+      `;
+    });
+    html += `</optgroup>`;
+  }
+
+  select.innerHTML = html;
+}
+
+function toggleParcelVehicleFilter(checked) {
+  renderParcelDriverDropdown(checked);
+}
+
+async function openAssignParcelDriverModal(parcelId, isReassign = false) {
   const parcel = allAdminParcels.find(p => (p.parcel_id === parcelId || p.id === parcelId));
   if (!parcel) return;
+
+  const reqVehRaw = parcel.vehicle_type || parcel.vehicle || 'bike';
+  const targetCategory = getVehicleCategory(reqVehRaw);
+  const targetCategoryLabel = getVehicleCategoryLabel(targetCategory);
+
+  currentAssignParcelContext = {
+    parcel,
+    parcelId,
+    isReassign,
+    targetCategory,
+    targetCategoryLabel,
+    allPool: []
+  };
 
   // Auto-generate 4-digit OTPs if not yet assigned
   if (!parcel.pickup_otp) parcel.pickup_otp = String(Math.floor(1000 + Math.random() * 9000));
   if (!parcel.delivery_otp) parcel.delivery_otp = String(Math.floor(1000 + Math.random() * 9000));
 
   document.getElementById('assignParcelId').value = parcelId;
+  const reassignInput = document.getElementById('assignParcelIsReassign');
+  if (reassignInput) reassignInput.value = isReassign ? 'true' : 'false';
+
   document.getElementById('assignParcelDisplayId').innerText = parcelId;
   document.getElementById('assignParcelSender').innerText = parcel.sender_name || 'Sender';
   document.getElementById('assignParcelReceiver').innerText = parcel.receiver_name || 'Receiver';
+
+  const modalTitleEl = document.getElementById('assignParcelModalTitle');
+  const submitBtnEl = document.getElementById('btnAssignParcelSubmit');
+  const currentDriverBox = document.getElementById('assignParcelCurrentDriverBox');
+  const currentDriverNameEl = document.getElementById('assignParcelCurrentDriverName');
+  const reqVehBadge = document.getElementById('assignParcelReqVehBadge');
+  const vehBannerTitle = document.getElementById('assignParcelVehicleBannerTitle');
+  const vehBannerSub = document.getElementById('assignParcelVehicleBannerSub');
+
+  if (modalTitleEl) {
+    modalTitleEl.innerHTML = isReassign 
+      ? `<i class="fa-solid fa-arrows-rotate me-2 text-info"></i>Change / Reassign Driver`
+      : `<i class="fa-solid fa-motorcycle me-2" style="color: #D0FD38;"></i>Assign Driver to Parcel`;
+  }
+
+  if (submitBtnEl) {
+    submitBtnEl.innerHTML = isReassign
+      ? `<i class="fa-solid fa-arrows-rotate me-1"></i> Confirm & Reassign Driver`
+      : `<i class="fa-solid fa-circle-check me-1"></i> Dispatch Rider & Assign OTPs`;
+  }
+
+  if (currentDriverBox && currentDriverNameEl) {
+    if (isReassign && parcel.assigned_driver_name) {
+      currentDriverBox.style.display = 'block';
+      currentDriverNameEl.innerHTML = `👨‍✈️ <strong>${parcel.assigned_driver_name}</strong> (+91 ${parcel.assigned_driver_phone || '-'}) • ${parcel.assigned_vehicle_type || 'Vehicle'}`;
+    } else {
+      currentDriverBox.style.display = 'none';
+    }
+  }
+
+  if (reqVehBadge) reqVehBadge.innerText = reqVehRaw.toUpperCase();
+  if (vehBannerTitle) vehBannerTitle.innerHTML = `Customer Required Vehicle: <strong>${targetCategoryLabel}</strong>`;
+  if (vehBannerSub) vehBannerSub.innerHTML = `Order booked with <strong>${reqVehRaw.toUpperCase()}</strong>. Only verified <strong>${targetCategoryLabel}</strong> drivers are shown.`;
 
   const otp1El = document.getElementById('assignModalPickupOtp');
   const otp2El = document.getElementById('assignModalDeliveryOtp');
   if (otp1El) otp1El.innerText = parcel.pickup_otp;
   if (otp2El) otp2El.innerText = parcel.delivery_otp;
 
-  const select = document.getElementById('assignParcelDriverSelect');
   const bannerTitle = document.getElementById('nearestDriverBannerTitle');
   const bannerSub = document.getElementById('nearestDriverBannerSub');
   const etaBadge = document.getElementById('nearestDriverEtaBadge');
   const distTip = document.getElementById('nearestDriverDistTip');
 
-  if (bannerTitle) bannerTitle.innerText = 'Scanning Nearest Drivers...';
+  if (bannerTitle) bannerTitle.innerText = `Scanning Nearest ${targetCategoryLabel}...`;
   if (bannerSub) bannerSub.innerText = `Matching pickup location: ${parcel.pickup_address || 'Jaipur'}`;
   if (etaBadge) etaBadge.innerText = 'CALCULATING';
+  if (distTip) distTip.innerText = 'Sorted by vehicle match & distance';
 
-  // 1. Initial quick render from registered drivers
-  const baseDriversList = [];
+  // 1. Initial quick build from registered drivers & rider applications
+  const allPool = [];
+  const seenPhones = new Set();
+
   if (Array.isArray(allRiderApplications) && allRiderApplications.length > 0) {
     allRiderApplications.forEach(d => {
-      baseDriversList.push({
-        id: d.driverId || d.id,
-        name: d.name,
-        phone: d.phone,
-        veh: d.vehType || 'Express Partner',
-        vehnum: d.vehNum || ''
-      });
-    });
-  }
-  if (Array.isArray(adminDrivers) && adminDrivers.length > 0) {
-    adminDrivers.forEach(d => {
-      if (!baseDriversList.some(x => String(x.phone).replace(/\D/g, '') === String(d.phone).replace(/\D/g, ''))) {
-        baseDriversList.push({
-          id: d.id,
-          name: d.driver_name,
+      const pClean = String(d.phone || '').replace(/\D/g, '').slice(-10);
+      if (pClean && !seenPhones.has(pClean)) {
+        seenPhones.add(pClean);
+        const v = d.vehType || 'Bike / Scooter';
+        allPool.push({
+          id: d.driverId || d.id || '',
+          name: d.name,
           phone: d.phone,
-          veh: d.vehicle_type || 'Dedicated Fleet',
-          vehnum: d.vehicle_number || ''
+          veh: v,
+          vehnum: d.vehNum || '',
+          category: getVehicleCategory(v)
         });
       }
     });
   }
 
-  if (select) {
-    if (baseDriversList.length > 0) {
-      select.innerHTML = baseDriversList.map(d => `
-        <option value="${d.name}" data-id="${d.id || ''}" data-phone="${d.phone}" data-veh="${d.veh}" data-vehnum="${d.vehnum}">${d.name} - ${d.veh} (${d.vehnum || 'No plate'}) • Phone: ${d.phone}</option>
-      `).join('');
-    } else {
-      select.innerHTML = `<option value="" disabled selected>No registered drivers available - please register driver first</option>`;
-    }
+  if (Array.isArray(adminDrivers) && adminDrivers.length > 0) {
+    adminDrivers.forEach(d => {
+      const pClean = String(d.phone || '').replace(/\D/g, '').slice(-10);
+      if (pClean && !seenPhones.has(pClean)) {
+        seenPhones.add(pClean);
+        const v = d.vehicle_type || 'Dedicated Fleet';
+        allPool.push({
+          id: d.id || '',
+          name: d.driver_name || d.name,
+          phone: d.phone,
+          veh: v,
+          vehnum: d.vehicle_number || '',
+          category: getVehicleCategory(v)
+        });
+      }
+    });
   }
+
+  currentAssignParcelContext.allPool = allPool;
+  renderParcelDriverDropdown(false);
 
   const modal = new bootstrap.Modal(document.getElementById('assignParcelDriverModal'));
   modal.show();
 
-  // 2. Query Real-Time Nearest Drivers from Backend
+  // 2. Query Real-Time Nearest Drivers from Backend with vehicle type filter
   try {
     const res = await fetch(`${API_BASE}/admin/nearest-drivers`, {
       method: 'POST',
@@ -2576,31 +2721,62 @@ async function openAssignParcelDriverModal(parcelId) {
       body: JSON.stringify({
         pickup_address: parcel.pickup_address || '',
         pickup_lat: parcel.pickup_lat || 26.9124,
-        pickup_lng: parcel.pickup_lng || 75.7873
+        pickup_lng: parcel.pickup_lng || 75.7873,
+        vehicle_type: reqVehRaw,
+        vehicle_category: targetCategory
       })
     });
     if (res.ok) {
       const data = await res.json();
       if (data.success && Array.isArray(data.drivers) && data.drivers.length > 0) {
-        const sorted = data.drivers;
-        const topDriver = sorted[0];
+        const liveDrivers = data.drivers;
 
-        if (bannerTitle) bannerTitle.innerHTML = `⚡ Recommended: <strong class="text-white">${topDriver.driver_name}</strong> (${topDriver.distance_km} KM away)`;
-        if (bannerSub) bannerSub.innerHTML = `ETA: <strong>~${topDriver.eta_minutes} mins</strong> • ${topDriver.vehicle_type} (${topDriver.vehicle_number}) • ${topDriver.onDuty ? '<span class="text-success">🟢 On-Duty</span>' : '<span class="text-muted">⚪ Off-Duty</span>'}`;
-        if (etaBadge) etaBadge.innerText = `${topDriver.distance_km} KM (ETA ~${topDriver.eta_minutes}m)`;
-        if (distTip) distTip.innerText = '⚡ Sorted nearest to pickup point';
+        // Merge backend distance, ETA and vehicle category into pool
+        liveDrivers.forEach(ld => {
+          const cleanPhone = String(ld.phone || '').replace(/\D/g, '').slice(-10);
+          const found = currentAssignParcelContext.allPool.find(x => String(x.phone || '').replace(/\D/g, '').slice(-10) === cleanPhone);
+          if (found) {
+            found.distance_km = ld.distance_km;
+            found.eta_minutes = ld.eta_minutes;
+            found.onDuty = ld.onDuty;
+            found.hasLiveGps = ld.hasLiveGps;
+            found.veh = ld.vehicle_type || found.veh;
+            found.category = ld.vehicle_category || getVehicleCategory(found.veh);
+          } else {
+            currentAssignParcelContext.allPool.push({
+              id: ld.id || '',
+              name: ld.driver_name,
+              phone: ld.phone,
+              veh: ld.vehicle_type,
+              vehnum: ld.vehicle_number,
+              category: ld.vehicle_category || getVehicleCategory(ld.vehicle_type),
+              distance_km: ld.distance_km,
+              eta_minutes: ld.eta_minutes,
+              onDuty: ld.onDuty,
+              hasLiveGps: ld.hasLiveGps
+            });
+          }
+        });
 
-        if (select) {
-          select.innerHTML = sorted.map((d, idx) => {
-            const isTop = idx === 0;
-            const prefix = isTop ? '⚡ [NEAREST RECOMMENDED] ' : '';
-            return `
-              <option value="${d.driver_name}" data-id="${d.id || ''}" data-phone="${d.phone}" data-veh="${d.vehicle_type}" data-vehnum="${d.vehicle_number}" ${isTop ? 'selected' : ''}>
-                ${prefix}${d.driver_name} (${d.distance_km} KM away | ETA ~${d.eta_minutes}m) • ${d.vehicle_type} - ${d.vehicle_number}
-              </option>
-            `;
-          }).join('');
+        // Sort allPool: within matching category sort by distance
+        currentAssignParcelContext.allPool.sort((a, b) => (a.distance_km ?? 999) - (b.distance_km ?? 999));
+
+        // Find nearest matching driver
+        const matchingLive = currentAssignParcelContext.allPool.filter(d => d.category === targetCategory);
+        if (matchingLive.length > 0) {
+          matchingLive[0].isNearest = true;
+          const topDriver = matchingLive[0];
+          if (bannerTitle) bannerTitle.innerHTML = `⚡ Recommended Matching: <strong class="text-white">${topDriver.name}</strong> (${topDriver.distance_km != null ? topDriver.distance_km + ' KM away' : 'In Jaipur Area'})`;
+          if (bannerSub) bannerSub.innerHTML = `ETA: <strong>~${topDriver.eta_minutes || 15} mins</strong> • ${topDriver.veh} (${topDriver.vehnum || 'Fleet Plate'}) • ${topDriver.onDuty !== false ? '<span class="text-success">🟢 On-Duty</span>' : '<span class="text-muted">⚪ Off-Duty</span>'}`;
+          if (etaBadge) etaBadge.innerText = `${topDriver.distance_km != null ? topDriver.distance_km + ' KM' : '⚡ MATCH'} (~${topDriver.eta_minutes || 15}m)`;
+        } else {
+          if (bannerTitle) bannerTitle.innerHTML = `⚠️ No Matching ${targetCategoryLabel} Online`;
+          if (bannerSub) bannerSub.innerHTML = `No registered driver with ${targetCategoryLabel} is currently active. Use Emergency Override below if needed.`;
+          if (etaBadge) etaBadge.innerText = 'NO MATCH';
         }
+
+        const isOverrideChecked = document.getElementById('assignParcelOverrideToggle')?.checked;
+        renderParcelDriverDropdown(isOverrideChecked);
       }
     }
   } catch (err) {
@@ -2610,16 +2786,24 @@ async function openAssignParcelDriverModal(parcelId) {
 
 async function submitParcelDriverAssignment() {
   const parcelId = document.getElementById('assignParcelId')?.value;
+  const isReassign = document.getElementById('assignParcelIsReassign')?.value === 'true';
   const select = document.getElementById('assignParcelDriverSelect');
   const selectedOption = select?.selectedOptions?.[0];
-  const driverName = select?.value || 'Assigned Driver';
+  const driverName = select?.value;
+
+  if (!driverName) {
+    showAdminToast('⚠️ Please select a driver from the list before submitting.');
+    return;
+  }
+
   const driverId = selectedOption?.getAttribute('data-id') || '';
   const driverPhone = selectedOption?.getAttribute('data-phone') || '7296831460';
-  const driverVeh = selectedOption?.getAttribute('data-veh') || 'Bike';
+  const driverVeh = selectedOption?.getAttribute('data-veh') || 'Vehicle';
   const driverVehNum = selectedOption?.getAttribute('data-vehnum') || '-';
 
   const p = allAdminParcels.find(x => (x.parcel_id === parcelId || x.id === parcelId));
   if (p) {
+    const prevDriver = p.assigned_driver_name;
     p.driver_id = driverId;
     p.assigned_driver_name = driverName;
     p.assigned_driver_phone = driverPhone;
@@ -2647,15 +2831,21 @@ async function submitParcelDriverAssignment() {
           vehicle_type: driverVeh,
           vehicle_number: driverVehNum,
           pickup_otp: p.pickup_otp,
-          delivery_otp: p.delivery_otp
+          delivery_otp: p.delivery_otp,
+          is_reassign: isReassign
         })
       });
     } catch (e) {
       console.warn('Backend sync assigned rider notice:', e);
     }
+
+    if (isReassign) {
+      showAdminToast(`🔄 Driver changed from "${prevDriver || 'Previous'}" to "${driverName}" (${driverVeh}) for Parcel ${parcelId}!`);
+    } else {
+      showAdminToast(`🚨 Driver "${driverName}" (${driverVeh}) assigned to Parcel ${parcelId}! Siren & notification dispatched.`);
+    }
   }
 
-  showAdminToast(`🚨 Driver "${driverName}" assigned to Parcel ${parcelId}! Siren & notification dispatched to driver.`);
   bootstrap.Modal.getInstance(document.getElementById('assignParcelDriverModal'))?.hide();
   renderParcelsTable();
   updateParcelMetrics();

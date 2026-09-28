@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/order_model.dart';
 import '../services/alert_manager.dart';
 import '../services/api_service.dart';
+import '../services/background_service.dart';
 import '../services/location_service.dart';
 import '../services/permission_service.dart';
 import '../services/update_service.dart';
@@ -45,11 +47,22 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadInitialData();
     _startBackgroundPolling();
 
-    // Start live GPS tracking if On-Duty
+    // Start live GPS tracking and persistent foreground background service if On-Duty
     final isDuty = ApiService.currentDriver?.onDuty ?? true;
     if (isDuty) {
       LocationService().startTracking();
+      BackgroundService.start();
     }
+
+    // Listen to background service notifications and order events
+    FlutterForegroundTask.addTaskDataCallback(_onReceiveBackgroundData);
+    AlertManager.onActionCallback = (action, parcelId) {
+      if (action == 'accept' && parcelId != null) {
+        _handleNotificationAccept(parcelId);
+      } else if (action == 'decline' && parcelId != null) {
+        _acknowledgedAssignedTrips.add(parcelId);
+      }
+    };
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PermissionService.checkAndRequestAllPermissions(context);
@@ -57,10 +70,43 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _onReceiveBackgroundData(Object data) {
+    if (data is Map<String, dynamic>) {
+      final type = data['type'];
+      if (type == 'new_order_alert' && data['order'] != null) {
+        final order = OrderModel.fromJson(data['order'], isDirect: true);
+        if (!_isAlertDialogOpen && !_acknowledgedAssignedTrips.contains(order.parcelId)) {
+          _triggerOrderAlert(order);
+        }
+      }
+    }
+  }
+
+  void _handleNotificationAccept(String parcelId) async {
+    _acknowledgedAssignedTrips.add(parcelId);
+    _isAlertDialogOpen = false;
+    await AlertManager().stopAlert(notifId: parcelId.hashCode);
+    final res = await ApiService.acceptJob(parcelId);
+    if (res['success'] == true || res['already_accepted'] == true) {
+      await _syncFeed();
+      if (mounted) {
+        setState(() => _currentTab = 1);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🚀 Trip Ready! Head to the pickup location.'),
+            backgroundColor: Color(0xFF22C55E),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _pollingTimer?.cancel();
     LocationService().stopTracking();
+    FlutterForegroundTask.removeTaskDataCallback(_onReceiveBackgroundData);
+    AlertManager.onActionCallback = null;
     _pickupOtpController.dispose();
     _deliveryOtpController.dispose();
     super.dispose();
@@ -70,8 +116,10 @@ class _HomeScreenState extends State<HomeScreen> {
     await ApiService.toggleDuty(val);
     if (val) {
       LocationService().startTracking();
+      BackgroundService.start();
     } else {
       LocationService().stopTracking();
+      BackgroundService.stop();
     }
     if (mounted) {
       setState(() {});
