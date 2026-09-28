@@ -680,6 +680,10 @@ const KNOWN_DRIVER_BASES = {
   '8619384774': { lat: 26.9288, lng: 75.6880, area: 'Siwar Mod, Bindayaka, Sirsi Rd' },
   // Hemant Yadav (Vaishali Estate, Gandhi Path, Jaipur)
   '7232825204': { lat: 26.8920, lng: 75.7260, area: 'Vaishali Estate, Gandhi Path' },
+  // Vijendra Singh (Civil Lines / Central Jaipur)
+  '7296831460': { lat: 26.9050, lng: 75.7900, area: 'Civil Lines, Jaipur' },
+  // Ravindra Singh Panwar (Khatipura, Jaipur)
+  '6350251496': { lat: 26.9200, lng: 75.7400, area: 'Khatipura, Jaipur' },
   // Purshottam Yadav (Sanganer / Mansarovar Jaipur)
   '7232825205': { lat: 26.8400, lng: 75.7800, area: 'Sanganer, Jaipur' },
   // Rajesh Kumar (Mansarovar, Jaipur)

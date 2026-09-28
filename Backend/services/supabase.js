@@ -545,26 +545,77 @@ module.exports = {
         console.warn('Supabase getDrivers warning:', err.message);
       }
     }
-    if (!list || list.length === 0) {
-      list = await readLocal(driversFile, defaultDrivers);
-    }
 
-    // Enrich driver list with security PIN, approval date, and onDuty status from applications
+    // Always merge local file drivers as fallback or local additions
+    try {
+      const localDrivers = await readLocal(driversFile, defaultDrivers);
+      for (const ld of localDrivers) {
+        const lPhone = String(ld.phone || '').replace(/\D/g, '');
+        if (lPhone && !list.some(d => String(d.phone || '').replace(/\D/g, '') === lPhone)) {
+          list.push(ld);
+        }
+      }
+    } catch {}
+
+    // Auto-merge any Approved applications into active drivers list if not already present
     try {
       const apps = await this.getRiderApplications();
+      const approvedApps = apps.filter(a => String(a.status || '').toLowerCase() === 'approved');
+
+      for (const app of approvedApps) {
+        const aPhone = String(app.phone || '').replace(/\D/g, '');
+        if (!aPhone) continue;
+        const exists = list.some(d => String(d.phone || '').replace(/\D/g, '') === aPhone);
+        if (!exists) {
+          const autoDriver = {
+            id: app.id || app.driverId || app.driverid || `RDR-${aPhone.slice(-4)}`,
+            driver_name: app.name || 'Rider Partner',
+            phone: aPhone,
+            vehicle_number: app.vehNum || app.vehnum || app.vehicle_number || '',
+            vehicle_type: app.vehType || app.vehtype || app.vehicle_type || 'Bike / Scooter',
+            status: 'available',
+            rating: 4.9,
+            pin: app.pin || '1234',
+            onDuty: true,
+            created_at: app.created_at || new Date().toISOString(),
+            updated_at: app.updated_at || new Date().toISOString()
+          };
+          list.push(autoDriver);
+
+          // Asynchronously provision to Supabase drivers table if connected
+          if (supabase) {
+            supabase.from('drivers').insert([{
+              id: crypto.randomUUID(),
+              driver_name: autoDriver.driver_name,
+              phone: aPhone,
+              vehicle_number: autoDriver.vehicle_number,
+              vehicle_type: autoDriver.vehicle_type,
+              status: 'available',
+              rating: 4.9,
+              created_at: autoDriver.created_at,
+              updated_at: autoDriver.updated_at
+            }]).then(() => {}).catch(() => {});
+          }
+        }
+      }
+
+      // Enrich driver list with security PIN, approval date, vehicle type, and onDuty status
       list = list.map(d => {
         const dPhone = String(d.phone || '').replace(/\D/g, '');
         const matchedApp = apps.find(a => String(a.phone || '').replace(/\D/g, '') === dPhone);
         return {
           ...d,
+          driver_name: d.driver_name || matchedApp?.name || 'Rider Partner',
           pin: matchedApp?.pin || d.pin || '1234',
           onDuty: d.onDuty !== undefined ? d.onDuty : (d.status !== 'off_duty'),
           approved_at: matchedApp?.approved_at || d.approved_at || d.created_at,
-          vehicle_number: d.vehicle_number || matchedApp?.vehNum || '',
-          vehicle_type: d.vehicle_type || matchedApp?.vehType || 'Bike / Scooter'
+          vehicle_number: d.vehicle_number || matchedApp?.vehNum || matchedApp?.vehnum || '',
+          vehicle_type: d.vehicle_type || matchedApp?.vehType || matchedApp?.vehtype || 'Bike / Scooter'
         };
       });
-    } catch {}
+    } catch (err) {
+      console.warn('Enrich drivers error:', err.message);
+    }
 
     return list;
   },

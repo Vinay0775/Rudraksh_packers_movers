@@ -26,10 +26,15 @@ const DEST_APK_PATH = path.join(ROOT_DIR, 'Frontend/downloads/RudrakshaDriver.ap
 function getGitHubToken() {
   if (process.env.GITHUB_TOKEN) return process.env.GITHUB_TOKEN;
   try {
-    const stdout = execSync('powershell -Command "echo \'protocol=https`nhost=github.com\' | git credential fill"', { encoding: 'utf-8' });
+    const stdout = execSync('git credential fill', {
+      input: 'protocol=https\nhost=github.com\n\n',
+      encoding: 'utf-8'
+    });
     const match = stdout.match(/password=(.*)/);
     if (match) return match[1].trim();
-  } catch (_) {}
+  } catch (e) {
+    log(`Warning getting credentials: ${e.message}`, '⚠️');
+  }
   return '';
 }
 
@@ -302,7 +307,12 @@ async function main() {
   syncVersionFiles(targetVer, targetCode);
 
   // Step 2: Build Flutter APK
-  buildApk();
+  const skipBuild = process.argv.includes('--skip-build');
+  if (skipBuild && fs.existsSync(DEST_APK_PATH)) {
+    log(`--skip-build specified. Using existing compiled APK at ${DEST_APK_PATH}`);
+  } else {
+    buildApk();
+  }
 
   // Step 3: GitHub Release & Upload Asset
   await createGitHubRelease(targetVer, targetCode);
