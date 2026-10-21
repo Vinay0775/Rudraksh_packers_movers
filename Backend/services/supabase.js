@@ -86,7 +86,7 @@ const defaultConfig = {
     { code: 'FESTIVE15', type: 'percent', value: 15, description: '15% festive seasonal off' }
   ],
   company: {
-    name: 'Rudraksha Packers & Movers',
+    name: 'OM Rudraksha Packers & Movers',
     phone: '7296831460',
     whatsapp: '7296831460',
     email: 'support@rudrakshapackers.com',

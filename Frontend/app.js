@@ -183,7 +183,17 @@ function applyCompanyConfig(comp) {
     });
   }
   if (comp.name) {
-    document.querySelectorAll('.brand-title-text').forEach(el => el.innerText = comp.name);
+    let brandName = comp.name;
+    if (!brandName.startsWith('OM ') && brandName.includes('Rudraksha')) {
+      brandName = 'OM ' + brandName;
+    }
+    document.querySelectorAll('.brand-title-text').forEach(el => {
+      if (el.closest('.brand-logo-container')) {
+        el.innerText = 'OM Rudraksha';
+      } else {
+        el.innerText = brandName;
+      }
+    });
   }
   if (comp.gstin) {
     document.querySelectorAll('.company-gstin-text').forEach(el => el.innerText = comp.gstin);
