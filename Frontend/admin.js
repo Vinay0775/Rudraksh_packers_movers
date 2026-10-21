@@ -334,10 +334,11 @@ async function submitAdminLogin() {
       }
     } catch (apiErr) {
       // 2. Resilient Master Auth Fallback (Protected offline authentication check)
+      const uClean = username.replace(/\D/g, '');
       const uEnc = typeof btoa !== 'undefined' ? btoa(username) : '';
       const pEnc = typeof btoa !== 'undefined' ? btoa(password) : '';
-      const isOwnerUser = (uEnc === 'UnVkcmFrc2hhcGFja2VycyZwYXJjZWw=');
-      const isOwnerPass = (pEnc === 'QmFubmFqaTEyMzRA');
+      const isOwnerUser = (uClean === '7296831460' || uEnc === 'NzI5NjgzMTQ2MA==' || uEnc === 'UnVkcmFrc2hhcGFja2VycyZwYXJjZWw=');
+      const isOwnerPass = (password === '8642' || pEnc === 'ODY0Mg==' || pEnc === 'QmFubmFqaTEyMzRA');
 
       if (isOwnerUser && isOwnerPass) {
         token = `local_admin_session_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
