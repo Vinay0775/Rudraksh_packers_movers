@@ -179,7 +179,7 @@ function applyCompanyConfig(comp) {
   if (comp.whatsapp) {
     const rawWa = String(comp.whatsapp).replace(/\D/g, '');
     document.querySelectorAll('a[href*="wa.me"]').forEach(el => {
-      el.href = `https://wa.me/91${rawWa}?text=Hello%20Rudraksha%20Packers,%20I%20want%20to%20inquire%20about%20shifting%20service`;
+      el.href = `https://wa.me/91${rawWa}?text=Hello%20OM%20Rudraksha%20Packers,%20I%20want%20to%20inquire%20about%20shifting%20service`;
     });
   }
   if (comp.name) {
@@ -2001,7 +2001,7 @@ function showBookingSuccessModal(bookingId, bookingData) {
     `💰 *Total Amount:* ₹${Number(bookingData.total_amount || 0).toLocaleString('en-IN')}\n\n` +
     `🗺️ *Live GPS Real-Time Track Link:*\n${trackUrl}\n\n` +
     `📞 *24x7 Support:* +91 72968 31460\n` +
-    `_Thank you for choosing Rudraksha Packers & Movers!_`;
+    `_Thank you for choosing OM Rudraksha Packers & Movers!_`;
 
   const waBtn = document.getElementById('successWhatsAppBtn');
   if (waBtn) {

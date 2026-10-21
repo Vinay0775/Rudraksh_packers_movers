@@ -350,7 +350,7 @@ async function submitDriverLogin() {
       } else if (foundApp && foundApp.status === 'Pending') {
         throw new Error('⏳ Your driver application is under review. You will receive your PIN on WhatsApp once approved.');
       } else if (foundApp && foundApp.status === 'Rejected') {
-        throw new Error('❌ Your driver application was declined. Please contact Rudraksha Support at +91 7296831460.');
+        throw new Error('❌ Your driver application was declined. Please contact OM Rudraksha Support at +91 7296831460.');
       } else {
         throw new Error(`❌ No approved driver account found for +91 ${phoneInput}. Please register as a rider partner first.`);
       }
@@ -390,7 +390,7 @@ async function submitDriverLogin() {
  * Rider Logout
  */
 function logoutDriver() {
-  if (confirm('Are you sure you want to log out from Rudraksha Rider?')) {
+  if (confirm('Are you sure you want to log out from OM Rudraksha Rider?')) {
     localStorage.removeItem(RIDER_TOKEN_KEY);
     sessionStorage.removeItem(RIDER_TOKEN_KEY);
     localStorage.removeItem(RIDER_SESSION_KEY);
@@ -430,7 +430,7 @@ function initPwaInstallIcon() {
     deferredInstallPrompt = null;
     window._driverInstallPrompt = null;
     closeDriverInstallModal();
-    showToast('🚀 Rudraksha Rider Partner App installed on your device!', 'success');
+    showToast('🚀 OM Rudraksha Rider Partner App installed on your device!', 'success');
   });
 }
 
@@ -446,7 +446,7 @@ async function triggerPwaInstall() {
       await nativePrompt.prompt();
       const choice = await nativePrompt.userChoice;
       if (choice && choice.outcome === 'accepted') {
-        showToast('🎉 Rudraksha Driver App successfully installed!', 'success');
+        showToast('🎉 OM Rudraksha Driver App successfully installed!', 'success');
         window._driverInstallPrompt = null;
         deferredInstallPrompt = null;
         closeDriverInstallModal();
@@ -478,7 +478,7 @@ async function triggerPwaInstall() {
         await freshPrompt.prompt();
         const choice = await freshPrompt.userChoice;
         if (choice && choice.outcome === 'accepted') {
-          showToast('🎉 Rudraksha Driver App successfully installed!', 'success');
+          showToast('🎉 OM Rudraksha Driver App successfully installed!', 'success');
           window._driverInstallPrompt = null;
           deferredInstallPrompt = null;
           closeDriverInstallModal();
@@ -512,7 +512,7 @@ function openDriverInstallModal() {
           <i class="fa-solid fa-motorcycle text-warning"></i> Dedicated Driver App Install
         </div>
         <p style="font-size: 0.78rem; color: #cbd5e1; margin: 0; line-height: 1.45;">
-          Phone me <strong>Rudraksha Driver App</strong> ko alag se home screen par install karne ke liye neeche diye button se <strong>Google Chrome me kholein</strong> aur 1 tap me install karein!
+          Phone me <strong>OM Rudraksha Driver App</strong> ko alag se home screen par install karne ke liye neeche diye button se <strong>Google Chrome me kholein</strong> aur 1 tap me install karein!
         </p>
       </div>
 
@@ -569,7 +569,7 @@ function openDriverInstallModal() {
 
       <div class="install-step-box">
         <div class="install-step-num">3</div>
-        <div style="flex: 1;"><strong>'Install'</strong> dabayein — Rudraksha Rider Partner App aapke phone me turant install ho jayegi!</div>
+        <div style="flex: 1;"><strong>'Install'</strong> dabayein — OM Rudraksha Rider Partner App aapke phone me turant install ho jayegi!</div>
       </div>
     `;
   }
@@ -633,7 +633,7 @@ function renderNavProfile() {
   const avatarImg = document.getElementById('navAvatarImg');
   const avatarIcon = document.getElementById('navAvatarIcon');
 
-  if (nameEl) nameEl.innerText = currentDriver.driver_name || 'Rudraksha Rider';
+  if (nameEl) nameEl.innerText = currentDriver.driver_name || 'OM Rudraksha Rider';
   if (vehEl) vehEl.innerText = `${currentDriver.vehicle_type || 'Vehicle'} • ${currentDriver.vehicle_number || '-'}`;
 
   const activeAvatar = getActiveRiderAvatar();
@@ -1703,14 +1703,14 @@ function triggerPickupReceiptToCustomer(trip, tripId) {
   const cName = t.sender_name || t.customer_name || 'Customer';
   const cPhone = t.sender_phone || t.customer_phone || '';
   const dropAddr = t.drop_address || t.drop || 'Destination Point';
-  const dName = currentDriver?.name || currentDriver?.driver_name || 'Official Rudraksha Driver';
+  const dName = currentDriver?.name || currentDriver?.driver_name || 'Official OM Rudraksha Driver';
   const dPhone = currentDriver?.phone || '';
   const veh = currentDriver?.vehicle_number || currentDriver?.vehicle_no || currentDriver?.vehicle_type || 'Assigned Logistics Vehicle';
   const deliveryOtp = t.delivery_otp || '';
   const trackId = tripId || t.parcel_id || t.id || 'ORDER';
 
   const receiptMsg = 
-`🚚 *RUDRAKSHA PACKERS & MOVERS - PICKUP CONFIRMATION RECEIPT* 🚚
+`🚚 *OM RUDRAKSHA PACKERS & MOVERS - PICKUP CONFIRMATION RECEIPT* 🚚
 ━━━━━━━━━━━━━━━━━━━━
 Namaste *${cName}*,
 Aapka consignment hamare official driver dwara successfully verify karke safely truck/vehicle me load kar liya gaya hai!
@@ -1725,7 +1725,7 @@ ${deliveryOtp ? `🔐 *Delivery PIN:* *${deliveryOtp}*\n*(Yeh Delivery PIN desti
 https://rudraksha-packers.web.app/track.html?tracking=${trackId}
 ━━━━━━━━━━━━━━━━━━━━
 _Aapka samaan hamari zimmedari hai. Safe & Secure Transit!_
-_Rudraksha Packers & Movers • Helpline: +91 7999818816_`;
+_OM Rudraksha Packers & Movers • Helpline: +91 7999818816_`;
 
   const waUrl = cPhone ? `https://wa.me/91${cPhone}?text=${encodeURIComponent(receiptMsg)}` : '#';
 
@@ -2433,7 +2433,7 @@ window.startDriverApkDownload = function(e, el) {
     : 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk';
   try {
     if (typeof showToast === 'function') {
-      showToast('📲 Official Rudraksha Driver APK (52.5 MB) download ho raha hai...', 'success');
+      showToast('📲 Official OM Rudraksha Driver APK (52.5 MB) download ho raha hai...', 'success');
     }
   } catch (err) {
     console.error('Download toast error:', err);

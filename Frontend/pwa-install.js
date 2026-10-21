@@ -25,7 +25,7 @@
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
   const isAdmin = window.location.pathname.includes('admin.html');
-  const appName = isAdmin ? 'Rudraksha Admin Control' : 'Rudraksha Packers & Movers';
+  const appName = isAdmin ? 'OM Rudraksha Admin Control' : 'OM Rudraksha Packers & Movers';
   const appDesc = isAdmin ? 'Live Fleets, Bookings & Rates' : 'Fast Shifting & Parcel Delivery App';
   const appIcon = 'app-icon-192.png';
 
@@ -65,7 +65,7 @@
     if (banner) banner.classList.remove('pwa-show');
     const toast = document.getElementById('pwaToast');
     if (toast) {
-      toast.innerText = '🎉 Rudraksha App Installed Successfully!';
+      toast.innerText = '🎉 OM Rudraksha App Installed Successfully!';
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 3500);
     }

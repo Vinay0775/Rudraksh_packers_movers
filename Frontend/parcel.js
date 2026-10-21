@@ -62,7 +62,7 @@ function applyCompanyConfig(comp) {
   if (comp.whatsapp) {
     const rawWa = String(comp.whatsapp).replace(/\D/g, '');
     document.querySelectorAll('a[href*="wa.me"]').forEach(el => {
-      el.href = `https://wa.me/91${rawWa}?text=Hello%20Rudraksha%20Team,%20I%20want%20to%20check%20my%20parcel%20status`;
+      el.href = `https://wa.me/91${rawWa}?text=Hello%20OM%20Rudraksha%20Team,%20I%20want%20to%20check%20my%20parcel%20status`;
     });
   }
   if (comp.name) {
@@ -1338,8 +1338,8 @@ function shareBookingToReceiver() {
   const b = window._lastParcelBooking;
   if (!b) return;
   const trackUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}track.html?id=${b.parcel_id}`;
-  const deliveryOtpText = b.delivery_otp ? `\n\n🛡️ *Delivery OTP: ${b.delivery_otp}* (Share with rider at drop)` : `\n\n🛡️ *Delivery OTP:* Rudraksha Admin will dispatch your security delivery PIN upon order confirmation.`;
-  const msg = `📦 *Your Parcel Delivery Alert!*\n\nHi ${b.receiver_name},\n*${b.sender_name}* has sent you a parcel via Rudraksha Express.\n\n🆔 Parcel ID: *${b.parcel_id}*\n📍 From: ${b.pickup_address}\n📍 To: ${b.drop_address}\n💰 Fare: ₹${b.total_amount}${deliveryOtpText}\n\n🔍 Track live status here:\n${trackUrl}`;
+  const deliveryOtpText = b.delivery_otp ? `\n\n🛡️ *Delivery OTP: ${b.delivery_otp}* (Share with rider at drop)` : `\n\n🛡️ *Delivery OTP:* OM Rudraksha Admin will dispatch your security delivery PIN upon order confirmation.`;
+  const msg = `📦 *Your Parcel Delivery Alert!*\n\nHi ${b.receiver_name},\n*${b.sender_name}* has sent you a parcel via OM Rudraksha Express.\n\n🆔 Parcel ID: *${b.parcel_id}*\n📍 From: ${b.pickup_address}\n📍 To: ${b.drop_address}\n💰 Fare: ₹${b.total_amount}${deliveryOtpText}\n\n🔍 Track live status here:\n${trackUrl}`;
   const waUrl = `https://wa.me/91${b.receiver_phone}?text=${encodeURIComponent(msg)}`;
   window.open(waUrl, '_blank');
 }

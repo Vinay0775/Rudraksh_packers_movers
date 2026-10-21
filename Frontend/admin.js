@@ -890,7 +890,7 @@ async function dispatchMoversOtpsToWhatsApp(bookingId) {
   const driverInfo = b.assigned_driver_name ? `${b.assigned_driver_name} (${b.assigned_vehicle_no || b.selected_vehicle || 'Vehicle Assigned'})` : 'Driver will be assigned upon dispatch';
 
   const fullMsg = 
-`🚚 *RUDRAKSHA PACKERS & MOVERS - BOOKING & SECURITY PINS* 🚚
+`🚚 *OM RUDRAKSHA PACKERS & MOVERS - BOOKING & SECURITY PINS* 🚚
 ━━━━━━━━━━━━━━━━━━━━
 Namaste *${cName}*,
 Aapki Packers & Movers booking ki security verification PINs generate kar di gayi hain:
@@ -915,7 +915,7 @@ Aapki Packers & Movers booking ki security verification PINs generate kar di gay
 🔍 *Live GPS Tracking Status:*
 ${trackUrl}
 ━━━━━━━━━━━━━━━━━━━━
-_Rudraksha Packers & Movers • Safe, Reliable & Fast_`;
+_OM Rudraksha Packers & Movers • Safe, Reliable & Fast_`;
 
   showAdminToast(`⚡ Dispatching Both PINs to ${cName} (+91 ${cPhone})...`, 'success');
 
@@ -1437,7 +1437,7 @@ async function submitDriverAssignment() {
     const mapsNavUrl = `https://www.google.com/maps/dir/?api=1&destination=${pickupEnc}`;
     const cleanDrvPhone = String(driver_phone || '').replace(/\D/g, '');
 
-    const driverMsg = `🚨 *NEW TRIP DISPATCH ORDER* 🚚\n*Rudraksha Packers & Movers*\n\n` +
+    const driverMsg = `🚨 *NEW TRIP DISPATCH ORDER* 🚚\n*OM Rudraksha Packers & Movers*\n\n` +
       `📋 *Booking ID:* ${bookingId}\n` +
       `👤 *Customer:* ${booking?.customer_name || 'Customer'} (+91 ${booking?.customer_phone || ''})\n` +
       `📍 *Pickup:* ${booking?.pickup_address || ''}\n` +
@@ -1658,7 +1658,7 @@ async function deleteAdminCoupon(code) {
    ========================================================================== */
 async function loadCompanyBranding() {
   let comp = {
-    name: 'Rudraksha Packers & Movers',
+    name: 'OM Rudraksha Packers & Movers',
     phone: '7296831460',
     whatsapp: '7296831460',
     email: 'support@rudrakshapackers.com',
@@ -1688,7 +1688,7 @@ async function loadCompanyBranding() {
 
 async function saveCompanyBranding() {
   const company = {
-    name: document.getElementById('compName')?.value.trim() || 'Rudraksha Packers & Movers',
+    name: document.getElementById('compName')?.value.trim() || 'OM Rudraksha Packers & Movers',
     phone: document.getElementById('compPhone')?.value.trim() || '7296831460',
     whatsapp: document.getElementById('compWhatsapp')?.value.trim() || '7296831460',
     email: document.getElementById('compEmail')?.value.trim() || '',
@@ -2294,7 +2294,7 @@ async function approveRiderPartner(idx) {
     localStorage.setItem('rudraksha_rider_applications', JSON.stringify(allRiderApplications));
 
     const portalUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}driver.html?access=driver2026`;
-    const waMsg = `🎉 *CONGRATULATIONS! RUDRAKSHA DELIVERY PARTNER APPROVED*\n━━━━━━━━━━━━━━━━━━━━\nNamaste *${app.name}*,\nAapka Rudraksha Express Delivery Partner account approve aur activate ho gaya hai!\n\n📲 *Aapke Login Credentials:*\n• Login Mobile Number: *${app.phone}*\n• Security PIN / Password: *${app.pin}*\n• Driver Partner ID: *${app.driverId}*\n• Registered Vehicle: *${app.vehType} (${app.vehNum})*\n\n👉 *Tap to Login to Your Driver Dashboard:*\n${portalUrl}\n━━━━━━━━━━━━━━━━━━━━\n_Login karke apni duty 'ON' karein aur city delivery orders accept karna shuru karein. Welcome to the fleet!_`;
+    const waMsg = `🎉 *CONGRATULATIONS! OM RUDRAKSHA DELIVERY PARTNER APPROVED*\n━━━━━━━━━━━━━━━━━━━━\nNamaste *${app.name}*,\nAapka OM Rudraksha Express Delivery Partner account approve aur activate ho gaya hai!\n\n📲 *Aapke Login Credentials:*\n• Login Mobile Number: *${app.phone}*\n• Security PIN / Password: *${app.pin}*\n• Driver Partner ID: *${app.driverId}*\n• Registered Vehicle: *${app.vehType} (${app.vehNum})*\n\n👉 *Tap to Login to Your Driver Dashboard:*\n${portalUrl}\n━━━━━━━━━━━━━━━━━━━━\n_Login karke apni duty 'ON' karein aur city delivery orders accept karna shuru karein. Welcome to the fleet!_`;
     const waUrl = `https://wa.me/91${app.phone}?text=${encodeURIComponent(waMsg)}`;
     try {
       window.open(waUrl, '_blank');
@@ -2517,7 +2517,7 @@ function renderParcelsTable(list = allAdminParcels, page = null) {
 
     // Admin Dispatch WhatsApp Message for Sender (Pickup OTP)
     const senderOtpWaMsg = 
-`📦 *RUDRAKSHA EXPRESS - ORDER CONFIRMED & PICKUP PIN*
+`📦 *OM RUDRAKSHA EXPRESS - ORDER CONFIRMED & PICKUP PIN*
 ━━━━━━━━━━━━━━━━━━━━
 Namaste *${sName}*,
 Aapka parcel delivery order *${pId}* confirm ho gaya hai!
@@ -2528,20 +2528,20 @@ Aapka parcel delivery order *${pId}* confirm ho gaya hai!
 
 📍 *Pickup Address:* ${pickup}
 📍 *Drop Address:* ${drop}
-👨‍✈️ *Assigned Rider:* ${p.assigned_driver_name || 'Rudraksha Rider'} (+91 ${dPhone})
+👨‍✈️ *Assigned Rider:* ${p.assigned_driver_name || 'OM Rudraksha Rider'} (+91 ${dPhone})
 💰 *Estimated Fare:* ${amount} (${p.payment_method || 'Cash'})
 
 🔍 *Live Track Your Order:*
 ${trackUrl}
 ━━━━━━━━━━━━━━━━━━━━
-_Rudraksha Express Logistics • Safe & Express Delivery_`;
+_OM Rudraksha Express Logistics • Safe & Express Delivery_`;
 
     // Admin Dispatch WhatsApp Message for Receiver (Delivery OTP)
     const receiverOtpWaMsg = 
-`📦 *RUDRAKSHA EXPRESS - INCOMING PARCEL & DELIVERY PIN*
+`📦 *OM RUDRAKSHA EXPRESS - INCOMING PARCEL & DELIVERY PIN*
 ━━━━━━━━━━━━━━━━━━━━
 Namaste *${rName}*,
-*${sName}* ne aapke liye Rudraksha Express se ek parcel bheja hai.
+*${sName}* ne aapke liye OM Rudraksha Express se ek parcel bheja hai.
 
 🆔 *Parcel ID:* ${pId}
 🛡️ *Aapka Delivery OTP / PIN:* *${deliveryOtp || '----'}*
@@ -2554,14 +2554,14 @@ Namaste *${rName}*,
 🔍 *Live Track Status:*
 ${trackUrl}
 ━━━━━━━━━━━━━━━━━━━━
-_Rudraksha Express Logistics • Always on Time_`;
+_OM Rudraksha Express Logistics • Always on Time_`;
 
     // Customer Generic Status Message
-    const custWaMsg = `Hello ${sName}, this is Rudraksha Express Logistics. Your parcel order ${pId} status is: ${statusLabels[status] || status}. Track here: ${trackUrl}`;
+    const custWaMsg = `Hello ${sName}, this is OM Rudraksha Express Logistics. Your parcel order ${pId} status is: ${statusLabels[status] || status}. Track here: ${trackUrl}`;
 
     // Driver Dispatch Message
     const driverWaMsg = 
-`📦 *RUDRAKSHA EXPRESS - PARCEL DELIVERY ASSIGNMENT*
+`📦 *OM RUDRAKSHA EXPRESS - PARCEL DELIVERY ASSIGNMENT*
 ━━━━━━━━━━━━━━━━━━━━
 🆔 *Parcel ID:* ${pId}
 📍 *Pickup:* ${pickup}
@@ -3078,7 +3078,7 @@ function dispatchPickupOtpToSenderWhatsApp() {
   const trackUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}track.html?id=${pId}`;
 
   const msg = 
-`📦 *RUDRAKSHA EXPRESS - ORDER CONFIRMED & PICKUP PIN*
+`📦 *OM RUDRAKSHA EXPRESS - ORDER CONFIRMED & PICKUP PIN*
 ━━━━━━━━━━━━━━━━━━━━
 Namaste *${p.sender_name || 'Customer'}*,
 Aapka parcel delivery order *${pId}* confirm ho gaya hai!
@@ -3089,13 +3089,13 @@ Aapka parcel delivery order *${pId}* confirm ho gaya hai!
 
 📍 *Pickup:* ${p.pickup_address || '-'}
 📍 *Drop:* ${p.drop_address || '-'}
-👨‍✈️ *Assigned Rider:* ${p.assigned_driver_name || 'Rudraksha Rider'} (+91 ${p.assigned_driver_phone || '7296831460'})
+👨‍✈️ *Assigned Rider:* ${p.assigned_driver_name || 'OM Rudraksha Rider'} (+91 ${p.assigned_driver_phone || '7296831460'})
 💰 *Estimated Fare:* ₹${p.total_amount || 0} (${p.payment_method || 'Cash'})
 
 🔍 *Live Track Your Order:*
 ${trackUrl}
 ━━━━━━━━━━━━━━━━━━━━
-_Rudraksha Express Logistics • Fast & Secure Delivery_`;
+_OM Rudraksha Express Logistics • Fast & Secure Delivery_`;
 
   window.open(`https://wa.me/91${sPhone}?text=${encodeURIComponent(msg)}`, '_blank');
 }
@@ -3109,10 +3109,10 @@ function dispatchDeliveryOtpToReceiverWhatsApp() {
   const trackUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}track.html?id=${pId}`;
 
   const msg = 
-`📦 *RUDRAKSHA EXPRESS - INCOMING PARCEL & DELIVERY PIN*
+`📦 *OM RUDRAKSHA EXPRESS - INCOMING PARCEL & DELIVERY PIN*
 ━━━━━━━━━━━━━━━━━━━━
 Namaste *${p.receiver_name || 'Customer'}*,
-*${p.sender_name || 'Customer'}* ne aapke liye Rudraksha Express se ek parcel bheja hai.
+*${p.sender_name || 'Customer'}* ne aapke liye OM Rudraksha Express se ek parcel bheja hai.
 
 🆔 *Parcel ID:* ${pId}
 🛡️ *Aapka Delivery OTP / PIN:* *${dOtp}*
@@ -3125,7 +3125,7 @@ Namaste *${p.receiver_name || 'Customer'}*,
 🔍 *Live Track Status:*
 ${trackUrl}
 ━━━━━━━━━━━━━━━━━━━━
-_Rudraksha Express Logistics • Always on Time_`;
+_OM Rudraksha Express Logistics • Always on Time_`;
 
   window.open(`https://wa.me/91${rPhone}?text=${encodeURIComponent(msg)}`, '_blank');
 }
@@ -3174,12 +3174,12 @@ async function dispatchOtpsToBothWhatsApp(parcelId) {
   const pickup = p.pickup_address || '-';
   const drop = p.drop_address || '-';
   const amount = `₹${p.total_amount || 0}`;
-  const dName = p.assigned_driver_name || 'Rudraksha Rider';
+  const dName = p.assigned_driver_name || 'OM Rudraksha Rider';
   const dPhone = p.assigned_driver_phone || '7296831460';
   const trackUrl = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}track.html?id=${pId}`;
 
   const senderMsg = 
-`📦 *RUDRAKSHA EXPRESS - ORDER CONFIRMED & PICKUP PIN*
+`📦 *OM RUDRAKSHA EXPRESS - ORDER CONFIRMED & PICKUP PIN*
 ━━━━━━━━━━━━━━━━━━━━
 Namaste *${sName}*,
 Aapka parcel delivery order *${pId}* confirm ho gaya hai!
@@ -3196,13 +3196,13 @@ Aapka parcel delivery order *${pId}* confirm ho gaya hai!
 🔍 *Live Track Your Order:*
 ${trackUrl}
 ━━━━━━━━━━━━━━━━━━━━
-_Rudraksha Express Logistics • Fast & Secure Delivery_`;
+_OM Rudraksha Express Logistics • Fast & Secure Delivery_`;
 
   const receiverMsg = 
-`📦 *RUDRAKSHA EXPRESS - INCOMING PARCEL & DELIVERY PIN*
+`📦 *OM RUDRAKSHA EXPRESS - INCOMING PARCEL & DELIVERY PIN*
 ━━━━━━━━━━━━━━━━━━━━
 Namaste *${rName}*,
-*${sName}* ne aapke liye Rudraksha Express se ek parcel bheja hai.
+*${sName}* ne aapke liye OM Rudraksha Express se ek parcel bheja hai.
 
 🆔 *Parcel ID:* ${pId}
 🛡️ *Aapka Delivery OTP / PIN:* *${p.delivery_otp}*
@@ -3215,7 +3215,7 @@ Namaste *${rName}*,
 🔍 *Live Track Status:*
 ${trackUrl}
 ━━━━━━━━━━━━━━━━━━━━
-_Rudraksha Express Logistics • Always on Time_`;
+_OM Rudraksha Express Logistics • Always on Time_`;
 
   showAdminToast(`⚡ Dispatching OTPs to Sender (${sName}) & Receiver (${rName})...`, 'success');
 
@@ -3281,7 +3281,7 @@ function saveAdminParcelRates() {
   };
 
   localStorage.setItem('rudraksha_parcel_rates', JSON.stringify(rates));
-  showAdminToast('✅ Rudraksha Parcel Tariff & Rates saved successfully!');
+  showAdminToast('✅ OM Rudraksha Parcel Tariff & Rates saved successfully!');
 }
 
 function loadAdminParcelRates() {
@@ -3332,7 +3332,7 @@ function exportParcelsToCSV() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  showAdminToast('📥 Exported Rudraksha Parcel Orders CSV!');
+  showAdminToast('📥 Exported OM Rudraksha Parcel Orders CSV!');
 }
 
 /* ==========================================================================
@@ -3370,7 +3370,7 @@ function generateBroadcastMessage(parcel) {
 ⚡ *First rider to tap and accept gets the job:*
 👉 ${dispatchUrl}
 ━━━━━━━━━━━━━━━━━━━━
-_Rudraksha Express Fleet Dispatch • Tap link to accept immediately_`
+_OM Rudraksha Express Fleet Dispatch • Tap link to accept immediately_`
   );
 }
 
@@ -3443,7 +3443,7 @@ function broadcastOpenParcelsModal() {
   const totalPayout = Math.round(totalVal * 0.85);
 
   const digest = 
-`🚨 *RUDRAKSHA EXPRESS - ${openOrders.length} OPEN DELIVERY JOBS* 🚨
+`🚨 *OM RUDRAKSHA EXPRESS - ${openOrders.length} OPEN DELIVERY JOBS* 🚨
 ━━━━━━━━━━━━━━━━━━━━
 Hey Fleet Team! Following orders are available for immediate pickup. Tap any link below to claim your job:
 

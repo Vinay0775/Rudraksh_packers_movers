@@ -173,11 +173,12 @@ async function createGitHubRelease(version, versionCode) {
   const tag = `v${version}`;
   const releaseName = `Rudraksha Driver App ${tag}`;
   const releaseBody = `## Rudraksha Driver App ${tag} (Build ${versionCode})
-- Automated Release Deploy
-- Persistent Background Foreground Service (Lock-Screen / Screen-Off Sirens)
-- Heads-Up Notification with Instant Accept/Decline
-- Vehicle-Category Matching (Auto, Mini Truck, Bike)
-- Real-Time Fleet GPS Synchronization`;
+- iPhone-style pleasant chime notification sound (replaces irritating siren loop)
+- 3 clear alert action buttons: Accept, Decline, Silent
+- 1-click Silent button: immediately silences audio and vibration
+- Decline option: permanently rejects booking for the driver and alerts admin for reassignment
+- Single notification delivery (no repeated lock-screen spam)
+- Real-time fleet GPS tracking & vehicle category matching`;
 
   log(`Creating GitHub Release ${tag}...`);
 
@@ -272,7 +273,7 @@ async function verifyReleaseRedirect(version) {
 function commitAndPush(version, versionCode) {
   log(`Committing and pushing release changes...`);
   try {
-    execSync('git add driver_app/ Backend/server.js Frontend/admin.html Frontend/admin.js Frontend/admin.css', { cwd: ROOT_DIR, stdio: 'inherit' });
+    execSync('git add driver_app/ Backend/server.js Frontend/admin.html Frontend/admin.js Frontend/admin.css scripts/ Frontend/downloads/', { cwd: ROOT_DIR, stdio: 'inherit' });
     execSync(`git commit -m "chore(release): bump driver app to v${version}+${versionCode}"`, { cwd: ROOT_DIR, stdio: 'inherit' });
     execSync('git push origin main', { cwd: ROOT_DIR, stdio: 'inherit' });
     execSync('git push personal main', { cwd: ROOT_DIR, stdio: 'inherit' });

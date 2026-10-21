@@ -247,7 +247,7 @@ function renderTrackingDashboard(b) {
   document.getElementById('driverVehicleType').innerText = driverVehicleType;
   if (driverPhone) {
     document.getElementById('btnCallDriver').href = `tel:${driverPhone}`;
-    document.getElementById('btnWhatsappDriver').href = `https://wa.me/91${driverPhone}?text=Hello%20${encodeURIComponent(driverName)},%20regarding%20my%20Rudraksha%20booking%20${bId}`;
+    document.getElementById('btnWhatsappDriver').href = `https://wa.me/91${driverPhone}?text=Hello%20${encodeURIComponent(driverName)},%20regarding%20my%20OM%20Rudraksha%20booking%20${bId}`;
   }
 
   const cleanDPhone = String(driverPhone || '').replace(/\D/g, '');
@@ -275,7 +275,7 @@ function renderTrackingDashboard(b) {
   // Update UPI QR Code & Instant Payment Link
   const upiQrImg = document.getElementById('trackUpiQrImg');
   const btnPayUpiDirect = document.getElementById('btnPayUpiDirect');
-  const upiPayload = `upi://pay?pa=7296831460@upi&pn=Rudraksha%20Packers&am=500&cu=INR&tr=${bId}&tn=Booking%20Token%20${bId}`;
+  const upiPayload = `upi://pay?pa=7296831460@upi&pn=OM%20Rudraksha%20Packers&am=500&cu=INR&tr=${bId}&tn=Booking%20Token%20${bId}`;
   if (upiQrImg) {
     upiQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiPayload)}`;
   }
@@ -300,7 +300,7 @@ function shareLiveTrackingWhatsApp() {
   const drop = b.drop_address || 'Delhi NCR';
   const trackUrl = `${window.location.origin}${window.location.pathname}?id=${bId}`;
 
-  const msg = `🚚 *Rudraksha Packers & Movers - Live Shipment Tracking* 📍\n\n` +
+  const msg = `🚚 *OM Rudraksha Packers & Movers - Live Shipment Tracking* 📍\n\n` +
     `Track my shifting in real-time from *${pickup.split(',')[0]}* to *${drop.split(',')[0]}*:\n\n` +
     `🔗 *Live GPS Tracking Link:*\n${trackUrl}\n\n` +
     `Booking Ref: *${bId}*\n` +
@@ -561,7 +561,7 @@ function shareParcelTrackingLink() {
   if (!currentBooking) return;
   const id = currentBooking.id || currentBooking.parcel_id || '';
   const trackUrl = `${window.location.origin}${window.location.pathname}?id=${id}`;
-  const msg = `📦 *Track my Rudraksha Express Parcel*\n\nParcel ID: *${id}*\n\n🔍 Live Tracking Link:\n${trackUrl}\n\n📞 Support: +91 72968 31460`;
+  const msg = `📦 *Track my OM Rudraksha Express Parcel*\n\nParcel ID: *${id}*\n\n🔍 Live Tracking Link:\n${trackUrl}\n\n📞 Support: +91 72968 31460`;
   window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
@@ -612,7 +612,7 @@ function openInvoicePreview() {
       <!-- Invoice Header -->
       <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
         <div>
-          <h4 class="fw-bold text-dark mb-0">RUDRAKSHA PACKERS & MOVERS</h4>
+          <h4 class="fw-bold text-dark mb-0">OM RUDRAKSHA PACKERS & MOVERS</h4>
           <div class="small text-muted">All India Relocation & Logistics • ISO 9001:2015</div>
           <div class="small text-muted">Near SNM Hospital, Gandhipath (West), Jaipur, RJ • +91 7296831460</div>
         </div>
@@ -676,7 +676,7 @@ function openInvoicePreview() {
           <div>Computer generated invoice. No signature required.</div>
         </div>
         <div class="text-end">
-          <div class="fw-bold text-dark" style="font-family: cursive;">Rudraksha Logistics</div>
+          <div class="fw-bold text-dark" style="font-family: cursive;">OM Rudraksha Logistics</div>
           <div class="small text-muted">Authorized Signatory</div>
         </div>
       </div>

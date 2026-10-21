@@ -1,7 +1,7 @@
 {
   "id": "rudraksha-packers-movers-v3",
-  "name": "Rudraksha Packers & Movers",
-  "short_name": "Rudraksha Movers",
+  "name": "OM Rudraksha Packers & Movers",
+  "short_name": "OM Rudraksha Movers",
   "description": "Fast, Reliable & Safe Packing and Moving Services Across India",
   "start_url": "./Frontend/index.html",
   "scope": "./",

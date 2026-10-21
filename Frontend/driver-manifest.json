@@ -1,8 +1,8 @@
 {
   "id": "rudraksha-rider-partner-standalone-v3",
-  "name": "Rudraksha Rider Partner",
-  "short_name": "Rider Partner",
-  "description": "Rudraksha Logistics Rider Partner Portal - Live Trips, GPS Routing, OTP Verification & Daily Earnings",
+  "name": "OM Rudraksha Rider Partner",
+  "short_name": "OM Rider Partner",
+  "description": "OM Rudraksha Logistics Rider Partner Portal - Live Trips, GPS Routing, OTP Verification & Daily Earnings",
   "start_url": "./driver.html?pwa=driver",
   "scope": "./driver.html",
   "display": "standalone",

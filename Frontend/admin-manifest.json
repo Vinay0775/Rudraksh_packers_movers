@@ -1,7 +1,7 @@
 {
   "id": "rudraksha-admin-panel-v3",
-  "name": "Rudraksha Admin Control Panel",
-  "short_name": "Rudraksha Admin",
+  "name": "OM Rudraksha Admin Control Panel",
+  "short_name": "OM Rudraksha Admin",
   "description": "Live Operations, Bookings, Fleets, Drivers, and Pricing Management App",
   "start_url": "admin.html",
   "scope": "./",
