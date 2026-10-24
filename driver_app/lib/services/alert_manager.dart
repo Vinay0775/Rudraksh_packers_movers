@@ -18,13 +18,16 @@ class AlertManager {
 
   bool _isPlaying = false;
   Timer? _vibrateTimer;
+  String? _currentAlertParcelId;
+  String? _silencedParcelId;
 
   static Function(String action, String? parcelId)? onActionCallback;
 
-  static const String channelId = 'rudraksha_rider_dispatch_v3';
-  static const String channelName = 'Direct Order Dispatch & Siren Alerts';
+  // Incremented to v4 to reset Android system channel audio caching
+  static const String channelId = 'rudraksha_rider_dispatch_v4';
+  static const String channelName = 'Direct Order Dispatch & Audio Alerts';
   static const String channelDesc =
-      'High-priority sound alerts and vibrating alarms for assigned jobs';
+      'High-priority audio alerts and gentle vibration for assigned jobs';
 
   Future<void> init() async {
     try {
@@ -35,32 +38,34 @@ class AlertManager {
         initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse details) {
           debugPrint('Dispatch notification action: ${details.actionId}, payload: ${details.payload}');
+          final pId = details.payload;
           if (details.actionId == 'silence_order') {
-            muteSound();
-            onActionCallback?.call('silent', details.payload);
+            muteSound(parcelId: pId);
+            onActionCallback?.call('silent', pId);
           } else if (details.actionId == 'decline_order') {
-            stopAlert(notifId: details.payload?.hashCode);
-            onActionCallback?.call('decline', details.payload);
+            stopAlert(notifId: pId?.hashCode, parcelId: pId);
+            onActionCallback?.call('decline', pId);
           } else if (details.actionId == 'accept_order') {
-            stopAlert(notifId: details.payload?.hashCode);
-            onActionCallback?.call('accept', details.payload);
+            stopAlert(notifId: pId?.hashCode, parcelId: pId);
+            onActionCallback?.call('accept', pId);
             FlutterForegroundTask.launchApp();
           } else {
             // Tapping notification body mutes sound and brings app to foreground
-            muteSound();
+            muteSound(parcelId: pId);
             FlutterForegroundTask.launchApp();
           }
         },
       );
 
-      // Create Android Notification Channel with MAXIMUM importance & sound
+      // Create Android Notification Channel with playSound: false
+      // This prevents the Android OS from playing its default screeching siren simultaneously with our audio player!
       final androidChannel = AndroidNotificationChannel(
         channelId,
         channelName,
         description: channelDesc,
         importance: Importance.max,
         enableVibration: true,
-        playSound: true,
+        playSound: false,
         showBadge: true,
       );
 
@@ -69,15 +74,15 @@ class AlertManager {
               AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(androidChannel);
 
-      // Configure Audio Player to play on ALARM stream
+      // Configure Audio Player for clear speaker playback
       try {
         await _audioPlayer.setAudioContext(
           AudioContext(
             android: const AudioContextAndroid(
               isSpeakerphoneOn: true,
               stayAwake: true,
-              contentType: AndroidContentType.sonification,
-              usageType: AndroidUsageType.alarm,
+              contentType: AndroidContentType.music,
+              usageType: AndroidUsageType.media,
               audioFocus: AndroidAudioFocus.gainTransientExclusive,
             ),
           ),
@@ -90,9 +95,23 @@ class AlertManager {
     }
   }
 
+  bool isParcelSilenced(String parcelId) {
+    return _silencedParcelId == parcelId;
+  }
+
+  void clearSilencedParcel(String parcelId) {
+    if (_silencedParcelId == parcelId) {
+      _silencedParcelId = null;
+    }
+  }
+
   Future<void> triggerNewOrderAlert(OrderModel order) async {
+    // If user explicitly silenced this order, do NOT re-trigger audio or vibration!
+    if (_silencedParcelId == order.parcelId) return;
+
     if (_isPlaying) return; // Prevent duplicate overlapping alert loops
     _isPlaying = true;
+    _currentAlertParcelId = order.parcelId;
 
     // Wake screen and display on lock screen immediately
     try {
@@ -100,23 +119,23 @@ class AlertManager {
       FlutterForegroundTask.setOnLockScreenVisibility(true);
     } catch (_) {}
 
-    // 1. Play Tone Once through Alarm Channel with soft, non-irritating volume
+    // 1. Play Soft Melodic Chime on loop until driver responds
     try {
-      await _audioPlayer.setReleaseMode(ReleaseMode.release);
-      await _audioPlayer.setVolume(0.4);
+      await _audioPlayer.setReleaseMode(ReleaseMode.loop);
+      await _audioPlayer.setVolume(0.75);
       await _audioPlayer.play(AssetSource('siren.wav'));
     } catch (e) {
       debugPrint('Audio play error: $e');
     }
 
-    // 2. Start Heavy Mobile Vibration Pattern
+    // 2. Start Rhythmic, Gentle Vibration (500ms pulse, 1500ms pause)
     _startContinuousVibration();
 
     // 3. Fire Native Android Lock Screen Notification (Heads-Up Banner)
     try {
       final isDirect = order.isDirectAssignment;
       final title = isDirect
-          ? '🚨 NAYA ORDER ASSIGN HUA! (₹${order.totalAmount.toInt()})'
+          ? '🔔 NAYA ORDER ASSIGN HUA! (₹${order.totalAmount.toInt()})'
           : '⚡ NAYA PARCEL ORDER AVAILABLE! (₹${order.totalAmount.toInt()})';
       final body =
           '📍 Pickup: ${order.pickupAddress}\n🏁 Drop: ${order.dropAddress}\nTap ACCEPT ya DECLINE karein!';
@@ -129,8 +148,8 @@ class AlertManager {
         priority: Priority.max,
         fullScreenIntent: true,
         enableVibration: true,
-        playSound: true,
-        vibrationPattern: Int64List.fromList([0, 800, 300, 800, 300, 1000]),
+        playSound: false, // In-app AudioPlayer handles pleasant chime
+        vibrationPattern: Int64List.fromList([0, 500, 1500, 500, 1500]),
         category: AndroidNotificationCategory.call,
         visibility: NotificationVisibility.public,
         ongoing: true,
@@ -175,7 +194,7 @@ class AlertManager {
     _vibrateTimer?.cancel();
     _triggerVibrateOnce();
 
-    _vibrateTimer = Timer.periodic(const Duration(milliseconds: 2200), (timer) {
+    _vibrateTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) {
       if (!_isPlaying) {
         timer.cancel();
         return;
@@ -189,8 +208,8 @@ class AlertManager {
       final hasVibrator = await Vibration.hasVibrator();
       if (hasVibrator == true) {
         Vibration.vibrate(
-          pattern: [0, 800, 300, 800, 300, 1000],
-          intensities: [0, 255, 0, 255, 0, 255],
+          pattern: [0, 500, 1500, 500, 1500],
+          intensities: [0, 200, 0, 200, 0],
         );
       }
     } catch (e) {
@@ -199,8 +218,12 @@ class AlertManager {
   }
 
   /// Instantly stops audio and vibration without dismissing the order
-  Future<void> muteSound() async {
+  Future<void> muteSound({String? parcelId}) async {
     _isPlaying = false;
+    final targetId = parcelId ?? _currentAlertParcelId;
+    if (targetId != null) {
+      _silencedParcelId = targetId;
+    }
     _vibrateTimer?.cancel();
     _vibrateTimer = null;
     try {
@@ -216,8 +239,11 @@ class AlertManager {
   }
 
   /// Completely stops alert and dismisses notification
-  Future<void> stopAlert({int? notifId}) async {
-    await muteSound();
+  Future<void> stopAlert({int? notifId, String? parcelId}) async {
+    await muteSound(parcelId: parcelId);
+    if (parcelId != null) {
+      clearSilencedParcel(parcelId);
+    }
     try {
       if (notifId != null) {
         await _notificationsPlugin.cancel(notifId);

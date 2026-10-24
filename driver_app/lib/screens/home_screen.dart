@@ -63,7 +63,13 @@ class _HomeScreenState extends State<HomeScreen> {
       } else if (action == 'decline' && parcelId != null) {
         _handleNotificationDecline(parcelId);
       } else if (action == 'silent') {
-        AlertManager().muteSound();
+        AlertManager().muteSound(parcelId: parcelId);
+        try {
+          FlutterForegroundTask.sendDataToTask({
+            'action': 'silence_order',
+            'parcelId': parcelId,
+          });
+        } catch (_) {}
       }
     };
 
@@ -81,6 +87,18 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!_isAlertDialogOpen && !_acknowledgedAssignedTrips.contains(order.parcelId)) {
           _triggerOrderAlert(order);
         }
+      } else if (type == 'mute_order_alert') {
+        AlertManager().muteSound(parcelId: data['parcelId'] as String?);
+      } else if (type == 'decline_order_alert') {
+        final pId = data['parcelId'] as String?;
+        if (pId != null) {
+          _handleNotificationDecline(pId);
+        }
+      } else if (type == 'accept_order_alert') {
+        final pId = data['parcelId'] as String?;
+        if (pId != null) {
+          _handleNotificationAccept(pId);
+        }
       }
     }
   }
@@ -88,7 +106,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handleNotificationAccept(String parcelId) async {
     _acknowledgedAssignedTrips.add(parcelId);
     _isAlertDialogOpen = false;
-    await AlertManager().stopAlert(notifId: parcelId.hashCode);
+    await AlertManager().stopAlert(notifId: parcelId.hashCode, parcelId: parcelId);
+    try {
+      FlutterForegroundTask.sendDataToTask({
+        'action': 'stop_alert',
+        'parcelId': parcelId,
+      });
+    } catch (_) {}
     final res = await ApiService.acceptJob(parcelId);
     if (res['success'] == true || res['already_accepted'] == true) {
       await _syncFeed();
@@ -107,7 +131,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handleNotificationDecline(String parcelId) async {
     _acknowledgedAssignedTrips.add(parcelId);
     _isAlertDialogOpen = false;
-    await AlertManager().stopAlert(notifId: parcelId.hashCode);
+    await AlertManager().stopAlert(notifId: parcelId.hashCode, parcelId: parcelId);
+    try {
+      FlutterForegroundTask.sendDataToTask({
+        'action': 'decline_order',
+        'parcelId': parcelId,
+      });
+    } catch (_) {}
 
     // Save permanently in SharedPreferences
     final prefs = await SharedPreferences.getInstance();
@@ -178,16 +208,25 @@ class _HomeScreenState extends State<HomeScreen> {
     final res = await ApiService.fetchFeed();
     if (!res['success'] || !mounted) return;
 
-    final OrderModel? active = res['activeTrip'];
-    final List<OrderModel> available = res['availableJobs'] ?? [];
+    final prefs = await SharedPreferences.getInstance();
+    final declinedList = prefs.getStringList('rudraksha_driver_declined_parcels') ?? [];
+
+    OrderModel? active = res['activeTrip'];
+    List<OrderModel> available = res['availableJobs'] ?? [];
+
+    // Permanent decline filter: never show declined parcels in active trip or available list
+    if (active != null && (declinedList.contains(active.parcelId) || active.bookingStatus == 'driver_declined')) {
+      active = null;
+    }
+    available = available.where((j) => !declinedList.contains(j.parcelId) && j.bookingStatus != 'driver_declined').toList();
 
     // 1. Direct Admin Assignment Detection
     // When an order is assigned by admin, bookingStatus will be 'driver_assigned' or 'received'.
-    // ALWAYS alert with siren and popup if driver has not acknowledged or accepted it in this session.
     if (active != null) {
       final isAssigned = (active.bookingStatus == 'driver_assigned' ||
           active.bookingStatus == 'received');
-      if (isAssigned && !_acknowledgedAssignedTrips.contains(active.parcelId)) {
+      final isSilenced = AlertManager().isParcelSilenced(active.parcelId);
+      if (isAssigned && !isSilenced && !_acknowledgedAssignedTrips.contains(active.parcelId)) {
         active.isDirectAssignment = true;
         if (!_isAlertDialogOpen) {
           _triggerOrderAlert(active);
@@ -210,8 +249,9 @@ class _HomeScreenState extends State<HomeScreen> {
           for (var j in newJobs) {
             _seenJobIds.add(j.parcelId);
           }
+          final isSilenced = AlertManager().isParcelSilenced(latest.parcelId);
           latest.isDirectAssignment = false;
-          if (!_isAlertDialogOpen) {
+          if (!_isAlertDialogOpen && !isSilenced) {
             _triggerOrderAlert(latest);
           }
         }
@@ -254,7 +294,13 @@ class _HomeScreenState extends State<HomeScreen> {
         onAccept: () async {
           _acknowledgedAssignedTrips.add(order.parcelId);
           _isAlertDialogOpen = false;
-          await AlertManager().stopAlert(notifId: order.parcelId.hashCode);
+          await AlertManager().stopAlert(notifId: order.parcelId.hashCode, parcelId: order.parcelId);
+          try {
+            FlutterForegroundTask.sendDataToTask({
+              'action': 'stop_alert',
+              'parcelId': order.parcelId,
+            });
+          } catch (_) {}
 
           if (order.isDirectAssignment) {
             _syncFeed();
@@ -295,7 +341,13 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ).then((_) {
       _isAlertDialogOpen = false;
-      AlertManager().stopAlert(notifId: order.parcelId.hashCode);
+      AlertManager().stopAlert(notifId: order.parcelId.hashCode, parcelId: order.parcelId);
+      try {
+        FlutterForegroundTask.sendDataToTask({
+          'action': 'stop_alert',
+          'parcelId': order.parcelId,
+        });
+      } catch (_) {}
     });
   }
 

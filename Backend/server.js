@@ -40,11 +40,11 @@ app.get(['/api/app-version', '/api/rider/app-version'], (req, res) => {
   const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
   res.json({
     success: true,
-    version: '1.2.5',
-    versionCode: 7,
+    version: '1.2.6',
+    versionCode: 8,
     apkUrl: `${protocol}://${host}/downloads/RudrakshaDriver.apk`,
     fallbackApkUrl: 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk',
-    releaseNotes: '1. Persistent Background Foreground Service: New order alert & siren works even when phone is locked or screen off\n2. Heads-up notification on lock screen with Accept and Decline buttons\n3. Vehicle-specific driver matching & real-time GPS tracking',
+    releaseNotes: '1. Soft Acoustic Chime: Replaced harsh alarm with pleasant marimba chime\n2. 100% Reliable Mute: Instant cross-isolate silence on screen & notification bar\n3. One-Click Order Decline: Returns order to Admin for reassignment and prevents re-alerting driver',
     forceUpdate: false,
     fileSizeMB: '53.1 MB'
   });
@@ -852,15 +852,26 @@ app.post('/api/admin/nearest-drivers', requireAdminOrRider, async (req, res, nex
 // 5. Get Rider Trips & Live Assigned Jobs (Strictly for Authenticated Rider)
 app.get('/api/rider/jobs', requireRider, async (req, res, next) => {
   try {
-    const riderId = req.rider.id;
+    const riderId = String(req.rider.id || '');
     const riderPhone = String(req.rider.phone || '').replace(/\D/g, '');
     const parcels = await db.getParcels();
 
+    const isOrderDeclinedByMe = (p) => {
+      const declinedList = Array.isArray(p.declined_driver_ids) ? p.declined_driver_ids.map(String) : [];
+      const declId = String(p.declined_driver_id || '');
+      const declPhone = String(p.declined_driver_phone || '').replace(/\D/g, '');
+      return p.booking_status === 'driver_declined' ||
+             p.status === 'driver_declined' ||
+             declId === riderId ||
+             declinedList.includes(riderId) ||
+             (riderPhone && (declPhone === riderPhone || declinedList.includes(riderPhone)));
+    };
+
     // 1. Find currently active assigned trip (must NOT be declined or delivered)
     const activeTrip = parcels.find(p => {
-      const isAssigned = (p.driver_id === riderId) || (p.assigned_driver_phone && String(p.assigned_driver_phone).replace(/\D/g, '') === riderPhone);
+      const isAssigned = (String(p.driver_id || '') === riderId) || (p.assigned_driver_phone && String(p.assigned_driver_phone).replace(/\D/g, '') === riderPhone);
       const activeStatuses = ['driver_assigned', 'reached_pickup', 'picked_up', 'in_transit', 'out_for_delivery'];
-      const isDeclined = p.booking_status === 'driver_declined' || p.status === 'driver_declined';
+      const isDeclined = isOrderDeclinedByMe(p);
       const isDelivered = p.booking_status === 'delivered' || p.status === 'delivered' || p.delivery_otp_verified;
       return isAssigned && activeStatuses.includes(p.booking_status || p.status) && !isDeclined && !isDelivered;
     }) || null;
@@ -873,12 +884,7 @@ app.get('/api/rider/jobs', requireRider, async (req, res, next) => {
         const isWaiting = (st === 'searching_driver' || st === 'received');
         const notAssigned = !p.driver_id;
         const isDelivered = st === 'delivered' || p.delivery_otp_verified;
-
-        // Exclude if this rider previously declined this order
-        const declinedList = Array.isArray(p.declined_driver_ids) ? p.declined_driver_ids.map(String) : [];
-        const isDeclinedByMe = String(p.declined_driver_id || '') === String(riderId) ||
-                               declinedList.includes(String(riderId)) ||
-                               (riderPhone && (String(p.declined_driver_phone || '').replace(/\D/g, '') === riderPhone || declinedList.includes(riderPhone)));
+        const isDeclinedByMe = isOrderDeclinedByMe(p);
 
         return isWaiting && notAssigned && !isDelivered && !isDeclinedByMe;
       }).slice(0, 5);

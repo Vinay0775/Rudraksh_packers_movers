@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import '../models/order_model.dart';
 import '../services/alert_manager.dart';
 
@@ -53,7 +54,13 @@ class _OrderAlertDialogState extends State<OrderAlertDialog>
   }
 
   void _dismissAlert() {
-    AlertManager().stopAlert();
+    AlertManager().stopAlert(notifId: widget.order.parcelId.hashCode, parcelId: widget.order.parcelId);
+    try {
+      FlutterForegroundTask.sendDataToTask({
+        'action': 'decline_order',
+        'parcelId': widget.order.parcelId,
+      });
+    } catch (_) {}
     if (mounted) {
       Navigator.of(context, rootNavigator: true).pop();
     }
@@ -64,7 +71,7 @@ class _OrderAlertDialogState extends State<OrderAlertDialog>
   void dispose() {
     _timer?.cancel();
     _animController.dispose();
-    AlertManager().stopAlert();
+    AlertManager().stopAlert(notifId: widget.order.parcelId.hashCode, parcelId: widget.order.parcelId);
     super.dispose();
   }
 
@@ -315,7 +322,13 @@ class _OrderAlertDialogState extends State<OrderAlertDialog>
                     child: OutlinedButton(
                       onPressed: () {
                         setState(() => _isMuted = true);
-                        AlertManager().muteSound();
+                        AlertManager().muteSound(parcelId: widget.order.parcelId);
+                        try {
+                          FlutterForegroundTask.sendDataToTask({
+                            'action': 'silence_order',
+                            'parcelId': widget.order.parcelId,
+                          });
+                        } catch (_) {}
                       },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: _isMuted ? const Color(0xFF22C55E) : Colors.amberAccent,
@@ -376,7 +389,13 @@ class _OrderAlertDialogState extends State<OrderAlertDialog>
                     flex: 2,
                     child: ElevatedButton(
                       onPressed: () {
-                        AlertManager().stopAlert();
+                        AlertManager().stopAlert(notifId: widget.order.parcelId.hashCode, parcelId: widget.order.parcelId);
+                        try {
+                          FlutterForegroundTask.sendDataToTask({
+                            'action': 'stop_alert',
+                            'parcelId': widget.order.parcelId,
+                          });
+                        } catch (_) {}
                         Navigator.of(context, rootNavigator: true).pop();
                         widget.onAccept();
                       },
