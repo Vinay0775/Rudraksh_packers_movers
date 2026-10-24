@@ -344,6 +344,49 @@ body {
   color: var(--primary-color);
 }
 
+/* Dual Language Switcher Pill */
+.lang-switcher-pill {
+  display: inline-flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 50px;
+  padding: 2px 4px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin-left: 4px;
+}
+
+.lang-switcher-pill:hover {
+  border-color: #f97316;
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+
+.lang-switcher-pill .lang-opt {
+  padding: 3px 8px;
+  border-radius: 50px;
+  color: #64748b;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+}
+
+.lang-switcher-pill .lang-opt.active {
+  background: #f97316;
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(249, 115, 22, 0.35);
+}
+
+.lang-switcher-pill .lang-divider {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  margin: 0 1px;
+}
+
 /* Desktop Navbar: Strictly Single-Row, Never Falls or Breaks */
 @media (min-width: 992px) {
   .navbar-container {
