@@ -292,6 +292,8 @@ class BackgroundService {
         autoRunOnMyPackageReplaced: true,
         allowWakeLock: true,
         allowWifiLock: true,
+        allowAutoRestart: true,
+        stopWithTask: false,
       ),
     );
   }

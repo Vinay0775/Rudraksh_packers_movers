@@ -24,11 +24,14 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentTab = 0;
+  int _jobsFeedSubtab = 0; // 0 = Available, 1 = Declined
   Timer? _pollingTimer;
 
   bool _isLoading = false;
+  bool _isManualRefreshing = false;
   OrderModel? _activeTrip;
   List<OrderModel> _availableJobs = [];
+  List<Map<String, dynamic>> _declinedOrdersHistory = [];
   final Set<String> _seenJobIds = {};
   final Set<String> _acknowledgedAssignedTrips = {};
   bool _isAlertDialogOpen = false;
@@ -77,6 +80,79 @@ class _HomeScreenState extends State<HomeScreen> {
       PermissionService.checkAndRequestAllPermissions(context);
       UpdateService.checkAndPromptUpdate(context);
     });
+  }
+
+  Future<void> _loadDeclinedHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rawList = prefs.getStringList('rudraksha_driver_declined_history') ?? [];
+      final List<Map<String, dynamic>> list = [];
+      for (var str in rawList) {
+        try {
+          final decoded = jsonDecode(str);
+          if (decoded is Map<String, dynamic>) list.add(decoded);
+        } catch (_) {}
+      }
+      if (mounted) {
+        setState(() {
+          _declinedOrdersHistory = list;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading declined history: $e');
+    }
+  }
+
+  Future<void> _recordDeclinedOrder({
+    required String parcelId,
+    String? pickupAddress,
+    String? dropAddress,
+    double? totalAmount,
+    String? vehicleType,
+    String? senderName,
+    String? receiverName,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rawList = prefs.getStringList('rudraksha_driver_declined_history') ?? [];
+      final List<Map<String, dynamic>> list = [];
+      for (var str in rawList) {
+        try {
+          final decoded = jsonDecode(str);
+          if (decoded is Map<String, dynamic>) list.add(decoded);
+        } catch (_) {}
+      }
+
+      list.removeWhere((item) => item['parcelId'] == parcelId);
+      list.insert(0, {
+        'parcelId': parcelId,
+        'pickupAddress': (pickupAddress != null && pickupAddress.isNotEmpty)
+            ? pickupAddress
+            : 'Pickup Location',
+        'dropAddress': (dropAddress != null && dropAddress.isNotEmpty)
+            ? dropAddress
+            : 'Drop Location',
+        'totalAmount': totalAmount ?? 0.0,
+        'vehicleType': vehicleType ?? 'Parcel',
+        'senderName': senderName ?? 'Customer',
+        'receiverName': receiverName ?? 'Receiver',
+        'declinedAt': DateTime.now().toIso8601String(),
+        'status': 'driver_declined',
+      });
+
+      if (list.length > 50) list.removeRange(50, list.length);
+
+      final encodedList = list.map((e) => jsonEncode(e)).toList();
+      await prefs.setStringList('rudraksha_driver_declined_history', encodedList);
+
+      if (mounted) {
+        setState(() {
+          _declinedOrdersHistory = list;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error recording declined order: $e');
+    }
   }
 
   void _onReceiveBackgroundData(Object data) {
@@ -128,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _handleNotificationDecline(String parcelId) async {
+  void _handleNotificationDecline(String parcelId, [OrderModel? orderOpt]) async {
     _acknowledgedAssignedTrips.add(parcelId);
     _isAlertDialogOpen = false;
     await AlertManager().stopAlert(notifId: parcelId.hashCode, parcelId: parcelId);
@@ -139,13 +215,35 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (_) {}
 
-    // Save permanently in SharedPreferences
+    // Save permanently in SharedPreferences simple list for instant filtering
     final prefs = await SharedPreferences.getInstance();
     final declinedList = prefs.getStringList('rudraksha_driver_declined_parcels') ?? [];
     if (!declinedList.contains(parcelId)) {
       declinedList.add(parcelId);
       await prefs.setStringList('rudraksha_driver_declined_parcels', declinedList);
     }
+
+    // Save to detailed history with pickup, drop and fare for the Declined Orders view
+    OrderModel? order = orderOpt;
+    if (order == null) {
+      if (_activeTrip?.parcelId == parcelId) {
+        order = _activeTrip;
+      } else {
+        final matches = _availableJobs.where((j) => j.parcelId == parcelId);
+        if (matches.isNotEmpty) {
+          order = matches.first;
+        }
+      }
+    }
+    await _recordDeclinedOrder(
+      parcelId: parcelId,
+      pickupAddress: order?.pickupAddress,
+      dropAddress: order?.dropAddress,
+      totalAmount: order?.totalAmount,
+      vehicleType: order?.packageType ?? ApiService.currentDriver?.vehicleType ?? 'Parcel',
+      senderName: order?.senderName,
+      receiverName: order?.receiverName,
+    );
 
     // Inform backend and admin
     await ApiService.declineJob(parcelId);
@@ -154,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('❌ Order declined. Admin will reassign to another driver.'),
+          content: Text('❌ Order declined. Reassigned to Admin & saved in Declined Orders.'),
           backgroundColor: Color(0xFFEF4444),
         ),
       );
@@ -189,9 +287,42 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _loadInitialData() async {
     setState(() => _isLoading = true);
+    await _loadDeclinedHistory();
     await _syncFeed();
     await _loadEarnings();
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  Future<void> _handleManualRefresh() async {
+    if (_isManualRefreshing) return;
+    setState(() => _isManualRefreshing = true);
+    try {
+      await Future.wait([
+        _syncFeed(),
+        _loadEarnings(),
+        _loadDeclinedHistory(),
+      ]);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text('Feed refreshed! Latest orders loaded.'),
+              ],
+            ),
+            backgroundColor: Color(0xFF22C55E),
+            duration: Duration(milliseconds: 1400),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isManualRefreshing = false);
+      }
+    }
   }
 
   void _startBackgroundPolling() {
@@ -289,7 +420,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (ctx) => OrderAlertDialog(
         order: order,
         onDecline: () {
-          _handleNotificationDecline(order.parcelId);
+          _handleNotificationDecline(order.parcelId, order);
         },
         onAccept: () async {
           _acknowledgedAssignedTrips.add(order.parcelId);
@@ -1241,67 +1372,224 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 16),
         ],
 
-        // Available Pool Jobs Section Header
+        // Tabs switcher: Available Orders vs Declined Orders + Working Refresh Button
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF22C55E),
-                    shape: BoxShape.circle,
+            InkWell(
+              onTap: () => setState(() => _jobsFeedSubtab = 0),
+              borderRadius: BorderRadius.circular(20),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: _jobsFeedSubtab == 0
+                      ? const Color(0xFF22C55E)
+                      : const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _jobsFeedSubtab == 0
+                        ? const Color(0xFF22C55E)
+                        : Colors.white12,
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  'Available Orders (${_availableJobs.length})',
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.flash_on_rounded,
+                      size: 14,
+                      color: _jobsFeedSubtab == 0 ? Colors.black : const Color(0xFF22C55E),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Available (${_availableJobs.length})',
+                      style: TextStyle(
+                        color: _jobsFeedSubtab == 0 ? Colors.black : Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-            TextButton.icon(
-              onPressed: _syncFeed,
-              icon: const Icon(Icons.refresh, size: 14, color: Color(0xFFF97316)),
-              label: const Text('Refresh',
-                  style: TextStyle(color: Color(0xFFF97316), fontSize: 12)),
+            const SizedBox(width: 8),
+            InkWell(
+              onTap: () => setState(() => _jobsFeedSubtab = 1),
+              borderRadius: BorderRadius.circular(20),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: _jobsFeedSubtab == 1
+                      ? Colors.redAccent
+                      : const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _jobsFeedSubtab == 1
+                        ? Colors.redAccent
+                        : Colors.white12,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.block_flipped,
+                      size: 13,
+                      color: _jobsFeedSubtab == 1 ? Colors.white : Colors.redAccent,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Declined (${_declinedOrdersHistory.length})',
+                      style: TextStyle(
+                        color: _jobsFeedSubtab == 1 ? Colors.white : Colors.white70,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const Spacer(),
+            // Working animated refresh button with tactile feedback
+            InkWell(
+              onTap: _isManualRefreshing ? null : _handleManualRefresh,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF97316).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_isManualRefreshing)
+                      const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFFF97316),
+                        ),
+                      )
+                    else
+                      const Icon(Icons.refresh_rounded, size: 15, color: Color(0xFFF97316)),
+                    const SizedBox(width: 4),
+                    Text(
+                      _isManualRefreshing ? 'Refreshing...' : 'Refresh',
+                      style: const TextStyle(
+                        color: Color(0xFFF97316),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
 
-        // Available Jobs List or Empty Radar State
-        if (_availableJobs.isEmpty)
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0F172A),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white12),
+        // Subtab 0: Available Jobs
+        if (_jobsFeedSubtab == 0) ...[
+          if (_availableJobs.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: const Column(
+                children: [
+                  Icon(Icons.radar_rounded, size: 48, color: Color(0xFF22C55E)),
+                  SizedBox(height: 14),
+                  Text(
+                    'Scanning for Parcel Requests...',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'Admin ya Customer ka naya order aate hi turant yahan dikhega aur Siren bajega.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                ],
+              ),
+            )
+          else
+            ..._availableJobs.map((job) => _buildAvailableJobCard(job)),
+        ]
+        // Subtab 1: Declined Orders Section
+        else ...[
+          if (_declinedOrdersHistory.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.assignment_turned_in_rounded, size: 48, color: Color(0xFF22C55E)),
+                  SizedBox(height: 14),
+                  const Text(
+                    'No Declined Orders',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Aapne abhi tak koi order decline nahi kiya hai.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                  const SizedBox(height: 14),
+                  ElevatedButton(
+                    onPressed: () => setState(() => _jobsFeedSubtab = 0),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF22C55E),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('View Available Orders',
+                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.25)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.redAccent, size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Ye orders aapne decline kiye hain aur Admin ko reassign ke liye shift kar diye gaye hain. Inka siren alert dobara nahi aayega.',
+                      style: TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: const Column(
-              children: [
-                Icon(Icons.radar_rounded, size: 48, color: Color(0xFF22C55E)),
-                SizedBox(height: 14),
-                Text(
-                  'Scanning for Parcel Requests...',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Admin ya Customer ka naya order aate hi turant yahan dikhega aur Siren bajega.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white54, fontSize: 12),
-                ),
-              ],
-            ),
-          )
-        else
-          ..._availableJobs.map((job) => _buildAvailableJobCard(job)),
+            ..._declinedOrdersHistory.map((item) => _buildDeclinedOrderCard(item)),
+          ],
+        ],
       ],
     );
   }
@@ -1393,20 +1681,190 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Accept Order Button
-          ElevatedButton.icon(
-            onPressed: () => _handleAcceptJob(job),
-            icon: const Icon(Icons.check_circle_outline, color: Colors.black, size: 18),
-            label: Text(
-              'ACCEPT ORDER (Kamai ₹${job.totalAmount})',
-              style: const TextStyle(
-                  color: Colors.black, fontWeight: FontWeight.w900, fontSize: 13),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF22C55E),
-              minimumSize: const Size(double.infinity, 44),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
+          // Dual Action Buttons: Decline & Accept
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _handleNotificationDecline(job.parcelId, job),
+                  icon: const Icon(Icons.close_rounded, color: Colors.white60, size: 15),
+                  label: const Text('Pass / Decline',
+                      style: TextStyle(color: Colors.white70, fontSize: 11)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white24),
+                    minimumSize: const Size(0, 44),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton.icon(
+                  onPressed: () => _handleAcceptJob(job),
+                  icon: const Icon(Icons.check_circle_outline, color: Colors.black, size: 17),
+                  label: Text(
+                    'ACCEPT (₹${job.totalAmount})',
+                    style: const TextStyle(
+                        color: Colors.black, fontWeight: FontWeight.w900, fontSize: 12),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF22C55E),
+                    minimumSize: const Size(0, 44),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeclinedOrderCard(Map<String, dynamic> item) {
+    final parcelId = item['parcelId'] ?? '-';
+    final fare = item['totalAmount'] ?? 0;
+    final pickup = item['pickupAddress'] ?? '-';
+    final drop = item['dropAddress'] ?? '-';
+    final vehicle = item['vehicleType'] ?? 'Parcel';
+    final declinedAt = item['declinedAt'];
+    String timeLabel = 'Recently';
+    if (declinedAt != null) {
+      try {
+        final dt = DateTime.parse(declinedAt).toLocal();
+        final hr = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+        final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+        final min = dt.minute.toString().padLeft(2, '0');
+        timeLabel = '${dt.day}/${dt.month} at $hr:$min $ampm';
+      } catch (_) {}
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.35)),
+        boxShadow: const [
+          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white12,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '#$parcelId',
+                      style: const TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.close_rounded, color: Colors.redAccent, size: 12),
+                        SizedBox(width: 3),
+                        Text(
+                          'DECLINED',
+                          style: TextStyle(
+                              color: Colors.redAccent,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                '₹$fare',
+                style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    decoration: TextDecoration.lineThrough),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Route: Pickup
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.arrow_upward_rounded, color: Color(0xFF22C55E), size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Pickup Location',
+                        style: TextStyle(color: Colors.white54, fontSize: 10)),
+                    Text(pickup,
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Route: Drop
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.location_on_rounded, color: Colors.redAccent, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Drop Location',
+                        style: TextStyle(color: Colors.white54, fontSize: 10)),
+                    Text(drop,
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(color: Colors.white12),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Vehicle: $vehicle',
+                style: const TextStyle(color: Colors.white38, fontSize: 11),
+              ),
+              Text(
+                'Declined: $timeLabel',
+                style: const TextStyle(color: Colors.white38, fontSize: 11),
+              ),
+            ],
           ),
         ],
       ),
@@ -2102,6 +2560,38 @@ class _HomeScreenState extends State<HomeScreen> {
               )),
           const SizedBox(height: 16),
         ],
+
+        // Declined Orders History Shortcut Card
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F172A),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.block_flipped, color: Colors.redAccent, size: 20),
+            ),
+            title: const Text('My Declined Orders',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+            subtitle: Text(
+                '${_declinedOrdersHistory.length} orders declined by you',
+                style: const TextStyle(color: Colors.white54, fontSize: 11)),
+            trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 14),
+            onTap: () {
+              setState(() {
+                _currentTab = 0;
+                _jobsFeedSubtab = 1;
+              });
+            },
+          ),
+        ),
 
         // Check for App Updates Button
         ElevatedButton.icon(

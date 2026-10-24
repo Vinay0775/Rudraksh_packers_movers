@@ -40,8 +40,8 @@ app.get(['/api/app-version', '/api/rider/app-version'], (req, res) => {
   const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
   res.json({
     success: true,
-    version: '1.2.6',
-    versionCode: 8,
+    version: '1.2.7',
+    versionCode: 9,
     apkUrl: `${protocol}://${host}/downloads/RudrakshaDriver.apk`,
     fallbackApkUrl: 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk',
     releaseNotes: '1. Soft Acoustic Chime: Replaced harsh alarm with pleasant marimba chime\n2. 100% Reliable Mute: Instant cross-isolate silence on screen & notification bar\n3. One-Click Order Decline: Returns order to Admin for reassignment and prevents re-alerting driver',
@@ -860,10 +860,12 @@ app.get('/api/rider/jobs', requireRider, async (req, res, next) => {
       const declinedList = Array.isArray(p.declined_driver_ids) ? p.declined_driver_ids.map(String) : [];
       const declId = String(p.declined_driver_id || '');
       const declPhone = String(p.declined_driver_phone || '').replace(/\D/g, '');
+      const notesMatch = p.notes && (p.notes.includes(`ID: ${riderId}`) || (riderPhone && p.notes.includes(riderPhone)));
       return p.booking_status === 'driver_declined' ||
              p.status === 'driver_declined' ||
              declId === riderId ||
              declinedList.includes(riderId) ||
+             Boolean(notesMatch) ||
              (riderPhone && (declPhone === riderPhone || declinedList.includes(riderPhone)));
     };
 

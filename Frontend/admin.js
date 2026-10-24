@@ -48,9 +48,9 @@ function onAdminAuthSuccess() {
   renderDashboardRiderApps();
   refreshAdminAll();
 
-  // Start auto-refresh timer ONLY for verified admin sessions
+  // Start auto-refresh timer ONLY for verified admin sessions (every 5 seconds)
   if (_adminAutoRefreshTimer) clearInterval(_adminAutoRefreshTimer);
-  _adminAutoRefreshTimer = setInterval(autoRefreshParcelPanel, 15000);
+  _adminAutoRefreshTimer = setInterval(autoRefreshParcelPanel, 5000);
 }
 
 // Auto-refresh parcel panel and rider applications silently
@@ -1922,7 +1922,22 @@ async function loadAdminParcels() {
     });
     if (res.ok) {
       const data = await res.json();
+      const prevParcels = allAdminParcels;
       allAdminParcels = data.parcels || [];
+
+      // Check if any parcel changed to driver_declined to notify admin immediately
+      if (prevParcels && prevParcels.length > 0) {
+        allAdminParcels.forEach(np => {
+          const npId = np.parcel_id || np.id;
+          const op = prevParcels.find(p => (p.parcel_id === npId || p.id === npId));
+          if (op && (op.booking_status !== 'driver_declined' && op.status !== 'driver_declined')) {
+            if (np.booking_status === 'driver_declined' || np.status === 'driver_declined') {
+              showAdminToast(`⚠️ Driver ne Order #${npId} DECLINE kar diya! Kripya reassign karein.`);
+              try { playNotificationSound(); } catch (_) {}
+            }
+          }
+        });
+      }
     } else {
       throw new Error('API fetch failed');
     }
@@ -1949,7 +1964,7 @@ async function loadAdminParcels() {
   loadRiderApplications();
   loadAdminParcelRates();
   updateParcelMetrics();
-  renderParcelsTable();
+  filterParcelsTable(currentParcelFilter || 'all');
 }
 
 function switchParcelSubtab(subtabName, btnEl) {
@@ -2361,14 +2376,22 @@ function updateParcelMetrics() {
 }
 
 function filterParcelsTable(status, btnEl) {
-  currentParcelFilter = status;
-  document.querySelectorAll('#parcelFilterPills button').forEach(b => b.classList.remove('active'));
-  if (btnEl) btnEl.classList.add('active');
+  currentParcelFilter = status || 'all';
+  if (btnEl) {
+    document.querySelectorAll('#parcelFilterPills button').forEach(b => b.classList.remove('active'));
+    btnEl.classList.add('active');
+  }
 
-  if (status === 'all') {
+  if (currentParcelFilter === 'all') {
     renderParcelsTable(allAdminParcels);
+  } else if (currentParcelFilter === 'driver_declined') {
+    const filtered = allAdminParcels.filter(p => {
+      const st = p.booking_status || p.status;
+      return st === 'driver_declined' || (p.notes && p.notes.includes('[DECLINED]')) || (!p.assigned_driver_name && p.declined_driver_name);
+    });
+    renderParcelsTable(filtered);
   } else {
-    const filtered = allAdminParcels.filter(p => (p.booking_status || p.status) === status);
+    const filtered = allAdminParcels.filter(p => (p.booking_status || p.status) === currentParcelFilter);
     renderParcelsTable(filtered);
   }
 }
