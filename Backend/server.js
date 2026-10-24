@@ -40,8 +40,8 @@ app.get(['/api/app-version', '/api/rider/app-version'], (req, res) => {
   const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
   res.json({
     success: true,
-    version: '1.2.7',
-    versionCode: 9,
+    version: '1.2.8',
+    versionCode: 10,
     apkUrl: `${protocol}://${host}/downloads/RudrakshaDriver.apk`,
     fallbackApkUrl: 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk',
     releaseNotes: '1. Soft Acoustic Chime: Replaced harsh alarm with pleasant marimba chime\n2. 100% Reliable Mute: Instant cross-isolate silence on screen & notification bar\n3. One-Click Order Decline: Returns order to Admin for reassignment and prevents re-alerting driver',
@@ -857,39 +857,63 @@ app.get('/api/rider/jobs', requireRider, async (req, res, next) => {
     const parcels = await db.getParcels();
 
     const isOrderDeclinedByMe = (p) => {
+      // 1. If Admin has currently assigned this order to THIS rider, it is NOT declined!
+      const isAssignedToMe = (p.booking_status === 'driver_assigned' || p.status === 'driver_assigned') &&
+        ((String(p.driver_id || '') === riderId) || (p.assigned_driver_phone && String(p.assigned_driver_phone).replace(/\D/g, '') === riderPhone));
+      if (isAssignedToMe) {
+        return false;
+      }
+
+      // 2. If status is actively driver_declined and not reassigned
+      if (p.booking_status === 'driver_declined' || p.status === 'driver_declined') {
+        return true;
+      }
+
       const declinedList = Array.isArray(p.declined_driver_ids) ? p.declined_driver_ids.map(String) : [];
       const declId = String(p.declined_driver_id || '');
       const declPhone = String(p.declined_driver_phone || '').replace(/\D/g, '');
       const notesMatch = p.notes && (p.notes.includes(`ID: ${riderId}`) || (riderPhone && p.notes.includes(riderPhone)));
-      return p.booking_status === 'driver_declined' ||
-             p.status === 'driver_declined' ||
-             declId === riderId ||
+
+      return declId === riderId ||
              declinedList.includes(riderId) ||
              Boolean(notesMatch) ||
              (riderPhone && (declPhone === riderPhone || declinedList.includes(riderPhone)));
     };
 
-    // 1. Find currently active assigned trip (must NOT be declined or delivered)
-    const activeTrip = parcels.find(p => {
-      const isAssigned = (String(p.driver_id || '') === riderId) || (p.assigned_driver_phone && String(p.assigned_driver_phone).replace(/\D/g, '') === riderPhone);
-      const activeStatuses = ['driver_assigned', 'reached_pickup', 'picked_up', 'in_transit', 'out_for_delivery'];
-      const isDeclined = isOrderDeclinedByMe(p);
-      const isDelivered = p.booking_status === 'delivered' || p.status === 'delivered' || p.delivery_otp_verified;
-      return isAssigned && activeStatuses.includes(p.booking_status || p.status) && !isDeclined && !isDelivered;
-    }) || null;
+    const inProgressStatuses = ['reached_pickup', 'picked_up', 'in_transit', 'out_for_delivery'];
+    const assignedStatuses = ['driver_assigned', 'received'];
+    const activeStatuses = [...inProgressStatuses, ...assignedStatuses];
 
-    // 2. Find available jobs waiting for acceptance (if rider is on-duty)
+    // All active parcels assigned to this rider
+    const myAssigned = parcels.filter(p => {
+      const isAssigned = (String(p.driver_id || '') === riderId) || 
+                         (p.assigned_driver_phone && String(p.assigned_driver_phone).replace(/\D/g, '') === riderPhone);
+      const isDelivered = p.booking_status === 'delivered' || p.status === 'delivered' || p.delivery_otp_verified;
+      const isDeclined = isOrderDeclinedByMe(p);
+      return isAssigned && activeStatuses.includes(p.booking_status || p.status) && !isDeclined && !isDelivered;
+    });
+
+    // Active trip priority: In-progress first, else latest assigned
+    let activeTrip = myAssigned.find(p => inProgressStatuses.includes(p.booking_status || p.status)) || null;
+    if (!activeTrip && myAssigned.length > 0) {
+      activeTrip = myAssigned[0];
+    }
+
+    // Available jobs: Other assigned parcels + Open pool jobs
     let availableJobs = [];
-    if (req.rider.onDuty !== false && !activeTrip) {
-      availableJobs = parcels.filter(p => {
+    if (req.rider.onDuty !== false) {
+      const extraAssigned = myAssigned.filter(p => p !== activeTrip);
+
+      const openPool = parcels.filter(p => {
         const st = p.booking_status || p.status;
         const isWaiting = (st === 'searching_driver' || st === 'received');
-        const notAssigned = !p.driver_id;
+        const notAssigned = !p.driver_id && !p.assigned_driver_phone;
         const isDelivered = st === 'delivered' || p.delivery_otp_verified;
         const isDeclinedByMe = isOrderDeclinedByMe(p);
-
         return isWaiting && notAssigned && !isDelivered && !isDeclinedByMe;
-      }).slice(0, 5);
+      });
+
+      availableJobs = [...extraAssigned, ...openPool].slice(0, 10);
     }
 
     res.json({

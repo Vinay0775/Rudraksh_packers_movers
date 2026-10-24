@@ -95,7 +95,17 @@ class DriverTaskHandler extends TaskHandler {
 
           final prefs = await SharedPreferences.getInstance();
           final declinedList = prefs.getStringList('rudraksha_driver_declined_parcels') ?? [];
-          final isDeclined = declinedList.contains(order.parcelId) || status == 'driver_declined';
+
+          if (isPending) {
+            // Admin has directly assigned this order to the driver!
+            if (declinedList.contains(order.parcelId)) {
+              declinedList.remove(order.parcelId);
+              await prefs.setStringList('rudraksha_driver_declined_parcels', declinedList);
+            }
+            AlertManager().clearSilencedParcel(order.parcelId);
+          }
+
+          final isDeclined = status == 'driver_declined';
           final isSilenced = AlertManager().isParcelSilenced(order.parcelId);
 
           if (isPending && !isDeclined && !isSilenced && _lastNotifiedParcelId != order.parcelId) {

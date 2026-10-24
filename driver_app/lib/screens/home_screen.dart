@@ -345,14 +345,30 @@ class _HomeScreenState extends State<HomeScreen> {
     OrderModel? active = res['activeTrip'];
     List<OrderModel> available = res['availableJobs'] ?? [];
 
-    // Permanent decline filter: never show declined parcels in active trip or available list
-    if (active != null && (declinedList.contains(active.parcelId) || active.bookingStatus == 'driver_declined')) {
-      active = null;
+    // Admin Assignment & Decline Reconciliation:
+    if (active != null) {
+      final isAssigned = (active.bookingStatus == 'driver_assigned' || active.bookingStatus == 'received');
+      if (isAssigned) {
+        // Admin has actively assigned this order to the driver!
+        // Clear any old decline cache for this order so driver receives fresh alert:
+        if (declinedList.contains(active.parcelId)) {
+          declinedList.remove(active.parcelId);
+          await prefs.setStringList('rudraksha_driver_declined_parcels', declinedList);
+        }
+        AlertManager().clearSilencedParcel(active.parcelId);
+      } else if (active.bookingStatus == 'driver_declined' || declinedList.contains(active.parcelId)) {
+        active = null;
+      }
     }
-    available = available.where((j) => !declinedList.contains(j.parcelId) && j.bookingStatus != 'driver_declined').toList();
 
-    // 1. Direct Admin Assignment Detection
-    // When an order is assigned by admin, bookingStatus will be 'driver_assigned' or 'received'.
+    // Available jobs filtering: Keep direct assignments, filter out unassigned jobs declined by driver
+    available = available.where((j) {
+      if (j.bookingStatus == 'driver_declined') return false;
+      if (j.bookingStatus == 'driver_assigned' || j.bookingStatus == 'received') return true;
+      return !declinedList.contains(j.parcelId);
+    }).toList();
+
+    // 1. Direct Admin Assignment Detection & Alert Trigger
     if (active != null) {
       final isAssigned = (active.bookingStatus == 'driver_assigned' ||
           active.bookingStatus == 'received');
