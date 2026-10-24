@@ -1,11 +1,74 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart'
     hide NotificationVisibility;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vibration/vibration.dart';
 import '../models/order_model.dart';
+
+@pragma('vm:entry-point')
+void notificationTapBackground(NotificationResponse details) async {
+  debugPrint('[AlertManager Background] Action: ${details.actionId}, payload: ${details.payload}');
+  final parcelId = details.payload;
+  final action = details.actionId;
+
+  if (action == 'silence_order') {
+    await AlertManager().muteSound(parcelId: parcelId);
+  } else if (action == 'decline_order') {
+    await AlertManager().stopAlert(notifId: parcelId?.hashCode, parcelId: parcelId);
+    if (parcelId != null) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('rudraksha_driver_token');
+        final baseUrl = prefs.getString('rudraksha_api_base_url') ??
+            'https://rudraksha-packers-movers.onrender.com/api';
+        await http.post(
+          Uri.parse('$baseUrl/rider/jobs/$parcelId/decline'),
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({'reason': 'Driver declined via lockscreen notification'}),
+        );
+        final list = prefs.getStringList('rudraksha_driver_declined_parcels') ?? [];
+        if (!list.contains(parcelId)) {
+          list.add(parcelId);
+          await prefs.setStringList('rudraksha_driver_declined_parcels', list);
+        }
+      } catch (e) {
+        debugPrint('Background decline error: $e');
+      }
+    }
+  } else if (action == 'accept_order') {
+    await AlertManager().stopAlert(notifId: parcelId?.hashCode, parcelId: parcelId);
+    if (parcelId != null) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('rudraksha_driver_token');
+        final baseUrl = prefs.getString('rudraksha_api_base_url') ??
+            'https://rudraksha-packers-movers.onrender.com/api';
+        await http.post(
+          Uri.parse('$baseUrl/rider/jobs/$parcelId/accept'),
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+        );
+      } catch (e) {
+        debugPrint('Background accept error: $e');
+      }
+    }
+    FlutterForegroundTask.launchApp();
+  } else {
+    // Tapping notification body
+    await AlertManager().muteSound(parcelId: parcelId);
+    FlutterForegroundTask.launchApp();
+  }
+}
 
 class AlertManager {
   static final AlertManager _instance = AlertManager._internal();
@@ -23,11 +86,11 @@ class AlertManager {
 
   static Function(String action, String? parcelId)? onActionCallback;
 
-  // Incremented to v4 to reset Android system channel audio caching
-  static const String channelId = 'rudraksha_rider_dispatch_v4';
-  static const String channelName = 'Direct Order Dispatch & Audio Alerts';
+  // v6 Channel with native chime sound from res/raw/siren.wav
+  static const String channelId = 'rudraksha_rider_dispatch_v6';
+  static const String channelName = 'Direct Order Dispatch & Chime Alerts';
   static const String channelDesc =
-      'High-priority audio alerts and gentle vibration for assigned jobs';
+      'High-priority sound alerts and lock screen popups for assigned jobs';
 
   Future<void> init() async {
     try {
@@ -55,17 +118,19 @@ class AlertManager {
             FlutterForegroundTask.launchApp();
           }
         },
+        onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
       );
 
-      // Create Android Notification Channel with playSound: false
-      // This prevents the Android OS from playing its default screeching siren simultaneously with our audio player!
+      // Create Android Notification Channel with native chime sound and max importance
+      const soundResource = RawResourceAndroidNotificationSound('siren');
       final androidChannel = AndroidNotificationChannel(
         channelId,
         channelName,
         description: channelDesc,
         importance: Importance.max,
         enableVibration: true,
-        playSound: false,
+        playSound: true,
+        sound: soundResource,
         showBadge: true,
       );
 
@@ -74,7 +139,7 @@ class AlertManager {
               AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(androidChannel);
 
-      // Configure Audio Player for clear speaker playback
+      // Configure Audio Player for in-app backup playback
       try {
         await _audioPlayer.setAudioContext(
           AudioContext(
@@ -119,10 +184,10 @@ class AlertManager {
       FlutterForegroundTask.setOnLockScreenVisibility(true);
     } catch (_) {}
 
-    // 1. Play Soft Melodic Chime on loop until driver responds
+    // 1. Play Soft Melodic Chime on loop in background/foreground
     try {
       await _audioPlayer.setReleaseMode(ReleaseMode.loop);
-      await _audioPlayer.setVolume(0.75);
+      await _audioPlayer.setVolume(0.85);
       await _audioPlayer.play(AssetSource('siren.wav'));
     } catch (e) {
       debugPrint('Audio play error: $e');
@@ -131,7 +196,7 @@ class AlertManager {
     // 2. Start Rhythmic, Gentle Vibration (500ms pulse, 1500ms pause)
     _startContinuousVibration();
 
-    // 3. Fire Native Android Lock Screen Notification (Heads-Up Banner)
+    // 3. Fire Native Android Lock Screen Heads-Up Pop-up Notification with FullScreenIntent
     try {
       final isDirect = order.isDirectAssignment;
       final title = isDirect
@@ -140,6 +205,7 @@ class AlertManager {
       final body =
           '📍 Pickup: ${order.pickupAddress}\n🏁 Drop: ${order.dropAddress}\nTap ACCEPT ya DECLINE karein!';
 
+      const soundResource = RawResourceAndroidNotificationSound('siren');
       final androidDetails = AndroidNotificationDetails(
         channelId,
         channelName,
@@ -148,8 +214,9 @@ class AlertManager {
         priority: Priority.max,
         fullScreenIntent: true,
         enableVibration: true,
-        playSound: false, // In-app AudioPlayer handles pleasant chime
-        vibrationPattern: Int64List.fromList([0, 500, 1500, 500, 1500]),
+        playSound: true,
+        sound: soundResource,
+        vibrationPattern: Int64List.fromList([0, 500, 1000, 500, 1000]),
         category: AndroidNotificationCategory.call,
         visibility: NotificationVisibility.public,
         ongoing: true,
@@ -208,7 +275,7 @@ class AlertManager {
       final hasVibrator = await Vibration.hasVibrator();
       if (hasVibrator == true) {
         Vibration.vibrate(
-          pattern: [0, 500, 1500, 500, 1500],
+          pattern: [0, 500, 1000, 500, 1000],
           intensities: [0, 200, 0, 200, 0],
         );
       }
@@ -228,13 +295,47 @@ class AlertManager {
     _vibrateTimer = null;
     try {
       await _audioPlayer.stop();
-    } catch (e) {
-      debugPrint('Audio stop error: $e');
-    }
+    } catch (_) {}
     try {
       await Vibration.cancel();
-    } catch (e) {
-      debugPrint('Vibration cancel error: $e');
+    } catch (_) {}
+
+    // Re-issue silent notification so sound immediately stops while keeping order visible
+    if (targetId != null) {
+      try {
+        final silentDetails = AndroidNotificationDetails(
+          'rudraksha_rider_silent_v1',
+          'Muted Orders',
+          channelDescription: 'Notifications for muted orders',
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: false,
+          enableVibration: false,
+          ongoing: true,
+          autoCancel: false,
+          actions: const [
+            AndroidNotificationAction(
+              'accept_order',
+              '✅ ACCEPT',
+              showsUserInterface: true,
+              cancelNotification: true,
+            ),
+            AndroidNotificationAction(
+              'decline_order',
+              '❌ DECLINE',
+              showsUserInterface: false,
+              cancelNotification: true,
+            ),
+          ],
+        );
+        await _notificationsPlugin.show(
+          targetId.hashCode,
+          '🔔 Order Assigned (Sound Muted)',
+          'Tap ACCEPT to start trip or DECLINE to skip',
+          NotificationDetails(android: silentDetails),
+          payload: targetId,
+        );
+      } catch (_) {}
     }
   }
 

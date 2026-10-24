@@ -45,104 +45,113 @@ class DriverTaskHandler extends TaskHandler {
 
       if (!onDuty) return;
 
-      // 1. Send GPS Location to Server
-      try {
-        final position = await Geolocator.getLastKnownPosition() ??
-            await Geolocator.getCurrentPosition(
-              locationSettings: const LocationSettings(
-                accuracy: LocationAccuracy.high,
-                timeLimit: Duration(seconds: 5),
-              ),
-            );
+      final baseUrl = prefs.getString('rudraksha_api_base_url') ?? ApiConfig.currentBaseUrl;
 
-        final baseUrl = prefs.getString('rudraksha_api_base_url') ?? ApiConfig.currentBaseUrl;
-        final locUrl = Uri.parse('$baseUrl/rider/location');
-        await http.post(
-          locUrl,
+      // 1. Poll for New Orders / Assigned Jobs (IMMEDIATE HIGHEST PRIORITY)
+      try {
+        final jobsUrl = Uri.parse('$baseUrl/rider/jobs');
+        final res = await http.get(
+          jobsUrl,
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $_token',
           },
-          body: jsonEncode({
-            'latitude': position.latitude,
-            'longitude': position.longitude,
-            'speed': position.speed,
-            'heading': position.heading,
-            'accuracy': position.accuracy,
-          }),
         ).timeout(const Duration(seconds: 4));
-      } catch (_) {}
 
-      // 2. Poll for New Orders / Assigned Jobs
-      final baseUrl = prefs.getString('rudraksha_api_base_url') ?? ApiConfig.currentBaseUrl;
-      final jobsUrl = Uri.parse('$baseUrl/rider/jobs');
-      final res = await http.get(
-        jobsUrl,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_token',
-        },
-      ).timeout(const Duration(seconds: 5));
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          final activeRaw = data['activeTrip'];
 
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        final activeRaw = data['activeTrip'];
+          if (activeRaw != null) {
+            final order = OrderModel.fromJson(activeRaw, isDirect: true);
+            final status = order.bookingStatus;
+            final isPending = (status == 'driver_assigned' || status == 'received');
 
-        if (activeRaw != null) {
-          final order = OrderModel.fromJson(activeRaw, isDirect: true);
-          final status = order.bookingStatus;
-          final isPending = (status == 'driver_assigned' || status == 'received');
+            final prefs = await SharedPreferences.getInstance();
+            final declinedList = prefs.getStringList('rudraksha_driver_declined_parcels') ?? [];
 
-          final prefs = await SharedPreferences.getInstance();
-          final declinedList = prefs.getStringList('rudraksha_driver_declined_parcels') ?? [];
-
-          if (isPending) {
-            // Admin has directly assigned this order to the driver!
-            if (declinedList.contains(order.parcelId)) {
-              declinedList.remove(order.parcelId);
-              await prefs.setStringList('rudraksha_driver_declined_parcels', declinedList);
+            if (isPending) {
+              // Admin has directly assigned this order to the driver!
+              if (declinedList.contains(order.parcelId)) {
+                declinedList.remove(order.parcelId);
+                await prefs.setStringList('rudraksha_driver_declined_parcels', declinedList);
+              }
+              AlertManager().clearSilencedParcel(order.parcelId);
             }
-            AlertManager().clearSilencedParcel(order.parcelId);
-          }
 
-          final isDeclined = status == 'driver_declined';
-          final isSilenced = AlertManager().isParcelSilenced(order.parcelId);
+            final isDeclined = status == 'driver_declined';
+            final isSilenced = AlertManager().isParcelSilenced(order.parcelId);
 
-          if (isPending && !isDeclined && !isSilenced && _lastNotifiedParcelId != order.parcelId) {
-            _lastNotifiedParcelId = order.parcelId;
-            debugPrint('[BackgroundService] 🚨 NEW ASSIGNED ORDER: ${order.parcelId}');
+            if (isPending && !isDeclined && !isSilenced && _lastNotifiedParcelId != order.parcelId) {
+              _lastNotifiedParcelId = order.parcelId;
+              debugPrint('[BackgroundService] 🚨 NEW ASSIGNED ORDER: ${order.parcelId}');
 
-            // Wake up screen even if locked or off!
-            try {
-              FlutterForegroundTask.wakeUpScreen();
-              FlutterForegroundTask.setOnLockScreenVisibility(true);
-            } catch (_) {}
+              // Wake up screen even if locked or off!
+              try {
+                FlutterForegroundTask.wakeUpScreen();
+                FlutterForegroundTask.setOnLockScreenVisibility(true);
+              } catch (_) {}
 
-            // Trigger sound, vibration & lock screen notification with Accept/Decline actions!
-            await AlertManager().triggerNewOrderAlert(order);
+              // Trigger sound, vibration & lock screen notification with Accept/Decline actions!
+              await AlertManager().triggerNewOrderAlert(order);
 
-            // Update foreground service notification with Mute, Accept & Decline action buttons
-            await FlutterForegroundTask.updateService(
-              notificationTitle: '🔔 NAYA ORDER ASSIGNED! (₹${order.totalAmount.toInt()})',
-              notificationText: '📍 ${order.pickupAddress.split(',')[0]} ➔ ${order.dropAddress.split(',')[0]}',
-              notificationButtons: [
-                const NotificationButton(id: 'silence_order', text: '🔇 MUTE'),
-                const NotificationButton(id: 'accept_order', text: '✅ ACCEPT'),
-                const NotificationButton(id: 'decline_order', text: '❌ DECLINE'),
-              ],
-            );
+              // Update foreground service notification with Mute, Accept & Decline action buttons
+              await FlutterForegroundTask.updateService(
+                notificationTitle: '🔔 NAYA ORDER ASSIGNED! (₹${order.totalAmount.toInt()})',
+                notificationText: '📍 ${order.pickupAddress.split(',')[0]} ➔ ${order.dropAddress.split(',')[0]}',
+                notificationButtons: [
+                  const NotificationButton(id: 'silence_order', text: '🔇 MUTE'),
+                  const NotificationButton(id: 'accept_order', text: '✅ ACCEPT'),
+                  const NotificationButton(id: 'decline_order', text: '❌ DECLINE'),
+                ],
+              );
 
-            // Notify UI isolate
-            FlutterForegroundTask.sendDataToMain({
-              'type': 'new_order_alert',
-              'order': activeRaw,
-            });
+              // Notify UI isolate
+              FlutterForegroundTask.sendDataToMain({
+                'type': 'new_order_alert',
+                'order': activeRaw,
+              });
+            }
           }
         }
+      } catch (e) {
+        debugPrint('[BackgroundService] Poll error: $e');
       }
+
+      // 2. Send GPS Location Asynchronously (Non-blocking so order polling never delays)
+      _sendGpsLocationAsync(baseUrl, _token);
     } catch (e) {
-      debugPrint('[BackgroundService] Poll error: $e');
+      debugPrint('[BackgroundService] onRepeatEvent error: $e');
     }
+  }
+
+  void _sendGpsLocationAsync(String baseUrl, String? token) async {
+    if (token == null || token.isEmpty) return;
+    try {
+      final position = await Geolocator.getLastKnownPosition() ??
+          await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.medium,
+              timeLimit: Duration(seconds: 4),
+            ),
+          );
+
+      final locUrl = Uri.parse('$baseUrl/rider/location');
+      await http.post(
+        locUrl,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+          'speed': position.speed,
+          'heading': position.heading,
+          'accuracy': position.accuracy,
+        }),
+      ).timeout(const Duration(seconds: 4));
+    } catch (_) {}
   }
 
   @override

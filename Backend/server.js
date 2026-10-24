@@ -40,8 +40,8 @@ app.get(['/api/app-version', '/api/rider/app-version'], (req, res) => {
   const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
   res.json({
     success: true,
-    version: '1.2.8',
-    versionCode: 10,
+    version: '1.2.9',
+    versionCode: 11,
     apkUrl: `${protocol}://${host}/downloads/RudrakshaDriver.apk`,
     fallbackApkUrl: 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk',
     releaseNotes: '1. Soft Acoustic Chime: Replaced harsh alarm with pleasant marimba chime\n2. 100% Reliable Mute: Instant cross-isolate silence on screen & notification bar\n3. One-Click Order Decline: Returns order to Admin for reassignment and prevents re-alerting driver',
