@@ -804,7 +804,7 @@ module.exports = {
         const { data, error } = await supabase
           .from('parcel_bookings')
           .select('*')
-          .or(`parcel_id.ilike.%${cleanId}%,sender_phone.eq.${cleanId},receiver_phone.eq.${cleanId}`)
+          .or(`parcel_id.eq.${cleanId},id.eq.${cleanId},parcel_id.ilike.%${cleanId}%`)
           .order('created_at', { ascending: false })
           .limit(1);
         if (!error && data && data.length > 0) return data[0];
@@ -841,12 +841,31 @@ module.exports = {
     const parcelKey = parcel.parcel_id || parcel.id;
     let updatedParcel = null;
 
-    // 1. Supabase database update
+    // 1. Supabase database update (sanitized against table columns)
     if (supabase && parcelKey) {
       try {
+        const KNOWN_COLUMNS = new Set([
+          'id', 'parcel_id', 'sender_name', 'sender_phone', 'receiver_name', 'receiver_phone',
+          'pickup_address', 'pickup_lat', 'pickup_lng', 'drop_address', 'drop_lat', 'drop_lng',
+          'distance_km', 'estimated_time', 'parcel_type', 'weight_category', 'package_size',
+          'dimensions', 'vehicle_type', 'base_fare', 'distance_fare', 'weight_fare', 'vehicle_fare',
+          'handling_fee', 'addons_fee', 'addons', 'discount', 'tax', 'total_amount', 'payment_method',
+          'payment_status', 'booking_status', 'status', 'driver_id', 'assigned_driver_name',
+          'assigned_driver_phone', 'assigned_vehicle_no', 'assigned_vehicle_type', 'pickup_otp',
+          'pickup_otp_verified', 'delivery_otp', 'delivery_otp_verified', 'pickup_time',
+          'delivery_time', 'notes', 'created_at', 'updated_at'
+        ]);
+
+        const supabasePayload = {};
+        for (const [k, v] of Object.entries(updatePayload)) {
+          if (KNOWN_COLUMNS.has(k)) {
+            supabasePayload[k] = v;
+          }
+        }
+
         const { data, error } = await supabase
           .from('parcel_bookings')
-          .update(updatePayload)
+          .update(supabasePayload)
           .or(`parcel_id.eq.${parcelKey},id.eq.${parcelKey}`)
           .select()
           .single();
@@ -960,6 +979,7 @@ module.exports = {
     const prevDriverId = driverInfo.driver_id || parcel.driver_id || '';
     const prevDriverName = driverInfo.driver_name || parcel.assigned_driver_name || 'Driver';
     const prevDriverPhone = driverInfo.driver_phone || parcel.assigned_driver_phone || '';
+    const reason = driverInfo.reason || 'Driver declined via app notification';
 
     // Maintain history of drivers who declined this parcel
     const declinedList = Array.isArray(parcel.declined_driver_ids) ? [...parcel.declined_driver_ids] : [];
@@ -970,6 +990,9 @@ module.exports = {
       declinedList.push(String(prevDriverPhone));
     }
 
+    const declineNote = `[DECLINED] Driver: ${prevDriverName} (+91 ${prevDriverPhone}) • Reason: ${reason}`;
+    const updatedNotes = parcel.notes ? `${parcel.notes} | ${declineNote}` : declineNote;
+
     const payload = {
       driver_id: null,
       assigned_driver_name: null,
@@ -978,12 +1001,13 @@ module.exports = {
       assigned_vehicle_type: null,
       booking_status: 'driver_declined',
       status: 'driver_declined',
+      notes: updatedNotes,
       declined_driver_id: prevDriverId,
       declined_driver_name: prevDriverName,
       declined_driver_phone: prevDriverPhone,
       declined_driver_ids: declinedList,
       declined_at: new Date().toISOString(),
-      decline_reason: driverInfo.reason || 'Driver declined via app notification',
+      decline_reason: reason,
       updated_at: new Date().toISOString()
     };
 
