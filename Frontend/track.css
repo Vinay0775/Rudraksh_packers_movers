@@ -905,3 +905,37 @@ body.tracker-body {
     text-align: left;
   }
 }
+
+/* ==========================================================================
+   MULTI-LANGUAGE (i18n) SWITCHER PILL - DARK THEME
+   ========================================================================== */
+.lang-switcher-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50px;
+  padding: 3px 4px;
+  cursor: pointer;
+  user-select: none;
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  transition: all 0.25s ease;
+  line-height: 1;
+}
+.lang-switcher-pill:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+}
+.lang-switcher-pill span {
+  padding: 4px 9px;
+  border-radius: 50px;
+  transition: all 0.25s ease;
+}
+.lang-switcher-pill span.active {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+}

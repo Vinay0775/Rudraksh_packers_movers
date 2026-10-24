@@ -7,6 +7,7 @@ import 'screens/login_screen.dart';
 import 'services/alert_manager.dart';
 import 'services/api_service.dart';
 import 'services/background_service.dart';
+import 'services/localization_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,7 @@ void main() async {
   await ApiService.init();
   await AlertManager().init();
   await BackgroundService.init();
+  await LocalizationService().init();
 
   final bool isAuth = await ApiService.checkAuth();
 
@@ -36,22 +38,27 @@ class RudrakshaDriverApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Rudraksha Driver',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF090D16),
-        primaryColor: const Color(0xFF22C55E),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF22C55E),
-          secondary: Color(0xFFF97316),
-          surface: Color(0xFF0F172A),
-        ),
-        textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
-      ),
-      home: isAuth ? const HomeScreen() : const LoginScreen(),
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService().currentLanguageNotifier,
+      builder: (context, lang, child) {
+        return MaterialApp(
+          title: 'Rudraksha Driver',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            useMaterial3: true,
+            brightness: Brightness.dark,
+            scaffoldBackgroundColor: const Color(0xFF090D16),
+            primaryColor: const Color(0xFF22C55E),
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF22C55E),
+              secondary: Color(0xFFF97316),
+              surface: Color(0xFF0F172A),
+            ),
+            textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
+          ),
+          home: isAuth ? const HomeScreen() : const LoginScreen(),
+        );
+      },
     );
   }
 }

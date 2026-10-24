@@ -86,7 +86,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
     rel="stylesheet">
 
   <!-- Font Awesome 6 -->
@@ -98,6 +98,9 @@
   <!-- Global & Parcel BRDG ERRAND Theme Styles & PWA Styles -->
   <link rel="stylesheet" href="parcel.css">
   <link rel="stylesheet" href="pwa-install.css">
+
+  <!-- Multi-Language i18n Translation Engine -->
+  <script src="i18n.js"></script>
 
   <!-- Leaflet CSS & JS (Free OpenStreetMap & Commercial GPS Routing Engine) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -125,19 +128,25 @@
 
       <!-- Desktop Nav Links -->
       <ul class="brdg-nav-links d-none d-lg-flex">
-        <li><a href="#services" class="brdg-nav-link">Our Services</a></li>
-        <li><a href="#bookingCalculator" class="brdg-nav-link active">Instant Fare</a></li>
-        <li><a href="track.html?via=portal" class="brdg-nav-link">Track Shipment</a></li>
+        <li><a href="#services" class="brdg-nav-link" data-i18n="nav_our_services">Our Services</a></li>
+        <li><a href="#bookingCalculator" class="brdg-nav-link active" data-i18n="nav_instant_fare">Instant Fare</a></li>
+        <li><a href="track.html?via=portal" class="brdg-nav-link" data-i18n="nav_track_shipment">Track Shipment</a></li>
         <li><a href="index.html" class="brdg-nav-link"><i class="fa-solid fa-truck-moving text-warning me-1"></i>
-            Packers & Movers</a></li>
+            <span data-i18n="nav_packers_movers">Packers & Movers</span></a></li>
       </ul>
 
       <!-- Action Buttons -->
       <div class="d-flex align-items-center gap-2">
+        <!-- Language Switcher Pill Toggle -->
+        <div class="lang-switcher-pill" onclick="toggleLanguage()" title="Switch Language / भाषा बदलें">
+          <span class="lang-en active">EN</span>
+          <span class="lang-hi">हिन्दी</span>
+        </div>
+
         <button type="button"
           class="btn btn-sm btn-outline-warning rounded-pill px-3 py-1 fw-bold d-none d-sm-inline-flex align-items-center gap-1"
           onclick="openRiderModal()">
-          <i class="fa-solid fa-motorcycle"></i> <span>Rider Partner</span>
+          <i class="fa-solid fa-motorcycle"></i> <span data-i18n="nav_rider_partner">Rider Partner</span>
         </button>
         <a href="tel:+917296831460" class="btn-brdg-phone">
           <i class="fa-solid fa-phone"></i> <span class="d-none d-sm-inline company-phone-text">+91 72968 31460</span>
@@ -157,31 +166,31 @@
         <div class="col-lg-6">
           <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-3"
             style="background: rgba(255, 158, 27, 0.15); border: 1px solid rgba(255, 158, 27, 0.4); color: var(--primary-orange); font-size: 0.82rem; font-weight: 700;">
-            <i class="fa-solid fa-bolt"></i> 100% Free Instant Dispatch System
+            <i class="fa-solid fa-bolt"></i> <span data-i18n="parcel_hero_badge">100% Free Instant Dispatch System</span>
           </div>
-          <h1 class="brdg-hero-h1">We Have <br>Faster Delivery <br>Than Others</h1>
+          <h1 class="brdg-hero-h1" data-i18n="parcel_hero_title">We Have Faster Delivery Than Others</h1>
 
           <ul class="brdg-checklist">
             <li>
               <i class="fa-solid fa-circle-check brdg-check-icon"></i>
-              <span>Instant doorstep pickup within 15 minutes</span>
+              <span data-i18n="parcel_hero_point1">Instant doorstep pickup within 15 minutes</span>
             </li>
             <li>
               <i class="fa-solid fa-circle-check brdg-check-icon"></i>
-              <span>Send documents, packages, clothes & electronics</span>
+              <span data-i18n="parcel_hero_point2">Send documents, packages, clothes & electronics</span>
             </li>
             <li>
               <i class="fa-solid fa-circle-check brdg-check-icon"></i>
-              <span>Live transparent GPS tracking & WhatsApp confirmation</span>
+              <span data-i18n="parcel_hero_point3">Live transparent GPS tracking & WhatsApp confirmation</span>
             </li>
           </ul>
 
           <div class="d-flex flex-wrap gap-3">
             <a href="#bookingCalculator" class="btn-brdg-orange">
-              <i class="fa-solid fa-magnifying-glass me-1"></i> Find a Delivery Boy
+              <i class="fa-solid fa-magnifying-glass me-1"></i> <span data-i18n="btn_find_delivery_boy">Find a Delivery Boy</span>
             </a>
             <button type="button" class="btn-brdg-outline" onclick="openRiderModal()">
-              <i class="fa-solid fa-motorcycle me-1"></i> Become a Rider (Earn Upto ₹30k)
+              <i class="fa-solid fa-motorcycle me-1"></i> <span data-i18n="btn_become_rider">Become a Rider (Earn Upto ₹30k)</span>
             </button>
           </div>
         </div>
@@ -197,7 +206,7 @@
                 <i class="fa-solid fa-clock-rotate-left"></i>
               </div>
               <div>
-                <div style="font-size: 0.75rem; color: #6B7280; font-weight: 600;">AVERAGE PICKUP TIME</div>
+                <div style="font-size: 0.75rem; color: #6B7280; font-weight: 600;" data-i18n="stat_avg_pickup">AVERAGE PICKUP TIME</div>
                 <div style="font-size: 1.15rem; font-weight: 900; color: var(--bg-dark-plum);">~12 - 15 Mins</div>
               </div>
             </div>
@@ -215,8 +224,8 @@
     <div class="container">
 
       <div class="section-title-wrap">
-        <h2 class="section-title">What Are Our Services</h2>
-        <p class="section-subtitle">Fast, transparent and on-demand local errand & parcel delivery across the city with
+        <h2 class="section-title" data-i18n="parcel_svc_title">What Are Our Services</h2>
+        <p class="section-subtitle" data-i18n="parcel_svc_sub">Fast, transparent and on-demand local errand & parcel delivery across the city with
           0 subscription fees.</p>
       </div>
 
@@ -227,8 +236,8 @@
             <div class="service-icon-box">
               <i class="fa-solid fa-box"></i>
             </div>
-            <h5 class="service-card-h5">Find your delivery</h5>
-            <p class="service-card-p">On-demand 2-wheeler express courier for urgent documents, boxes, clothes, food,
+            <h5 class="service-card-h5" data-i18n="parcel_card1_title">Find your delivery</h5>
+            <p class="service-card-p" data-i18n="parcel_card1_desc">On-demand 2-wheeler express courier for urgent documents, boxes, clothes, food,
               and electronics within minutes.</p>
           </div>
         </div>
@@ -239,8 +248,8 @@
             <div class="service-icon-box">
               <i class="fa-solid fa-arrow-pointer"></i>
             </div>
-            <h5 class="service-card-h5">Order with click</h5>
-            <p class="service-card-p">Transparent live fare calculator and instant 1-click WhatsApp dispatch without
+            <h5 class="service-card-h5" data-i18n="parcel_card2_title">Order with click</h5>
+            <p class="service-card-p" data-i18n="parcel_card2_desc">Transparent live fare calculator and instant 1-click WhatsApp dispatch without
               installing any bulky mobile application.</p>
           </div>
         </div>
@@ -251,8 +260,8 @@
             <div class="service-icon-box">
               <i class="fa-solid fa-stopwatch-20"></i>
             </div>
-            <h5 class="service-card-h5">We are very fast</h5>
-            <p class="service-card-p">Dedicated route drivers ensure guaranteed rapid pickup, safe handling, and live
+            <h5 class="service-card-h5" data-i18n="parcel_card3_title">We are very fast</h5>
+            <p class="service-card-p" data-i18n="parcel_card3_desc">Dedicated route drivers ensure guaranteed rapid pickup, safe handling, and live
               GPS milestone updates throughout transit.</p>
           </div>
         </div>
@@ -268,8 +277,8 @@
     <div class="container">
 
       <div class="section-title-wrap mb-4">
-        <h2 class="section-title">Instant Parcel Booking & Fare</h2>
-        <p class="section-subtitle">Calculate your transparent estimated fare and request an errand driver directly on
+        <h2 class="section-title" data-i18n="parcel_calc_title">Instant Parcel Booking & Fare</h2>
+        <p class="section-subtitle" data-i18n="parcel_calc_sub">Calculate your transparent estimated fare and request an errand driver directly on
           WhatsApp.</p>
       </div>
 
@@ -282,7 +291,7 @@
             <!-- 1. Pickup & Delivery Locations -->
             <div class="wizard-block-header">
               <h5 class="wizard-block-title">
-                <i class="fa-solid fa-location-dot text-warning"></i> 1. Pickup & Delivery Details
+                <i class="fa-solid fa-location-dot text-warning"></i> <span data-i18n="parcel_step1_title">1. Pickup & Delivery Details</span>
               </h5>
               <span class="wizard-step-tag">Route Details</span>
             </div>
@@ -291,15 +300,16 @@
               <!-- Pickup -->
               <div class="col-md-6">
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                  <label class="small fw-bold text-muted">Pickup Location <span class="text-danger">*</span></label>
+                  <label class="small fw-bold text-muted"><span data-i18n="lbl_pickup_loc">Pickup Location</span> <span class="text-danger">*</span></label>
                   <button type="button" class="btn-gps-action" id="btnDetectGps" onclick="useNativeLocationForPickup()">
-                    <i class="fa-solid fa-location-crosshairs"></i> Use My Location
+                    <i class="fa-solid fa-location-crosshairs"></i> <span data-i18n="btn_use_my_loc">Use My Location</span>
                   </button>
                 </div>
                 <div class="brdg-input-group position-relative">
                   <i class="fa-solid fa-circle-dot brdg-input-icon icon-pickup"></i>
                   <input type="text" class="brdg-input-control" id="pclPickupInput"
                     placeholder="Colony, area or city (e.g. Mansarovar, Jaipur)"
+                    data-i18n-placeholder="ph_parcel_pickup"
                     autocomplete="off" onfocus="setParcelMapPinMode('pickup')" required>
                   <div class="parcel-autocomplete-dropdown" id="pclPickupSuggestions"></div>
                 </div>
@@ -317,15 +327,16 @@
               <!-- Drop -->
               <div class="col-md-6">
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                  <label class="small fw-bold text-muted">Drop Location <span class="text-danger">*</span></label>
+                  <label class="small fw-bold text-muted"><span data-i18n="lbl_drop_loc">Drop Location</span> <span class="text-danger">*</span></label>
                   <button type="button" class="btn-gps-action" onclick="calculateParcelOSRMRoute(true)">
-                    <i class="fa-solid fa-arrows-rotate"></i> Recalculate Route
+                    <i class="fa-solid fa-arrows-rotate"></i> <span data-i18n="btn_recalculate_route">Recalculate Route</span>
                   </button>
                 </div>
                 <div class="brdg-input-group position-relative">
                   <i class="fa-solid fa-location-dot brdg-input-icon icon-drop"></i>
                   <input type="text" class="brdg-input-control" id="pclDropInput"
                     placeholder="Colony, area or city (e.g. Vaishali Nagar, Jaipur)"
+                    data-i18n-placeholder="ph_parcel_drop"
                     autocomplete="off" onfocus="setParcelMapPinMode('drop')" required>
                   <div class="parcel-autocomplete-dropdown" id="pclDropSuggestions"></div>
                 </div>
@@ -346,10 +357,10 @@
                 <div class="parcel-map-toolbar d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                   <div class="btn-group btn-group-sm parcel-pin-mode-group shadow-xs" role="group">
                     <button type="button" class="btn btn-parcel-pin active" id="btnPclPinPickup" onclick="setParcelMapPinMode('pickup')">
-                      <i class="fa-solid fa-location-dot me-1 text-success"></i> Set Pickup 📍
+                      <i class="fa-solid fa-location-dot me-1 text-success"></i> <span data-i18n="btn_set_pickup_pin">Set Pickup 📍</span>
                     </button>
                     <button type="button" class="btn btn-parcel-pin" id="btnPclPinDrop" onclick="setParcelMapPinMode('drop')">
-                      <i class="fa-solid fa-flag-checkered me-1 text-danger"></i> Set Drop 🏁
+                      <i class="fa-solid fa-flag-checkered me-1 text-danger"></i> <span data-i18n="btn_set_drop_pin">Set Drop 🏁</span>
                     </button>
                   </div>
                   <div class="parcel-route-status-pill" id="pclRouteMapStatus">
@@ -361,7 +372,7 @@
                 <div id="parcelRouteMap" class="parcel-route-map-canvas"></div>
 
                 <div class="parcel-map-tip d-flex justify-content-between align-items-center flex-wrap gap-2 mt-2">
-                  <span><i class="fa-solid fa-hand-pointer text-warning me-1"></i> <strong>Pro Tip:</strong> Click the map or drag 📍 Pickup / 🏁 Drop markers to pinpoint exact street or building!</span>
+                  <span data-i18n="tip_parcel_map"><i class="fa-solid fa-hand-pointer text-warning me-1"></i> <strong>Pro Tip:</strong> Click the map or drag 📍 Pickup / 🏁 Drop markers to pinpoint exact street or building!</span>
                   <span class="badge bg-warning-subtle text-dark border border-warning-subtle"><i class="fa-solid fa-shield-halved text-success me-1"></i> Live Road Verified</span>
                 </div>
               </div>
@@ -374,7 +385,7 @@
                       <i class="fa-solid fa-route"></i>
                     </div>
                     <div>
-                      <div class="distance-metric-label">LIVE ROAD DISTANCE</div>
+                      <div class="distance-metric-label" data-i18n="lbl_live_road_dist">LIVE ROAD DISTANCE</div>
                       <div class="distance-metric-value" id="pclDistanceVal">8.4 KM</div>
                     </div>
                   </div>
@@ -384,7 +395,7 @@
                       <i class="fa-solid fa-clock"></i>
                     </div>
                     <div>
-                      <div class="distance-metric-label">ESTIMATED TRANSIT</div>
+                      <div class="distance-metric-label" data-i18n="lbl_est_transit">ESTIMATED TRANSIT</div>
                       <div class="distance-metric-time" id="pclTransitTimeVal">~22 Mins</div>
                     </div>
                   </div>
@@ -402,38 +413,38 @@
             <!-- 2. What are you sending? (Parcel Details) -->
             <div class="wizard-block-header">
               <h5 class="wizard-block-title">
-                <i class="fa-solid fa-box-open text-warning"></i> 2. What are you sending?
+                <i class="fa-solid fa-box-open text-warning"></i> <span data-i18n="parcel_step2_title">2. What are you sending?</span>
               </h5>
               <span class="wizard-step-tag">Parcel Details</span>
             </div>
 
             <div class="mb-4">
-              <label class="small fw-bold text-muted mb-2 d-block">Select Parcel Category</label>
+              <label class="small fw-bold text-muted mb-2 d-block" data-i18n="lbl_select_category">Select Parcel Category</label>
               <div class="chips-group parcel-type-chips">
                 <div class="chip-item active" onclick="selectParcelType('Small Package', this)">
-                  <span>📦 Small Package</span>
+                  <span data-i18n="cat_small_package">📦 Small Package</span>
                 </div>
                 <div class="chip-item" onclick="selectParcelType('Documents', this)">
-                  <span>📄 Documents</span>
+                  <span data-i18n="cat_documents">📄 Documents</span>
                 </div>
                 <div class="chip-item" onclick="selectParcelType('Clothes', this)">
-                  <span>👕 Clothes</span>
+                  <span data-i18n="cat_clothes">👕 Clothes</span>
                 </div>
                 <div class="chip-item" onclick="selectParcelType('Electronics', this)">
-                  <span>📱 Electronics</span>
+                  <span data-i18n="cat_electronics">📱 Electronics</span>
                 </div>
                 <div class="chip-item" onclick="selectParcelType('Food / Grocery', this)">
-                  <span>🍱 Food / Grocery</span>
+                  <span data-i18n="cat_food">🍱 Food / Grocery</span>
                 </div>
                 <div class="chip-item" onclick="selectParcelType('Large Item', this)">
-                  <span>🪑 Large Item</span>
+                  <span data-i18n="cat_large_item">🪑 Large Item</span>
                 </div>
                 <div class="chip-item" onclick="selectParcelType('Other Goods', this)">
-                  <span>📦 Other</span>
+                  <span data-i18n="cat_other">📦 Other</span>
                 </div>
               </div>
 
-              <label class="small fw-bold text-muted mb-2 d-block">Approximate Weight</label>
+              <label class="small fw-bold text-muted mb-2 d-block" data-i18n="lbl_approx_weight">Approximate Weight</label>
               <div class="chips-group parcel-weight-chips">
                 <div class="chip-item" onclick="selectParcelWeight('upto_1kg', 'Up to 1 KG', this)">
                   <i class="fa-solid fa-feather"></i> Up to 1 KG
@@ -455,19 +466,19 @@
                 </div>
               </div>
 
-              <label class="small fw-bold text-muted mb-2 d-block">Package Size</label>
+              <label class="small fw-bold text-muted mb-2 d-block" data-i18n="lbl_package_size">Package Size</label>
               <div class="chips-group parcel-size-chips">
                 <div class="chip-item active" onclick="selectParcelSize('Small', this)">
-                  <i class="fa-solid fa-cube"></i> Small
+                  <i class="fa-solid fa-cube"></i> <span data-i18n="size_small">Small</span>
                 </div>
                 <div class="chip-item" onclick="selectParcelSize('Medium', this)">
-                  <i class="fa-solid fa-cubes"></i> Medium
+                  <i class="fa-solid fa-cubes"></i> <span data-i18n="size_medium">Medium</span>
                 </div>
                 <div class="chip-item" onclick="selectParcelSize('Large', this)">
-                  <i class="fa-solid fa-cubes-stacked"></i> Large
+                  <i class="fa-solid fa-cubes-stacked"></i> <span data-i18n="size_large">Large</span>
                 </div>
                 <div class="chip-item" onclick="selectParcelSize('Custom', this)">
-                  <i class="fa-solid fa-ruler-combined"></i> Custom Dimensions
+                  <i class="fa-solid fa-ruler-combined"></i> <span data-i18n="size_custom">Custom Dimensions</span>
                 </div>
               </div>
 
@@ -491,7 +502,7 @@
             <!-- 3. Choose Delivery Vehicle -->
             <div class="wizard-block-header">
               <h5 class="wizard-block-title">
-                <i class="fa-solid fa-motorcycle text-warning"></i> 3. Choose Delivery Vehicle
+                <i class="fa-solid fa-motorcycle text-warning"></i> <span data-i18n="parcel_step3_title">3. Choose Delivery Vehicle</span>
               </h5>
               <span class="wizard-step-tag">Vehicle Selection</span>
             </div>
@@ -501,8 +512,8 @@
               <div class="vehicle-card-choice active" id="veh-card-bike" onclick="manuallySelectParcelVehicle('bike')">
                 <div class="veh-badge-rec">RECOMMENDED</div>
                 <div class="veh-choice-icon"><i class="fa-solid fa-motorcycle"></i></div>
-                <h6 class="fw-bold mb-1">🛵 Bike Express</h6>
-                <div class="small text-muted mb-2" style="font-size: 0.78rem;">Up to 20 KG • Docs & Small Parcels</div>
+                <h6 class="fw-bold mb-1" data-i18n="veh_bike_name">🛵 Bike Express</h6>
+                <div class="small text-muted mb-2" style="font-size: 0.78rem;" data-i18n="veh_bike_desc">Up to 20 KG • Docs & Small Parcels</div>
                 <div class="fw-bold text-warning" style="font-size: 0.85rem;">₹48 Base (1 KM & 25m)</div>
               </div>
 
@@ -510,8 +521,8 @@
               <div class="vehicle-card-choice" id="veh-card-auto" onclick="manuallySelectParcelVehicle('auto')">
                 <div class="veh-badge-rec" style="display: none;">RECOMMENDED</div>
                 <div class="veh-choice-icon"><i class="fa-solid fa-truck-front"></i></div>
-                <h6 class="fw-bold mb-1">🛺 3W / Auto Tempo</h6>
-                <div class="small text-muted mb-2" style="font-size: 0.78rem;">Up to 500 KG • Wholesale & 1 RK</div>
+                <h6 class="fw-bold mb-1" data-i18n="veh_auto_name">🛺 3W / Auto Tempo</h6>
+                <div class="small text-muted mb-2" style="font-size: 0.78rem;" data-i18n="veh_auto_desc">Up to 500 KG • Wholesale & 1 RK</div>
                 <div class="fw-bold text-warning" style="font-size: 0.85rem;">+₹87 (₹135 Base)</div>
               </div>
 
@@ -520,8 +531,8 @@
                 onclick="manuallySelectParcelVehicle('mini_truck')">
                 <div class="veh-badge-rec" style="display: none;">RECOMMENDED</div>
                 <div class="veh-choice-icon"><i class="fa-solid fa-truck-pickup"></i></div>
-                <h6 class="fw-bold mb-1">🚚 Tata Ace (Chota Hathi)</h6>
-                <div class="small text-muted mb-2" style="font-size: 0.78rem;">Up to 750 KG • Heavy Relocation</div>
+                <h6 class="fw-bold mb-1" data-i18n="veh_mini_name">🚚 Tata Ace (Chota Hathi)</h6>
+                <div class="small text-muted mb-2" style="font-size: 0.78rem;" data-i18n="veh_mini_desc">Up to 750 KG • Heavy Relocation</div>
                 <div class="fw-bold text-warning" style="font-size: 0.85rem;">+₹172 (₹220 Base)</div>
               </div>
             </div>
@@ -529,7 +540,7 @@
             <!-- 4. Contact Details -->
             <div class="wizard-block-header">
               <h5 class="wizard-block-title">
-                <i class="fa-solid fa-user-group text-warning"></i> 4. Contact Details
+                <i class="fa-solid fa-user-group text-warning"></i> <span data-i18n="parcel_step4_title">4. Contact Details</span>
               </h5>
               <span class="wizard-step-tag">Direct WhatsApp</span>
             </div>
@@ -539,14 +550,14 @@
               <div class="col-md-6">
                 <div class="contact-subcard">
                   <div class="small fw-bold text-warning text-uppercase mb-2"><i class="fa-solid fa-user me-1"></i>
-                    Sender Details (Pickup)</div>
+                    <span data-i18n="sec_sender_details">Sender Details (Pickup)</span></div>
                   <div class="mb-2">
-                    <label class="small text-muted">Your Full Name <span class="text-danger">*</span></label>
+                    <label class="small text-muted"><span data-i18n="lbl_sender_name">Your Full Name</span> <span class="text-danger">*</span></label>
                     <input type="text" class="form-control form-control-sm" id="pclSenderName"
-                      placeholder="e.g. Rahul Sharma" required>
+                      placeholder="e.g. Rahul Sharma" data-i18n-placeholder="ph_sender_name" required>
                   </div>
                   <div>
-                    <label class="small text-muted">WhatsApp Mobile Number <span class="text-danger">*</span></label>
+                    <label class="small text-muted"><span data-i18n="lbl_sender_phone">WhatsApp Mobile Number</span> <span class="text-danger">*</span></label>
                     <div class="input-group input-group-sm">
                       <span class="input-group-text bg-light">+91</span>
                       <input type="tel" class="form-control" id="pclSenderPhone" placeholder="10-digit mobile"
@@ -560,14 +571,14 @@
               <div class="col-md-6">
                 <div class="contact-subcard">
                   <div class="small fw-bold text-success text-uppercase mb-2"><i
-                      class="fa-solid fa-user-check me-1"></i> Receiver Details (Drop)</div>
+                      class="fa-solid fa-user-check me-1"></i> <span data-i18n="sec_receiver_details">Receiver Details (Drop)</span></div>
                   <div class="mb-2">
-                    <label class="small text-muted">Receiver Full Name <span class="text-danger">*</span></label>
+                    <label class="small text-muted"><span data-i18n="lbl_receiver_name">Receiver Full Name</span> <span class="text-danger">*</span></label>
                     <input type="text" class="form-control form-control-sm" id="pclReceiverName"
-                      placeholder="e.g. Amit Verma" required>
+                      placeholder="e.g. Amit Verma" data-i18n-placeholder="ph_receiver_name" required>
                   </div>
                   <div>
-                    <label class="small text-muted">Receiver Mobile Number <span class="text-danger">*</span></label>
+                    <label class="small text-muted"><span data-i18n="lbl_receiver_phone">Receiver Mobile Number</span> <span class="text-danger">*</span></label>
                     <div class="input-group input-group-sm">
                       <span class="input-group-text bg-light">+91</span>
                       <input type="tel" class="form-control" id="pclReceiverPhone" placeholder="10-digit mobile"
@@ -581,24 +592,24 @@
             <!-- 5. Optional Addons -->
             <div class="p-3 bg-light rounded-3 border">
               <div class="small fw-bold text-dark text-uppercase mb-2"><i
-                  class="fa-solid fa-shield-halved text-warning me-1"></i> Optional Transit Protection</div>
+                  class="fa-solid fa-shield-halved text-warning me-1"></i> <span data-i18n="sec_optional_protect">Optional Transit Protection</span></div>
               <div class="row g-2">
                 <div class="col-sm-4">
                   <label class="d-flex align-items-center gap-2 small text-muted cursor-pointer">
                     <input type="checkbox" onchange="toggleParcelAddon('fragile', this)"
-                      style="accent-color: var(--primary-orange);"> Fragile Handling (+₹25)
+                      style="accent-color: var(--primary-orange);"> <span data-i18n="chk_fragile">Fragile Handling (+₹25)</span>
                   </label>
                 </div>
                 <div class="col-sm-4">
                   <label class="d-flex align-items-center gap-2 small text-muted cursor-pointer">
                     <input type="checkbox" onchange="toggleParcelAddon('packaging', this)"
-                      style="accent-color: var(--primary-orange);"> Bubble Wrap (+₹40)
+                      style="accent-color: var(--primary-orange);"> <span data-i18n="chk_bubble_wrap">Bubble Wrap (+₹40)</span>
                   </label>
                 </div>
                 <div class="col-sm-4">
                   <label class="d-flex align-items-center gap-2 small text-muted cursor-pointer">
                     <input type="checkbox" onchange="toggleParcelAddon('insurance', this)"
-                      style="accent-color: var(--primary-orange);"> Transit Insurance (+₹49)
+                      style="accent-color: var(--primary-orange);"> <span data-i18n="chk_transit_ins">Transit Insurance (+₹49)</span>
                   </label>
                 </div>
               </div>
@@ -612,39 +623,39 @@
           <div class="fare-summary-card">
 
             <div class="fare-summary-header">
-              <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-receipt text-warning me-2"></i>Fare Summary</h5>
+              <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-receipt text-warning me-2"></i><span data-i18n="parcel_fare_summary_title">Fare Summary</span></h5>
               <span class="badge bg-success text-white px-2 py-1 small">Transparent</span>
             </div>
 
             <div class="fare-line-row">
-              <span>Base Courier Fare:</span>
+              <span data-i18n="fare_base_courier">Base Courier Fare:</span>
               <strong id="pclFareBase">₹48</strong>
             </div>
             <div class="fare-line-row">
-              <span id="pclFareDistanceLabel">Distance Charge (8.4 KM):</span>
+              <span id="pclFareDistanceLabel" data-i18n="fare_dist_charge">Distance Charge:</span>
               <strong id="pclFareDistance">₹84</strong>
             </div>
             <div class="fare-line-row">
-              <span>Weight Charge:</span>
+              <span data-i18n="fare_weight_charge">Weight Charge:</span>
               <strong id="pclFareWeight">₹20</strong>
             </div>
             <div class="fare-line-row">
-              <span>Vehicle Charge:</span>
+              <span data-i18n="fare_vehicle_charge">Vehicle Charge:</span>
               <strong id="pclFareVehicle">₹0</strong>
             </div>
             <div class="fare-line-row">
-              <span>Handling & Dispatch:</span>
+              <span data-i18n="fare_handling_dispatch">Handling & Dispatch:</span>
               <strong id="pclFareHandling">₹10</strong>
             </div>
             <div class="fare-line-row">
-              <span>Optional Add-ons:</span>
+              <span data-i18n="fare_optional_addons">Optional Add-ons:</span>
               <strong id="pclFareAddons">₹0</strong>
             </div>
 
             <!-- Total Row -->
             <div class="fare-total-divider">
               <div>
-                <div style="font-size: 0.75rem; font-weight: 700; color: #6B7280; text-transform: uppercase;">ESTIMATED
+                <div style="font-size: 0.75rem; font-weight: 700; color: #6B7280; text-transform: uppercase;" data-i18n="fare_est_total">ESTIMATED
                   TOTAL</div>
                 <div class="small text-muted" style="font-size: 0.75rem;">No hidden costs</div>
               </div>
@@ -653,11 +664,11 @@
 
             <!-- Payment Method -->
             <div class="mb-3">
-              <label class="small text-muted fw-bold mb-1">Select Payment Mode</label>
+              <label class="small text-muted fw-bold mb-1" data-i18n="lbl_select_pay_mode">Select Payment Mode</label>
               <select class="form-select form-select-sm" id="pclPaymentOption">
-                <option value="Cash" selected>💵 Pay with Cash</option>
-                <option value="UPI Direct">⚡ UPI Direct (Google Pay / PhonePe)</option>
-                <option value="Pay at Delivery">📦 Pay at Doorstep Delivery</option>
+                <option value="Cash" selected data-i18n="pay_opt_cash">💵 Pay with Cash</option>
+                <option value="UPI Direct" data-i18n="pay_opt_upi">⚡ UPI Direct (Google Pay / PhonePe)</option>
+                <option value="Pay at Delivery" data-i18n="pay_opt_cod">📦 Pay at Doorstep Delivery</option>
               </select>
             </div>
 
@@ -665,7 +676,7 @@
             <button type="button" class="btn-whatsapp-dispatch" id="btnRequestParcel"
               onclick="handleRequestParcelDelivery()">
               <i class="fa-brands fa-whatsapp fa-xl"></i>
-              <span id="btnBookParcelTotal">Request Delivery – ₹162</span>
+              <span id="btnBookParcelTotal" data-i18n="btn_dispatch_request">Request Delivery – ₹162</span>
             </button>
 
             <div class="text-center mt-3 small text-muted" style="font-size: 0.78rem;">
@@ -693,9 +704,9 @@
             style="background: rgba(255, 158, 27, 0.2); color: var(--primary-orange); font-size: 0.85rem; font-weight: 800;">
             <i class="fa-solid fa-motorcycle"></i> FLEET ONBOARDING
           </div>
-          <h2 class="text-white fw-bold mb-3" style="font-size: clamp(1.8rem, 3.5vw, 2.6rem);">Earn up to ₹35,000/Month
+          <h2 class="text-white fw-bold mb-3" style="font-size: clamp(1.8rem, 3.5vw, 2.6rem);" data-i18n="rider_banner_title">Earn up to ₹35,000/Month
             as a Delivery Partner</h2>
-          <p class="text-light opacity-75 mb-4" style="font-size: 1.05rem;">Join India's fastest growing hyperlocal
+          <p class="text-light opacity-75 mb-4" style="font-size: 1.05rem;" data-i18n="rider_banner_desc">Join India's fastest growing hyperlocal
             logistics fleet. Choose your own flexible working hours, earn daily trip payouts, and get instant
             incentives.</p>
 
@@ -715,7 +726,7 @@
           </div>
 
           <button type="button" class="btn-brdg-orange" onclick="openRiderModal()">
-            <i class="fa-solid fa-user-plus me-1"></i> Register as Delivery Partner
+            <i class="fa-solid fa-user-plus me-1"></i> <span data-i18n="btn_register_partner">Register as Delivery Partner</span>
           </button>
         </div>
 
@@ -775,21 +786,21 @@
 
         <!-- Right Side: Text & Track CTA -->
         <div class="col-lg-7">
-          <h2 class="fw-bold mb-3" style="color: var(--bg-dark-plum); font-size: clamp(1.8rem, 3.2vw, 2.4rem);">
+          <h2 class="fw-bold mb-3" style="color: var(--bg-dark-plum); font-size: clamp(1.8rem, 3.2vw, 2.4rem);" data-i18n="track_banner_title">
             Track Your Shipment Through The Application, At Any Time!
           </h2>
-          <p class="text-muted mb-4" style="font-size: 1rem; line-height: 1.6;">
+          <p class="text-muted mb-4" style="font-size: 1rem; line-height: 1.6;" data-i18n="track_banner_desc">
             Stay completely stress-free. Every parcel booked with OM Rudraksha Express comes with real-time milestone
             checkpoints and direct phone contact with your assigned driver.
           </p>
 
           <div class="d-flex flex-wrap gap-3">
             <a href="track.html?via=portal" class="btn-brdg-orange">
-              <i class="fa-solid fa-location-crosshairs me-1"></i> Track Your Parcel Now
+              <i class="fa-solid fa-location-crosshairs me-1"></i> <span data-i18n="btn_track_parcel_now">Track Your Parcel Now</span>
             </a>
             <a href="https://wa.me/917296831460?text=Hello%20OM%20Rudraksha%20Team,%20I%20want%20to%20check%20my%20parcel%20status"
               target="_blank" class="btn btn-outline-secondary rounded-3 px-4 py-3 fw-bold">
-              <i class="fa-brands fa-whatsapp text-success me-1"></i> WhatsApp Helpline
+              <i class="fa-brands fa-whatsapp text-success me-1"></i> <span data-i18n="btn_whatsapp_helpline">WhatsApp Helpline</span>
             </a>
           </div>
         </div>
@@ -803,7 +814,7 @@
         <i class="fa-solid fa-headset"></i>
       </div>
       <div class="fw-bold text-dark fs-5">
-        We are working 24/7, you can call us at any time:
+        <span data-i18n="helpline_247_text">We are working 24/7, you can call us at any time:</span>
         <a href="tel:+917296831460" class="text-decoration-none" style="color: var(--primary-orange);">+91 72968
           31460</a>
       </div>

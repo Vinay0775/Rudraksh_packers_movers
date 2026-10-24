@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/api_config.dart';
 import '../services/api_service.dart';
+import '../services/localization_service.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -18,11 +19,12 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
 
   Future<void> _handleLogin() async {
+    final loc = LocalizationService();
     final phone = _phoneController.text.trim();
     final pass = _passController.text.trim();
 
     if (phone.isEmpty || pass.isEmpty) {
-      setState(() => _errorMessage = 'Phone number aur password darj karein.');
+      setState(() => _errorMessage = loc.tr('err_empty_creds'));
       return;
     }
 
@@ -44,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } else {
       setState(() {
-        _errorMessage = res['error'] ?? 'Login failed. Sahi credentials check karein.';
+        _errorMessage = res['error'] ?? loc.tr('err_login_failed');
       });
     }
   }
@@ -99,15 +101,45 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = LocalizationService();
+
     return Scaffold(
       backgroundColor: const Color(0xFF090D16),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          // Language Switcher Pill Button
+          InkWell(
+            onTap: () async {
+              await loc.toggleLanguage();
+              if (mounted) setState(() {});
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.language, size: 14, color: Color(0xFF22C55E)),
+                  const SizedBox(width: 4),
+                  Text(
+                    loc.isHindi ? 'हिन्दी' : 'EN',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white54),
-            tooltip: 'Server Settings',
+            tooltip: loc.tr('server_settings'),
             onPressed: _showServerSettingsModal,
           ),
         ],
@@ -142,18 +174,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 16),
 
-                  const Text(
-                    'RUDRAKSHA RIDER',
-                    style: TextStyle(
+                  Text(
+                    loc.tr('app_title'),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1.5,
                     ),
                   ),
-                  const Text(
-                    'Delivery Partner Official App',
-                    style: TextStyle(color: Colors.white54, fontSize: 13),
+                  Text(
+                    loc.tr('app_subtitle'),
+                    style: const TextStyle(color: Colors.white54, fontSize: 13),
                   ),
 
                   const SizedBox(height: 28),
@@ -165,8 +197,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.phone_android_rounded, color: Color(0xFF22C55E)),
-                      labelText: 'Registered Mobile Number',
-                      hintText: 'Enter 10-digit mobile number',
+                      labelText: loc.tr('phone_label'),
+                      hintText: loc.tr('phone_hint'),
                       hintStyle: const TextStyle(color: Colors.white24, fontSize: 13),
                       labelStyle: const TextStyle(color: Colors.white60),
                       filled: true,
@@ -194,7 +226,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: InputDecoration(
                       counterText: '',
                       prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFFF97316)),
-                      labelText: '4-Digit Security PIN / Password',
+                      labelText: loc.tr('pin_label'),
                       hintText: '••••',
                       hintStyle: const TextStyle(color: Colors.white24),
                       labelStyle: const TextStyle(color: Colors.white60),
@@ -223,9 +255,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         await launchUrl(uri, mode: LaunchMode.externalApplication);
                       },
                       icon: const Icon(Icons.chat_bubble_outline, size: 14, color: Color(0xFF22C55E)),
-                      label: const Text(
-                        'Forgot PIN? Admin WhatsApp',
-                        style: TextStyle(color: Color(0xFF22C55E), fontSize: 12, fontWeight: FontWeight.bold),
+                      label: Text(
+                        loc.tr('forgot_pin'),
+                        style: const TextStyle(color: Color(0xFF22C55E), fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -276,9 +308,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               height: 24,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                             )
-                          : const Text(
-                              'LOGIN TO RIDER DASHBOARD',
-                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                          : Text(
+                              loc.tr('login_btn'),
+                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
                             ),
                     ),
                   ),

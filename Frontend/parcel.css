@@ -1375,3 +1375,37 @@ section[id], div[id] {
   background: #dc2626;
   box-shadow: 0 0 10px rgba(220, 38, 38, 0.6);
 }
+
+/* ==========================================================================
+   BILINGUAL DUAL-LANGUAGE SWITCHER PILL (ENGLISH / HINDI)
+   ========================================================================== */
+.lang-switcher-pill {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 50px;
+  padding: 3px 4px;
+  cursor: pointer;
+  user-select: none;
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  transition: all 0.25s ease;
+  line-height: 1;
+}
+.lang-switcher-pill:hover {
+  border-color: #cbd5e1;
+}
+.lang-switcher-pill span {
+  padding: 4px 9px;
+  border-radius: 50px;
+  transition: all 0.25s ease;
+}
+.lang-switcher-pill span.active {
+  background: var(--primary-orange, #ea580c);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.4);
+}
+

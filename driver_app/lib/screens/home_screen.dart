@@ -10,6 +10,7 @@ import '../services/alert_manager.dart';
 import '../services/api_service.dart';
 import '../services/background_service.dart';
 import '../services/location_service.dart';
+import '../services/localization_service.dart';
 import '../services/permission_service.dart';
 import '../services/update_service.dart';
 import '../widgets/order_alert_dialog.dart';
@@ -1025,6 +1026,34 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
+          // Language Switcher (EN / हिन्दी)
+          InkWell(
+            onTap: () async {
+              await LocalizationService().toggleLanguage();
+              if (mounted) setState(() {});
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              margin: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.language, size: 13, color: Color(0xFF22C55E)),
+                  const SizedBox(width: 4),
+                  Text(
+                    LocalizationService().isHindi ? 'हिन्दी' : 'EN',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ),
           // Duty toggle
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
@@ -1035,7 +1064,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: isOnDuty ? const Color(0xFF22C55E) : Colors.red,
               ),
               label: Text(
-                isOnDuty ? 'ON DUTY' : 'OFF DUTY',
+                isOnDuty
+                    ? (LocalizationService().isHindi ? 'ड्यूटी ऑन' : 'ON DUTY')
+                    : (LocalizationService().isHindi ? 'ड्यूटी ऑफ' : 'OFF DUTY'),
                 style: TextStyle(
                   color: isOnDuty ? const Color(0xFF22C55E) : Colors.red,
                   fontWeight: FontWeight.bold,
@@ -1117,9 +1148,9 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
         unselectedLabelStyle: const TextStyle(fontSize: 10),
         items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.list_alt_rounded),
-            label: 'Jobs Feed',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.list_alt_rounded),
+            label: LocalizationService().isHindi ? 'ऑर्डर्स' : 'Jobs Feed',
           ),
           BottomNavigationBarItem(
             icon: Stack(
@@ -1141,15 +1172,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
               ],
             ),
-            label: 'Active Trip',
+            label: LocalizationService().isHindi ? 'सक्रिय ट्रिप' : 'Active Trip',
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded),
-            label: 'My Profile',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.person_rounded),
+            label: LocalizationService().isHindi ? 'प्रोफाइल' : 'My Profile',
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.headset_mic_rounded),
-            label: 'Support',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.headset_mic_rounded),
+            label: LocalizationService().isHindi ? 'सहायता' : 'Support',
           ),
         ],
       ),

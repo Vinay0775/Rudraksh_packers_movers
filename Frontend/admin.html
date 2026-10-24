@@ -18,10 +18,10 @@
   <meta name="apple-mobile-web-app-title" content="OM Rudraksha Admin">
   <meta name="mobile-web-app-capable" content="yes">
 
-  <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
+  <!-- Google Fonts: Plus Jakarta Sans, Outfit & Noto Sans Devanagari -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
 
   <!-- FontAwesome 6 Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -35,6 +35,9 @@
   <!-- Futuristic Cyberpunk Dark Design System & PWA Styles -->
   <link rel="stylesheet" href="admin.css?v=2.9">
   <link rel="stylesheet" href="pwa-install.css">
+
+  <!-- Multi-Language i18n Translation Engine -->
+  <script src="i18n.js"></script>
 </head>
 <body class="cyber-dark-body">
 
@@ -42,13 +45,20 @@
        1. AUTHENTICATION LOCK OVERLAY (Cyber Dark UI)
        ========================================================================== -->
   <div id="adminLoginOverlay" style="position: fixed; inset: 0; background: rgba(13, 13, 15, 0.98); backdrop-filter: blur(25px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
-    <div style="background: #17171A; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; width: 100%; max-width: 420px; padding: 36px; box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(208, 253, 56, 0.15);">
+    <div style="background: #17171A; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; width: 100%; max-width: 420px; padding: 36px; box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(208, 253, 56, 0.15); position: relative;">
+      <!-- Language Switcher in Login Overlay -->
+      <div style="position: absolute; top: 20px; right: 20px;">
+        <div class="lang-switcher-pill" onclick="toggleLanguage()" title="Switch Language / भाषा बदलें">
+          <span class="lang-en active">EN</span>
+          <span class="lang-hi">हिन्दी</span>
+        </div>
+      </div>
       <div class="text-center mb-4">
         <div style="width: 58px; height: 58px; background: rgba(208, 253, 56, 0.1); border: 1px solid #D0FD38; border-radius: 18px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; box-shadow: 0 0 20px rgba(208, 253, 56, 0.3);">
           <i class="fa-solid fa-shield-halved fa-xl" style="color: #D0FD38;"></i>
         </div>
-        <h4 class="fw-bold text-white mb-1">OM Rudraksha <span style="color: #D0FD38;">Admin</span></h4>
-        <p class="small text-muted mb-0">Enterprise Identity & Access Management</p>
+        <h4 class="fw-bold text-white mb-1"><span data-i18n="admin_login_title">OM Rudraksha</span> <span style="color: #D0FD38;">Admin</span></h4>
+        <p class="small text-muted mb-0" data-i18n="admin_login_box_sub">Enterprise Identity & Access Management</p>
       </div>
 
       <!-- Cooldown Lockout Alert -->
@@ -63,12 +73,12 @@
 
       <form id="adminLoginForm" onsubmit="event.preventDefault(); submitAdminLogin();" autocomplete="off">
         <div class="mb-3">
-          <label class="cyber-label">Admin Username</label>
-          <input type="text" class="cyber-input" id="adminUsernameInput" placeholder="Enter Admin ID" autocomplete="off" value="" required>
+          <label class="cyber-label" data-i18n="admin_lbl_username">Admin Username</label>
+          <input type="text" class="cyber-input" id="adminUsernameInput" placeholder="Enter Admin ID" data-i18n-placeholder="admin_ph_username" autocomplete="off" value="" required>
         </div>
 
         <div class="mb-3">
-          <label class="cyber-label">Security Key / Password</label>
+          <label class="cyber-label" data-i18n="admin_lbl_password">Security Key / Password</label>
           <div class="position-relative">
             <input type="password" class="cyber-input" id="adminPasswordInput" placeholder="••••••••••••" autocomplete="new-password" value="" required style="padding-right: 42px;">
             <button type="button" onclick="toggleAdminPassVisibility()" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;">
@@ -79,24 +89,24 @@
 
         <div class="d-flex justify-content-between align-items-center mb-4">
           <label class="d-flex align-items-center gap-2 small text-muted cursor-pointer" style="cursor: pointer;">
-            <input type="checkbox" id="rememberAdminCheck" style="accent-color: #D0FD38;"> Remember session
+            <input type="checkbox" id="rememberAdminCheck" style="accent-color: #D0FD38;"> <span data-i18n="admin_lbl_remember">Remember session</span>
           </label>
           <span class="cyber-badge-pill"><i class="fa-solid fa-lock text-success me-1"></i> 256-Bit SSL</span>
         </div>
 
         <button type="submit" class="btn-cyber-neon w-100 py-3" id="btnLoginSubmit">
-          <i class="fa-solid fa-bolt me-1"></i> Unlock Dashboard
+          <i class="fa-solid fa-bolt me-1"></i> <span data-i18n="admin_btn_unlock">Unlock Dashboard</span>
         </button>
 
         <div class="d-flex justify-content-between align-items-center mt-3 small text-muted" style="font-size: 0.72rem;">
-          <span><i class="fa-solid fa-shield-halved text-success me-1"></i> Restricted Access</span>
-          <span>v2.4 Enterprise Portal</span>
+          <span><i class="fa-solid fa-shield-halved text-success me-1"></i> <span data-i18n="admin_txt_restricted">Restricted Access</span></span>
+          <span data-i18n="admin_txt_version">v2.4 Enterprise Portal</span>
         </div>
       </form>
 
       <div class="mt-4 pt-3 border-top border-secondary text-center">
         <a href="index.html" class="small text-decoration-none" style="color: var(--text-muted);">
-          <i class="fa-solid fa-arrow-left me-1"></i> Return to Client Website
+          <i class="fa-solid fa-arrow-left me-1"></i> <span data-i18n="admin_btn_return_site">Return to Client Website</span>
         </a>
       </div>
     </div>
@@ -125,30 +135,38 @@
                 <span class="fw-extrabold text-white lh-1" style="font-family: 'Outfit', sans-serif; font-size: 1.05rem; letter-spacing: 0.5px;">OM RUDRAKSHA <span style="color: #D0FD38;">HUB</span></span>
                 <span class="cyber-header-badge">ENTERPRISE</span>
               </div>
-              <div class="text-muted small" style="font-size: 0.68rem; letter-spacing: 0.4px;">Fleet & Logistics Command</div>
+              <div class="text-muted small" style="font-size: 0.68rem; letter-spacing: 0.4px;" data-i18n="admin_header_sub">Fleet & Logistics Command</div>
             </div>
           </div>
 
-          <!-- Master Admin Profile & Logout Pill -->
-          <div class="cyber-admin-profile-pill">
-            <div class="admin-avatar-glow" title="Master Security Verified">
-              <i class="fa-solid fa-shield-halved"></i>
+          <div class="d-flex align-items-center gap-2">
+            <!-- Language Switcher Pill Toggle -->
+            <div class="lang-switcher-pill" onclick="toggleLanguage()" title="Switch Language / भाषा बदलें">
+              <span class="lang-en active">EN</span>
+              <span class="lang-hi">हिन्दी</span>
             </div>
-            <div class="d-none d-xl-flex flex-column text-start me-1">
-              <span class="admin-name-title" id="adminDisplayName">OM Rudraksha Admin</span>
-              <span class="admin-role-badge"><i class="fa-solid fa-circle-check text-success"></i> Super Admin</span>
+
+            <!-- Master Admin Profile & Logout Pill -->
+            <div class="cyber-admin-profile-pill">
+              <div class="admin-avatar-glow" title="Master Security Verified">
+                <i class="fa-solid fa-shield-halved"></i>
+              </div>
+              <div class="d-none d-xl-flex flex-column text-start me-1">
+                <span class="admin-name-title" id="adminDisplayName">OM Rudraksha Admin</span>
+                <span class="admin-role-badge"><i class="fa-solid fa-circle-check text-success"></i> <span data-i18n="admin_role_super">Super Admin</span></span>
+              </div>
+              <button type="button" class="cyber-header-logout-btn" onclick="logoutAdmin()" title="Secure Lock & Sign Out">
+                <i class="fa-solid fa-power-off"></i>
+                <span data-i18n="admin_btn_logout">Logout</span>
+              </button>
             </div>
-            <button type="button" class="cyber-header-logout-btn" onclick="logoutAdmin()" title="Secure Lock & Sign Out">
-              <i class="fa-solid fa-power-off"></i>
-              <span>Logout</span>
-            </button>
           </div>
         </div>
 
         <!-- Global Search Bar (Desktop Center) -->
         <div class="cyber-search-box d-none d-lg-flex">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" id="globalSearchInput" placeholder="Quick search bookings, drivers, routes..." oninput="handleGlobalSearch(this.value)">
+          <input type="text" id="globalSearchInput" placeholder="Quick search bookings, drivers, routes..." data-i18n-placeholder="admin_ph_search" oninput="handleGlobalSearch(this.value)">
           <kbd class="cyber-search-kbd">Ctrl+K</kbd>
         </div>
 
@@ -1467,45 +1485,45 @@
     <nav class="cyber-floating-dock">
       <button class="cyber-dock-btn active" id="dock-dashboard" onclick="switchAdminTab('dashboard')" title="Overview Dashboard">
         <i class="fa-solid fa-shapes"></i>
-        <span>Overview</span>
+        <span data-i18n="dock_overview">Overview</span>
       </button>
       <button class="cyber-dock-btn" id="dock-earnings" onclick="switchAdminTab('earnings')" title="Revenue & Earnings Ledger">
         <i class="fa-solid fa-chart-line" style="color: #D0FD38;"></i>
-        <span>Earnings</span>
+        <span data-i18n="dock_earnings">Earnings</span>
       </button>
       <button class="cyber-dock-btn" id="dock-bookings" onclick="switchAdminTab('bookings')" title="Customer Bookings">
         <i class="fa-solid fa-list-check"></i>
-        <span>Bookings</span>
+        <span data-i18n="dock_bookings">Bookings</span>
       </button>
       <button class="cyber-dock-btn" id="dock-parcels" onclick="switchAdminTab('parcels')" title="On-Demand Parcel Delivery">
         <i class="fa-solid fa-box-open"></i>
-        <span>Parcels</span>
+        <span data-i18n="dock_parcels">Parcels</span>
       </button>
       <button class="cyber-dock-btn position-relative" id="dock-riders" onclick="switchAdminTab('riders')" title="Driver Partner Applications">
         <i class="fa-solid fa-id-badge text-warning"></i>
-        <span>Driver Apps</span>
+        <span data-i18n="dock_riders">Driver Apps</span>
         <span class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle d-none" id="dockRiderBadgeCount" style="font-size: 0.62rem; padding: 2px 5px;">0</span>
       </button>
       <button class="cyber-dock-btn" id="dock-fleet" onclick="switchAdminTab('fleet')" title="Transport Fleet & Drivers">
         <i class="fa-solid fa-truck-fast"></i>
-        <span>Fleet</span>
+        <span data-i18n="dock_fleet">Fleet</span>
       </button>
       <button class="cyber-dock-btn" id="dock-rates" onclick="switchAdminTab('rates')" title="Tariff & Pricing Manager">
         <i class="fa-solid fa-sliders"></i>
-        <span>Tariff</span>
+        <span data-i18n="dock_rates">Tariff</span>
       </button>
       <button class="cyber-dock-btn" id="dock-coupons" onclick="switchAdminTab('coupons')" title="Discount Promo Codes">
         <i class="fa-solid fa-ticket"></i>
-        <span>Coupons</span>
+        <span data-i18n="dock_coupons">Coupons</span>
       </button>
       <button class="cyber-dock-btn" id="dock-theme" onclick="switchAdminTab('theme')" title="Branding & Theme Controller">
         <i class="fa-solid fa-palette"></i>
-        <span>Theme</span>
+        <span data-i18n="dock_theme">Theme</span>
       </button>
       <div class="cyber-dock-divider"></div>
       <button class="cyber-dock-btn text-danger" onclick="logoutAdmin()" title="Lock & Sign Out">
         <i class="fa-solid fa-power-off"></i>
-        <span>Lock</span>
+        <span data-i18n="dock_lock">Lock</span>
       </button>
     </nav>
 
