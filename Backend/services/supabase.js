@@ -947,6 +947,16 @@ module.exports = {
     }
     if (!parcel) parcel = { parcel_id: cleanId, id: cleanId };
 
+    const cleanNewPhone = String(driverInfo.driver_phone || driverInfo.phone || '').replace(/\D/g, '');
+    let updatedNotes = parcel.notes || '';
+    if (updatedNotes && cleanNewPhone && updatedNotes.includes(cleanNewPhone)) {
+      // Remove stale decline notes for this specific driver so backend doesn't false-match
+      updatedNotes = updatedNotes.replace(new RegExp(`\\[DECLINED\\].*?${cleanNewPhone}.*?(?:\\||$)`, 'g'), '').trim();
+      updatedNotes = updatedNotes.replace(/Declined by [^|]+/gi, '').trim();
+    }
+    const assignLog = `[ASSIGNED] Driver: ${driverInfo.driver_name || driverInfo.name} (+91 ${cleanNewPhone}) on ${new Date().toLocaleTimeString('en-IN')}`;
+    updatedNotes = updatedNotes ? `${updatedNotes} | ${assignLog}` : assignLog;
+
     const payload = {
       driver_id: driverInfo.driver_id || driverInfo.id,
       assigned_driver_name: driverInfo.driver_name || driverInfo.name,
@@ -955,6 +965,9 @@ module.exports = {
       assigned_vehicle_type: driverInfo.vehicle_type || driverInfo.vehicleType,
       booking_status: 'driver_assigned',
       status: 'driver_assigned',
+      notes: updatedNotes,
+      declined_driver_id: null,
+      declined_driver_phone: null,
       updated_at: new Date().toISOString()
     };
 
