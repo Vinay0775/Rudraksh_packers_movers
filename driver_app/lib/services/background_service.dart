@@ -82,35 +82,54 @@ class DriverTaskHandler extends TaskHandler {
             final isDeclined = status == 'driver_declined';
             final isSilenced = AlertManager().isParcelSilenced(order.parcelId);
 
-            if (isPending && !isDeclined && !isSilenced && _lastNotifiedParcelId != order.parcelId) {
-              _lastNotifiedParcelId = order.parcelId;
-              debugPrint('[BackgroundService] 🚨 NEW ASSIGNED ORDER: ${order.parcelId}');
+            if (isPending && !isDeclined && !isSilenced) {
+              if (_lastNotifiedParcelId != order.parcelId) {
+                _lastNotifiedParcelId = order.parcelId;
+                debugPrint('[BackgroundService] 🚨 NEW ASSIGNED ORDER: ${order.parcelId}');
 
-              // Wake up screen even if locked or off!
-              try {
-                FlutterForegroundTask.wakeUpScreen();
-                FlutterForegroundTask.setOnLockScreenVisibility(true);
-              } catch (_) {}
+                // Wake up screen even if locked or off!
+                try {
+                  FlutterForegroundTask.wakeUpScreen();
+                  FlutterForegroundTask.setOnLockScreenVisibility(true);
+                } catch (_) {}
 
-              // Trigger sound, vibration & lock screen notification with Accept/Decline actions!
-              await AlertManager().triggerNewOrderAlert(order);
+                // Trigger sound, vibration & lock screen notification with Accept/Decline actions!
+                await AlertManager().triggerNewOrderAlert(order);
 
-              // Update foreground service notification with Mute, Accept & Decline action buttons
-              await FlutterForegroundTask.updateService(
-                notificationTitle: '🔔 NAYA ORDER ASSIGNED! (₹${order.totalAmount.toInt()})',
-                notificationText: '📍 ${order.pickupAddress.split(',')[0]} ➔ ${order.dropAddress.split(',')[0]}',
-                notificationButtons: [
-                  const NotificationButton(id: 'silence_order', text: '🔇 MUTE'),
-                  const NotificationButton(id: 'accept_order', text: '✅ ACCEPT'),
-                  const NotificationButton(id: 'decline_order', text: '❌ DECLINE'),
-                ],
-              );
+                // Update foreground service notification with Mute, Accept & Decline action buttons
+                await FlutterForegroundTask.updateService(
+                  notificationTitle: '🔔 NAYA ORDER ASSIGNED! (₹${order.totalAmount.toInt()})',
+                  notificationText: '📍 ${order.pickupAddress.split(',')[0]} ➔ ${order.dropAddress.split(',')[0]}',
+                  notificationButtons: [
+                    const NotificationButton(id: 'silence_order', text: '🔇 MUTE'),
+                    const NotificationButton(id: 'accept_order', text: '✅ ACCEPT'),
+                    const NotificationButton(id: 'decline_order', text: '❌ DECLINE'),
+                  ],
+                );
 
-              // Notify UI isolate
-              FlutterForegroundTask.sendDataToMain({
-                'type': 'new_order_alert',
-                'order': activeRaw,
-              });
+                // Notify UI isolate
+                FlutterForegroundTask.sendDataToMain({
+                  'type': 'new_order_alert',
+                  'order': activeRaw,
+                });
+              } else {
+                // If order is still pending and driver hasn't accepted yet, keep screen awake
+                try {
+                  FlutterForegroundTask.wakeUpScreen();
+                } catch (_) {}
+              }
+            } else if (!isPending) {
+              // Order transitioned out of pending (e.g. accepted or completed)
+              if (_lastNotifiedParcelId != null) {
+                _lastNotifiedParcelId = null;
+                AlertManager().stopAlert();
+              }
+            }
+          } else {
+            // No active trip currently assigned - reset cache completely
+            if (_lastNotifiedParcelId != null) {
+              _lastNotifiedParcelId = null;
+              AlertManager().stopAlert();
             }
           }
         }
@@ -234,10 +253,12 @@ class DriverTaskHandler extends TaskHandler {
         'type': 'accept_order_alert',
         'parcelId': _lastNotifiedParcelId,
       });
+      _lastNotifiedParcelId = null;
       FlutterForegroundTask.launchApp();
     } else if (id == 'decline_order') {
       await AlertManager().stopAlert(notifId: _lastNotifiedParcelId?.hashCode, parcelId: _lastNotifiedParcelId);
       final declinedParcelId = _lastNotifiedParcelId;
+      _lastNotifiedParcelId = null;
       if (declinedParcelId != null) {
         try {
           final prefs = await SharedPreferences.getInstance();

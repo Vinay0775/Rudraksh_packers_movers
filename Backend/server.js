@@ -40,11 +40,11 @@ app.get(['/api/app-version', '/api/rider/app-version'], (req, res) => {
   const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
   res.json({
     success: true,
-    version: '1.3.0',
-    versionCode: 12,
+    version: '1.3.1',
+    versionCode: 13,
     apkUrl: `${protocol}://${host}/downloads/RudrakshaDriver.apk`,
     fallbackApkUrl: 'https://github.com/rudrakshamovers1460-rgb/Rudraksha_packers_movers/releases/latest/download/RudrakshaDriver.apk',
-    releaseNotes: '1. Dual Language: English aur हिन्दी me app chalayein\n2. Screen-Off Alert: Screen lock hone par bhi order alert aur siren aayega\n3. Fast Actions: Responsive Silence, Accept aur Decline buttons',
+    releaseNotes: '1. Screen-Off Alert Fix: Screen lock hone par full-screen wake up aur siren alert\n2. Dual Language: English aur हिन्दी switch\n3. Responsive Silence, Accept aur Decline buttons',
     forceUpdate: true,
     fileSizeMB: '53.5 MB'
   });

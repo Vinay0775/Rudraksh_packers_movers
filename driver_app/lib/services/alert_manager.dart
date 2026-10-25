@@ -86,8 +86,8 @@ class AlertManager {
 
   static Function(String action, String? parcelId)? onActionCallback;
 
-  // v6 Channel with native chime sound from res/raw/siren.wav
-  static const String channelId = 'rudraksha_rider_dispatch_v6';
+  // v7 Channel with native chime sound from res/raw/siren.wav and Max Importance
+  static const String channelId = 'rudraksha_rider_dispatch_v7';
   static const String channelName = 'Direct Order Dispatch & Chime Alerts';
   static const String channelDesc =
       'High-priority sound alerts and lock screen popups for assigned jobs';

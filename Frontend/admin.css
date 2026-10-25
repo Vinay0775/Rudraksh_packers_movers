@@ -1631,4 +1631,246 @@ body.cyber-dark-body {
   box-shadow: 0 0 12px rgba(208, 253, 56, 0.45);
 }
 
+/* ==========================================================================
+   ADMIN EXECUTIVE UI/UX & MULTI-DEVICE ALIGNMENT OVERHAUL (v3.0)
+   ========================================================================== */
+
+/* 1. Symmetrical Card Heights & Balanced Flex Alignment */
+.cyber-dashboard-grid {
+  align-items: stretch !important;
+}
+
+.cyber-card {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  min-height: 100% !important;
+  border-radius: 18px !important;
+  padding: 20px 22px !important;
+  box-sizing: border-box !important;
+}
+
+.cyber-card-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 14px !important;
+  min-height: 32px !important;
+  flex-shrink: 0 !important;
+}
+
+.cyber-card-title {
+  font-size: 0.9rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px !important;
+  color: #f1f5f9 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+/* 2. Unified Touch-Friendly Horizontal Filter Rails */
+#parcelFilterPills,
+#parcelSubtabPills,
+.cyber-filter-rail {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  white-space: nowrap !important;
+  gap: 8px !important;
+  padding: 4px 2px 8px 2px !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  align-items: center !important;
+}
+
+#parcelFilterPills::-webkit-scrollbar,
+#parcelSubtabPills::-webkit-scrollbar,
+.cyber-filter-rail::-webkit-scrollbar {
+  display: none !important;
+}
+
+#parcelFilterPills .btn,
+#parcelSubtabPills .btn,
+.cyber-filter-rail .btn {
+  flex: 0 0 auto !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  padding: 6px 14px !important;
+  border-radius: 50px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  height: 34px !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  user-select: none !important;
+}
+
+#parcelFilterPills .btn.active,
+#parcelSubtabPills .btn.active,
+.cyber-filter-rail .btn.active {
+  box-shadow: 0 0 14px rgba(208, 253, 56, 0.35) !important;
+}
+
+/* 3. Table Structure & Action Button Alignment */
+.cyber-table {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 4px !important;
+}
+
+.cyber-table thead tr th {
+  padding: 12px 14px !important;
+  font-size: 0.74rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  color: #94a3b8 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+}
+
+.cyber-table tbody tr td {
+  padding: 12px 14px !important;
+  font-size: 0.82rem !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+  border: none !important;
+}
+
+/* Standardized Table Action Buttons */
+.cyber-table .btn,
+.cyber-table .btn-cyber-outline,
+.cyber-table .btn-cyber-neon,
+.cyber-table-actions .btn {
+  height: 32px !important;
+  padding: 4px 12px !important;
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+  line-height: 1 !important;
+  transition: all 0.2s ease !important;
+}
+
+.cyber-table .btn i,
+.cyber-table .btn-cyber-outline i,
+.cyber-table .btn-cyber-neon i {
+  font-size: 0.78rem !important;
+}
+
+/* 4. Overview Metric & History Polish */
+.cyber-profile-preview {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  margin-bottom: 14px !important;
+}
+
+.cyber-destination-box {
+  background: rgba(13, 13, 15, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 12px !important;
+  padding: 12px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+}
+
+.cyber-earning-amount {
+  font-size: 1.85rem !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin: 6px 0 2px 0 !important;
+}
+
+/* 5. Mobile Layout Harmonization (max-width: 768px) */
+@media (max-width: 768px) {
+  .cyber-top-header {
+    padding: 10px 12px !important;
+    gap: 8px !important;
+    border-radius: 16px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .cyber-header-top-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+
+  .cyber-header-bottom-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  .cyber-sync-status {
+    height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 0.7rem !important;
+  }
+
+  .cyber-header-toolbar {
+    height: 32px !important;
+    gap: 2px !important;
+    padding: 2px !important;
+  }
+
+  .cyber-header-btn {
+    height: 28px !important;
+    padding: 3px 8px !important;
+    font-size: 0.72rem !important;
+  }
+
+  .cyber-card {
+    padding: 16px !important;
+    border-radius: 16px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .cyber-destination-box {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .cyber-destination-box button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Table Cards on Mobile */
+  .cyber-table-card {
+    padding: 14px 12px !important;
+    border-radius: 16px !important;
+    margin-bottom: 14px !important;
+  }
+
+  /* Ensure smooth horizontal scroll on tables without layout distortion */
+  .table-responsive {
+    border-radius: 12px !important;
+    margin-bottom: 10px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+}
+
+
 
