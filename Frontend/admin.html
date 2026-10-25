@@ -33,7 +33,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 
   <!-- Futuristic Cyberpunk Dark Design System & PWA Styles -->
-  <link rel="stylesheet" href="admin.css?v=3.0">
+  <link rel="stylesheet" href="admin.css?v=3.3">
   <link rel="stylesheet" href="pwa-install.css">
 
   <!-- Multi-Language i18n Translation Engine -->
@@ -122,72 +122,68 @@
 
       <!-- TOP BAR HEADER WITH BRAND LOGO & DUAL RESPONSIVE ROWS -->
       <header class="cyber-top-header">
-        <!-- Top Row: Brand Identity (Left) & Admin Profile / Logout (Right) -->
-        <div class="cyber-header-top-row">
-          <div class="cyber-header-brand" onclick="switchAdminTab('dashboard')" title="OM Rudraksha Enterprise Hub" style="cursor: pointer;">
-            <div class="cyber-brand-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <path d="M4 6L14 3L11 9L20 6L17 12L20 18L10 21L13 15L4 18L7 12L4 6Z" fill="#D0FD38"/>
-              </svg>
-            </div>
-            <div>
-              <div class="d-flex align-items-center gap-2">
-                <span class="fw-extrabold text-white lh-1" style="font-family: 'Outfit', sans-serif; font-size: 1.05rem; letter-spacing: 0.5px;">OM RUDRAKSHA <span style="color: #D0FD38;">HUB</span></span>
-                <span class="cyber-header-badge">ENTERPRISE</span>
-              </div>
-              <div class="text-muted small" style="font-size: 0.68rem; letter-spacing: 0.4px;" data-i18n="admin_header_sub">Fleet & Logistics Command</div>
-            </div>
+        <!-- 1. Brand Identity -->
+        <div class="cyber-header-brand" onclick="switchAdminTab('dashboard')" title="OM Rudraksha Enterprise Hub" style="cursor: pointer;">
+          <div class="cyber-brand-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M4 6L14 3L11 9L20 6L17 12L20 18L10 21L13 15L4 18L7 12L4 6Z" fill="#D0FD38"/>
+            </svg>
           </div>
-
-          <div class="d-flex align-items-center gap-2">
-            <!-- Language Switcher Pill Toggle -->
-            <div class="lang-switcher-pill" onclick="toggleLanguage()" title="Switch Language / भाषा बदलें">
-              <span class="lang-en active">EN</span>
-              <span class="lang-hi">हिन्दी</span>
+          <div class="cyber-brand-info">
+            <div class="d-flex align-items-center gap-2">
+              <span class="fw-extrabold text-white lh-1 cyber-brand-title">OM RUDRAKSHA <span style="color: #D0FD38;">HUB</span></span>
+              <span class="cyber-header-badge d-none d-xxl-inline-block">ENTERPRISE</span>
             </div>
-
-            <!-- Master Admin Profile & Logout Pill -->
-            <div class="cyber-admin-profile-pill">
-              <div class="admin-avatar-glow" title="Master Security Verified">
-                <i class="fa-solid fa-shield-halved"></i>
-              </div>
-              <div class="d-none d-xl-flex flex-column text-start me-1">
-                <span class="admin-name-title" id="adminDisplayName">OM Rudraksha Admin</span>
-                <span class="admin-role-badge"><i class="fa-solid fa-circle-check text-success"></i> <span data-i18n="admin_role_super">Super Admin</span></span>
-              </div>
-              <button type="button" class="cyber-header-logout-btn" onclick="logoutAdmin()" title="Secure Lock & Sign Out">
-                <i class="fa-solid fa-power-off"></i>
-                <span data-i18n="admin_btn_logout">Logout</span>
-              </button>
-            </div>
+            <div class="text-muted small cyber-header-sub d-none d-xxl-block" data-i18n="admin_header_sub">Fleet & Logistics Command</div>
           </div>
         </div>
 
-        <!-- Global Search Bar (Desktop Center) -->
+        <!-- 2. Live Database Status Pill -->
+        <div class="cyber-sync-status" id="backendStatusPill" title="Live Database Connection">
+          <span class="cyber-pulse-dot"></span>
+          <span id="backendStatusText">Supabase Active 🟢</span>
+        </div>
+
+        <!-- 3. Global Search Bar (Desktop Center) -->
         <div class="cyber-search-box d-none d-lg-flex">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" id="globalSearchInput" placeholder="Quick search bookings, drivers, routes..." data-i18n-placeholder="admin_ph_search" oninput="handleGlobalSearch(this.value)">
+          <input type="text" id="globalSearchInput" placeholder="Quick search..." data-i18n-placeholder="admin_ph_search" oninput="handleGlobalSearch(this.value)">
           <kbd class="cyber-search-kbd">Ctrl+K</kbd>
         </div>
 
-        <!-- Bottom Row (Mobile) / Right Row (Desktop): Status Pill & Action Buttons Group -->
-        <div class="cyber-header-bottom-row">
-          <!-- Live Status Pill -->
-          <div class="cyber-sync-status" id="backendStatusPill" title="Live Database Connection">
-            <span class="cyber-pulse-dot"></span>
-            <span id="backendStatusText">Supabase Active 🟢</span>
+        <!-- 4. Quick Action Buttons Group -->
+        <div class="cyber-header-toolbar">
+          <button type="button" class="cyber-header-btn" id="btnAdminTopSync" onclick="refreshAdminAll()" title="Refresh & Sync Live Database">
+            <i class="fa-solid fa-rotate" id="iconAdminTopSync"></i> <span class="cyber-btn-label d-none d-sm-inline">Sync</span>
+          </button>
+          <a href="index.html" target="_blank" rel="noopener noreferrer" class="cyber-header-btn" title="Open Client Website in New Tab">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> <span class="cyber-btn-label d-none d-sm-inline">Website</span>
+          </a>
+          <button type="button" id="btnAdminInstall" class="cyber-header-btn btn-install-highlight" onclick="triggerPwaInstall()" title="Install OM Rudraksha Admin as a Desktop/Mobile App">
+            <i class="fa-solid fa-mobile-screen-button"></i> <span class="cyber-btn-label d-none d-sm-inline">Install</span>
+          </button>
+        </div>
+
+        <!-- 5. Profile & Language Controls Group -->
+        <div class="cyber-header-profile-group">
+          <!-- Language Switcher Pill Toggle -->
+          <div class="lang-switcher-pill" onclick="toggleLanguage()" title="Switch Language / भाषा बदलें">
+            <span class="lang-en active">EN</span>
+            <span class="lang-hi">हिन्दी</span>
           </div>
 
-          <!-- Quick Action Buttons Group -->
-          <div class="cyber-header-toolbar">
-            <button type="button" class="cyber-header-btn" id="btnAdminTopSync" onclick="refreshAdminAll()" title="Refresh & Sync Live Database">
-              <i class="fa-solid fa-rotate" id="iconAdminTopSync"></i> <span>Sync</span>
-            </button>
-            <a href="index.html" target="_blank" rel="noopener noreferrer" class="cyber-header-btn" title="Open Client Website in New Tab">
-              <i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Website</span>
-            </a>
-            <button type="button" id="btnAdminInstall" class="cyber-header-btn btn-install-highlight" onclick="triggerPwaInstall()" title="Install OM Rudraksha Admin as a Desktop/Mobile App">
-              <i class="fa-solid fa-mobile-screen-button"></i> <span>Install</span>
+          <!-- Master Admin Profile & Logout Pill -->
+          <div class="cyber-admin-profile-pill">
+            <div class="admin-avatar-glow" title="Master Security Verified">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div class="d-none d-xxl-flex flex-column text-start me-1">
+              <span class="admin-name-title" id="adminDisplayName">OM Rudraksha Admin</span>
+              <span class="admin-role-badge"><i class="fa-solid fa-circle-check text-success"></i> <span data-i18n="admin_role_super">Super Admin</span></span>
+            </div>
+            <button type="button" class="cyber-header-logout-btn" onclick="logoutAdmin()" title="Secure Lock & Sign Out">
+              <i class="fa-solid fa-power-off"></i>
+              <span data-i18n="admin_btn_logout" class="d-none d-sm-inline">Logout</span>
             </button>
           </div>
         </div>
